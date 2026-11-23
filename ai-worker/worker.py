@@ -57,11 +57,61 @@ def selftest(params, progress):
     )
 
 
+def command_lines():
+    # La lecture bloquante du CRT Windows garde le verrou du descripteur stdin.
+    # Certaines DLL consultent les descripteurs pendant leur initialisation.
+    if sys.platform != "win32":
+        yield from sys.stdin
+        return
+
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    handle = wintypes.HANDLE(msvcrt.get_osfhandle(sys.stdin.fileno()))
+    kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+    kernel.GetFileType.argtypes = [wintypes.HANDLE]
+    kernel.GetFileType.restype = wintypes.DWORD
+    if kernel.GetFileType(handle) != 3:  # FILE_TYPE_PIPE
+        yield from sys.stdin
+        return
+    msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
+    peek = kernel.PeekNamedPipe
+    peek.argtypes = [
+        wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD),
+        ctypes.POINTER(wintypes.DWORD),
+    ]
+    peek.restype = wintypes.BOOL
+    available = wintypes.DWORD()
+    pending = bytearray()
+    while not terminal_sent.is_set():
+        if not peek(handle, None, 0, None, ctypes.byref(available), None):
+            error = ctypes.get_last_error()
+            if error in (109, 232, 233):  # canal fermé ou déconnecté
+                break
+            raise ctypes.WinError(error)
+        if not available.value:
+            terminal_sent.wait(0.05)
+            continue
+        chunk = os.read(sys.stdin.fileno(), min(available.value, 65536))
+        if not chunk:
+            break
+        lines = chunk.split(b"\n")
+        pending.extend(lines[0])
+        for tail in lines[1:]:
+            yield bytes(pending)
+            pending = bytearray(tail)
+    if pending:
+        yield bytes(pending)
+
+
 def main():
     job = None
     reader = None
     try:
-        req = json.loads(sys.stdin.readline())
+        commands = command_lines()
+        req = json.loads(next(commands))
         job = req["id"]
         if req["method"] != "install":
             os.environ["HF_HUB_OFFLINE"] = "1"
@@ -69,7 +119,7 @@ def main():
             raise ValueError("Version IPC incompatible")
 
         def controls():
-            for line in sys.stdin:
+            for line in commands:
                 try:
                     command = json.loads(line)
                     if command.get("id") == job and command.get("method") in (
@@ -83,7 +133,7 @@ def main():
                         return
                 except ValueError:
                     continue
-            # Fin du canal de contrôle : le parent a quitté. Ne pas poursuivre une inférence orpheline.
+            # Fin du canal de contrôle : le parent a quitté.
             with out_lock:
                 if not terminal_sent.is_set():
                     os._exit(2)

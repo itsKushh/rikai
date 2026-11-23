@@ -11,10 +11,14 @@ command = [str(Path(sys.argv[1]).resolve())]
 
 def invoke(method, params, expected):
     stages = []
+    def progress(event):
+        stages.append(event["stage"])
+        print(f"{method} · {event['stage']}", flush=True)
+
     answer, code = worker_exchange(
         {"version": 1, "id": 1, "method": method, "params": params},
         command=command,
-        on_progress=lambda event: stages.append(event["stage"]),
+        on_progress=progress,
         timeout=120,
     )
     if answer["event"] != expected or code != (0 if expected == "result" else 1):
