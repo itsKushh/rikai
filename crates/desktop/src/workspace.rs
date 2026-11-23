@@ -1,0 +1,635 @@
+use super::*;
+
+pub(super) fn strip(p: Palette) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(2.))
+        .p(px(3.))
+        .rounded(px(12.))
+        .bg(rgb(p.base))
+        .border_1()
+        .border_color(rgb(p.edge))
+}
+
+fn header(title: impl Into<SharedString>, p: Palette) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .min_h(px(40.))
+        .px_4()
+        .flex_shrink_0()
+        .border_b_1()
+        .border_color(rgb(p.edge))
+        .child(label(title))
+}
+
+fn scroll(id: &'static str, content: Div) -> Stateful<Div> {
+    div()
+        .id(id)
+        .flex_1()
+        .min_h_0()
+        .min_w_0()
+        .overflow_y_scroll()
+        .child(content)
+}
+
+fn fact(name: &'static str, value: impl Into<String>, p: Palette) -> Div {
+    div()
+        .flex()
+        .items_start()
+        .justify_between()
+        .gap_3()
+        .py(px(5.))
+        .child(div().flex_shrink_0().text_color(rgb(p.muted)).child(name))
+        .child(div().min_w_0().text_right().child(value.into()))
+}
+
+fn selected_file(settings: &Value, key: &str) -> String {
+    settings[key]
+        .as_str()
+        .and_then(|p| std::path::Path::new(p).file_name())
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_else(|| "Aucun".into())
+}
+
+impl Desk {
+    fn drawer_open(&self) -> bool {
+        self.confirmation.is_some()
+            || matches!(self.page, Page::Settings | Page::ConfirmDownload(_))
+    }
+
+    fn workspace_page(&self) -> Page {
+        if matches!(self.page, Page::Settings | Page::ConfirmDownload(_)) {
+            self.settings_origin
+        } else {
+            self.page
+        }
+    }
+
+    fn dismiss_drawer(&mut self) {
+        if self.confirmation.take().is_some() {
+            return;
+        }
+        if !self.busy() {
+            self.menu = None;
+            self.page = self.settings_origin;
+            self.message.clear();
+        }
+    }
+
+    fn toolbar(&self, compact: bool, maximized: bool, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let locked = self.busy() || self.drawer_open();
+        let mut bar = div()
+            .flex()
+            .items_center()
+            .h(px(44.))
+            .flex_shrink_0()
+            .gap(px(10.))
+            .pl(px(16.))
+            .child(
+                div()
+                    .h_full()
+                    .flex()
+                    .items_center()
+                    .window_control_area(WindowControlArea::Drag)
+                    .pr_2()
+                    .child(glyph(WAVE, 22., p.muted)),
+            )
+            .child(div().w(px(1.)).h(px(20.)).bg(rgb(p.edge)));
+        let page = self.workspace_page();
+        let mut nav = strip(p);
+        for (target, name, icon) in [
+            (Page::Home, "Espace de travail", DESK),
+            (Page::Library, "Bibliothèque", LIBRARY),
+            (Page::Profiles, "Voix", VOICES),
+        ] {
+            let active = page == target
+                || (target == Page::Home && matches!(page, Page::New | Page::Detail));
+            if locked {
+                nav = nav.child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(6.))
+                        .px_2()
+                        .h(px(26.))
+                        .rounded(px(8.))
+                        .when(active, |s| s.bg(rgb(p.selected)))
+                        .child(glyph(icon, 15., p.muted))
+                        .when(!compact || active, |s| s.child(name)),
+                );
+            } else {
+                nav = nav.child(button(
+                    name,
+                    if active {
+                        Button::Selected
+                    } else {
+                        Button::Quiet
+                    },
+                    Some(icon),
+                    compact && !active,
+                    cx,
+                    move |s, _| s.go(target),
+                ));
+            }
+        }
+        bar = bar.child(nav).child(
+            div()
+                .flex_1()
+                .h_full()
+                .window_control_area(WindowControlArea::Drag),
+        );
+        if !locked {
+            bar = bar
+                .child(button(
+                    "Paramètres",
+                    Button::Secondary,
+                    Some(SLIDERS),
+                    compact,
+                    cx,
+                    |s, _| s.go(Page::Settings),
+                ))
+                .child(button(
+                    "Nouvelle réunion",
+                    Button::Primary,
+                    Some(PLUS),
+                    false,
+                    cx,
+                    |s, _| s.go(Page::New),
+                ));
+        }
+        let mut controls = div().flex().h_full().items_center();
+        for (name, icon, area) in [
+            ("Réduire", "M5 12h14", WindowControlArea::Min),
+            (
+                if maximized { "Restaurer" } else { "Agrandir" },
+                if maximized {
+                    "M7 7V4h13v13h-3M4 8h12v12H4z"
+                } else {
+                    "M5 5h14v14H5z"
+                },
+                WindowControlArea::Max,
+            ),
+            ("Fermer", CLOSE, WindowControlArea::Close),
+        ] {
+            controls = controls.child(
+                div()
+                    .id(name)
+                    .aria_label(name)
+                    .role(Role::Button)
+                    .focusable()
+                    .tab_stop(true)
+                    .h_full()
+                    .w(px(if compact { 32. } else { 40. }))
+                    .flex()
+                    .items_center()
+                    .justify_center()
+                    .window_control_area(area)
+                    .hover(move |s| s.bg(rgb(p.control)))
+                    .focus_visible(move |s| s.bg(rgb(p.selected)))
+                    .child(glyph(icon, 14., p.muted))
+                    .on_click(cx.listener(move |s, _, w, cx| match area {
+                        WindowControlArea::Min => w.minimize_window(),
+                        WindowControlArea::Max => w.zoom_window(),
+                        WindowControlArea::Close if s.busy() => {
+                            s.message =
+                                "Arrêtez la capture ou annulez le traitement avant de fermer."
+                                    .into();
+                            cx.notify();
+                        }
+                        WindowControlArea::Close => w.remove_window(),
+                        _ => {}
+                    })),
+            );
+        }
+        bar.child(controls)
+    }
+
+    pub(super) fn preview(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut center = div()
+            .size_full()
+            .min_h(px(130.))
+            .flex()
+            .flex_col()
+            .items_center()
+            .justify_center()
+            .gap(px(12.))
+            .p_4()
+            .rounded(px(10.))
+            .bg(rgb(p.base))
+            .text_center()
+            .child(glyph(MIC, 34., p.muted));
+        if let Some(m) = self.library.first() {
+            center = center.child(label(m.title.clone())).child(
+                div().text_color(rgb(p.muted)).child(format!(
+                    "{}   ·   {}",
+                    m.date,
+                    time(m.duration_ms as u64)
+                )),
+            );
+            if !self.drawer_open() {
+                let id = m.id;
+                center = center.child(action("Ouvrir la réunion", false, cx, move |s, _| {
+                    s.detail(id)
+                }));
+            }
+        } else {
+            center = center.child(label("Prêt à enregistrer")).child(
+                div()
+                    .text_color(rgb(p.muted))
+                    .child("Créez une réunion pour choisir vos sources audio."),
+            );
+        }
+        center
+    }
+
+    fn inspector_panel(&self, page: Page, passive: bool, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut tabs = strip(p).w_full();
+        for (tab, title, icon) in [
+            (Inspector::Session, "Session", DESK),
+            (Inspector::Audio, "Audio", AUDIO),
+            (Inspector::Models, "Modèles", MODEL),
+        ] {
+            let style = if self.inspector == tab {
+                Button::Selected
+            } else {
+                Button::Quiet
+            };
+            tabs = if passive {
+                tabs.child(div().flex_1().text_center().py_1().child(title))
+            } else {
+                tabs.child(
+                    button(title, style, Some(icon), false, cx, move |s, _| {
+                        s.inspector = tab;
+                        Ok(())
+                    })
+                    .flex_1()
+                    .px(px(4.)),
+                )
+            };
+        }
+        let mut content = col().p_4();
+        match self.inspector {
+            Inspector::Session => {
+                let meeting = match page {
+                    Page::Detail => self.library.iter().find(|m| m.id == self.id),
+                    Page::Home => self.library.first(),
+                    _ => None,
+                };
+                content = content.child(label("Informations de session"));
+                if let Some(m) = meeting {
+                    content = content
+                        .child(fact("Réunion", m.title.clone(), p))
+                        .child(fact("Date", m.date.clone(), p))
+                        .child(fact("Durée", time(m.duration_ms as u64), p))
+                        .child(fact("État", m.status.clone(), p));
+                    if !m.project.is_empty() {
+                        content = content.child(fact("Projet", m.project.clone(), p));
+                    }
+                } else {
+                    content = content
+                        .child(fact(
+                            "État",
+                            if self.ctl.is_some() {
+                                "Enregistrement"
+                            } else if self.cancel.is_some() {
+                                "Traitement"
+                            } else {
+                                "En attente"
+                            },
+                            p,
+                        ))
+                        .child(fact(
+                            "Sources sélectionnées",
+                            self.chosen.len().to_string(),
+                            p,
+                        ));
+                }
+                content = content
+                    .child(label("Enregistrement").mt_3())
+                    .child(fact(
+                        "Intervenants",
+                        if self.settings["diarization"] == true {
+                            "Identification activée"
+                        } else {
+                            "Identification désactivée"
+                        },
+                        p,
+                    ))
+                    .child(fact(
+                        "Compte rendu",
+                        if self.settings["auto_summary"] == true {
+                            "Automatique"
+                        } else {
+                            "À la demande"
+                        },
+                        p,
+                    ));
+            }
+            Inspector::Audio => {
+                content = content.child(label("Sources audio"));
+                if self.ctl.is_some() {
+                    content = content
+                        .children(self.capture_names.iter().cloned().map(|n| div().child(n)));
+                } else if !self.chosen.is_empty() {
+                    content = content.children(
+                        self.inputs
+                            .iter()
+                            .filter(|i| self.chosen.contains(&i.source))
+                            .map(|i| div().child(i.name.clone())),
+                    );
+                } else {
+                    content = content.child(
+                        div()
+                            .text_color(rgb(p.muted))
+                            .child("Aucune source sélectionnée."),
+                    );
+                }
+                content = content
+                    .child(label("Format des pistes").mt_3())
+                    .child(fact("Canaux", "Mono", p))
+                    .child(fact("Fréquence", "16 kHz", p))
+                    .child(fact("Encodage", "PCM 16 bits", p));
+            }
+            Inspector::Models => {
+                content = content
+                    .child(label("Modèles locaux"))
+                    .child(fact(
+                        "Transcription",
+                        if self.settings["whisper"].is_string() {
+                            "Configurée"
+                        } else {
+                            "À configurer"
+                        },
+                        p,
+                    ))
+                    .child(fact("Résumé", selected_file(&self.settings, "gguf"), p))
+                    .child(fact(
+                        "Calcul",
+                        if self.settings["device"] == "cuda" {
+                            "CUDA"
+                        } else {
+                            "CPU"
+                        },
+                        p,
+                    ))
+                    .child(fact("Profil conseillé", self.recommended.clone(), p));
+                if !passive && !self.busy() {
+                    content =
+                        content.child(action("Configurer les modèles", false, cx, |s, _| {
+                            s.go(Page::Settings)
+                        }));
+                }
+            }
+        }
+        p.panel()
+            .child(
+                div()
+                    .p(px(5.))
+                    .border_b_1()
+                    .border_color(rgb(p.edge))
+                    .child(tabs),
+            )
+            .child(scroll("inspector-body", content))
+    }
+
+    fn settings_drawer(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let (title, fields) = if let Some(prompt) = &self.confirmation {
+            (
+                prompt.title.to_owned(),
+                col().child(prompt.detail.clone()).child(
+                    row()
+                        .child(action("Annuler", false, cx, |s, _| {
+                            s.confirmation = None;
+                            Ok(())
+                        }))
+                        .child(action(prompt.accept, true, cx, |s, _| {
+                            if let Some(prompt) = s.confirmation.take() {
+                                (prompt.action)(s)?;
+                            }
+                            Ok(())
+                        })),
+                ),
+            )
+        } else {
+            self.page_body(self.page, true, cx)
+        };
+        let close = button(
+            "Fermer le panneau",
+            Button::Quiet,
+            Some(CLOSE),
+            true,
+            cx,
+            |s, _| {
+                s.dismiss_drawer();
+                Ok(())
+            },
+        );
+        let body = col()
+            .gap(px(16.))
+            .p_4()
+            .when(!self.message.is_empty(), |s| {
+                s.child(notice(&self.message, p))
+            })
+            .child(fields);
+        let sheet = p
+            .panel()
+            .id("settings-sheet")
+            .h_full()
+            .w(px(390.))
+            .max_w(relative(0.92))
+            .occlude()
+            .track_focus(&self.drawer_focus)
+            .role(Role::Dialog)
+            .aria_modal(true)
+            .aria_label(title.clone())
+            .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
+                if e.keystroke.key == "escape" {
+                    if s.menu.take().is_none() {
+                        if matches!(s.page, Page::ConfirmDownload(_)) {
+                            s.page = Page::Settings;
+                        } else {
+                            s.dismiss_drawer();
+                        }
+                    }
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            }))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .min_h(px(40.))
+                    .flex_shrink_0()
+                    .px_4()
+                    .border_b_1()
+                    .border_color(rgb(p.edge))
+                    .child(label(title))
+                    .when(!self.busy() || self.confirmation.is_some(), |s| {
+                        s.child(close)
+                    }),
+            )
+            .child(scroll("drawer-fields", body));
+        div()
+            .absolute()
+            .inset_0()
+            .flex()
+            .justify_end()
+            .p(px(3.))
+            .child(
+                div()
+                    .id("drawer-backdrop")
+                    .absolute()
+                    .inset_0()
+                    .occlude()
+                    .bg(rgba(0x000000ab))
+                    .backdrop_blur(px(4.))
+                    .on_click(cx.listener(|s, _, _, cx| {
+                        s.dismiss_drawer();
+                        cx.notify();
+                    })),
+            )
+            .child(sheet)
+    }
+}
+
+fn notice(message: &str, p: Palette) -> Div {
+    div()
+        .px_3()
+        .py_2()
+        .rounded(px(9.))
+        .border_1()
+        .border_color(rgb(p.edge))
+        .bg(rgb(p.control))
+        .child(message.to_owned())
+}
+
+impl Render for Desk {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let p = *cx.global::<Palette>();
+        let narrow = window.viewport_size().width < px(810.);
+        let drawer = self.drawer_open();
+        if drawer && !self.drawer_was_open {
+            self.drawer_focus.focus(window, cx);
+        }
+        self.drawer_was_open = drawer;
+        let page = self.workspace_page();
+        let background_activity = !drawer || self.confirmation.is_some();
+        let home = page == Page::Home && !(self.busy() && background_activity);
+        let mut left = col().min_h_0().flex_1().gap(px(16.));
+        if home {
+            left = left
+                .child(
+                    p.panel()
+                        .flex_1()
+                        .min_h(px(160.))
+                        .p_4()
+                        .child(self.preview(cx)),
+                )
+                .child(
+                    p.panel()
+                        .h(if narrow {
+                            px(180.)
+                        } else {
+                            window.viewport_size().height * 0.31
+                        })
+                        .child(header("Réunions récentes", p))
+                        .child(scroll(
+                            "recent-meetings",
+                            self.meetings_view(cx, 10, !drawer),
+                        )),
+                );
+        } else {
+            let (title, body) = self.page_body(page, background_activity, cx);
+            left = left.child(
+                p.panel()
+                    .flex_1()
+                    .child(header(title, p))
+                    .child(scroll("workspace-content", body.p_4())),
+            );
+        }
+        let inspector = self.inspector_panel(page, drawer, cx);
+        let layout = if narrow {
+            div()
+                .id("compact-workspace")
+                .size_full()
+                .overflow_y_scroll()
+                .child(
+                    col()
+                        .gap_3()
+                        .child(left.min_h(px(320.)))
+                        .child(inspector.min_h(px(225.))),
+                )
+                .into_any_element()
+        } else {
+            div()
+                .size_full()
+                .flex()
+                .gap(px(16.))
+                .child(left)
+                .child(inspector.w(relative(0.323)).min_w(px(272.)).flex_shrink_0())
+                .into_any_element()
+        };
+        div()
+            .size_full()
+            .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
+                if ev.keystroke.key != "tab"
+                    || ev.keystroke.modifiers.control
+                    || ev.keystroke.modifiers.alt
+                {
+                    return;
+                }
+                let step = if ev.keystroke.modifiers.shift {
+                    Window::focus_prev
+                } else {
+                    Window::focus_next
+                };
+                step(w, cx);
+                if s.drawer_open() {
+                    let first = w.focused(cx);
+                    while !s.drawer_focus.contains_focused(w, cx) {
+                        step(w, cx);
+                        if w.focused(cx) == first {
+                            s.drawer_focus.focus(w, cx);
+                            break;
+                        }
+                    }
+                }
+                cx.stop_propagation();
+            }))
+            .flex()
+            .flex_col()
+            .bg(rgb(p.base))
+            .text_color(rgb(p.text))
+            .font_family("Inter")
+            .text_size(px(12.))
+            .child(self.toolbar(
+                window.viewport_size().width < px(900.),
+                window.is_maximized(),
+                cx,
+            ))
+            .child(
+                div()
+                    .relative()
+                    .min_h_0()
+                    .flex_1()
+                    .flex()
+                    .flex_col()
+                    .px(px(13.))
+                    .pb(px(12.))
+                    .pt(px(8.))
+                    .when(!drawer && !self.message.is_empty(), |s| {
+                        s.child(notice(&self.message, p).mb_2())
+                    })
+                    .child(div().flex_1().min_h_0().child(layout))
+                    .when(drawer, |s| s.child(self.settings_drawer(cx))),
+            )
+    }
+}

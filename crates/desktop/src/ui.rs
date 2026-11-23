@@ -1,5 +1,8 @@
 use crate::page::Page;
+#[path = "appearance.rs"]
+mod appearance;
 use anyhow::{Context as _, Result, ensure};
+use appearance::Palette;
 use audio_capture::{Control, Input, Manifest, Source, discover, record};
 use gpui::{prelude::*, *};
 use gpui_ce_elements::editable_text::{
@@ -71,13 +74,15 @@ pub fn run() -> Result<()> {
                     "../../../assets/inter/Inter.ttf"
                 ))]);
             cx.bind_keys(default_bindings().as_keybindings(Some(DEFAULT_INPUT_CONTEXT)));
-            let bounds = Bounds::centered(None, size(px(990.), px(725.)), cx);
+            let bounds = Bounds::centered(None, size(px(1120.), px(740.)), cx);
             let opt = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 titlebar: Some(TitlebarOptions {
                     title: Some("MeetingNotes".into()),
+                    appears_transparent: true,
                     ..Default::default()
                 }),
+                window_min_size: Some(size(px(640.), px(440.))),
                 ..Default::default()
             };
             cx.open_window(opt, move |w, cx| {
@@ -119,12 +124,25 @@ type Field = Entity<EditableTextState>;
 fn field(cx: &mut Context<Desk>) -> Field {
     cx.new(|cx| EditableTextState::new(StringStorage::default(), cx))
 }
+type ConfirmAction = Box<dyn FnOnce(&mut Desk) -> Result<()>>;
+struct Confirmation {
+    title: &'static str,
+    detail: String,
+    accept: &'static str,
+    action: ConfirmAction,
+}
 struct Desk {
+    confirmation: Option<Confirmation>,
     hardware: String,
     recommended: String,
     root: PathBuf,
     db: Library,
     page: Page,
+    settings_origin: Page,
+    drawer_focus: FocusHandle,
+    drawer_was_open: bool,
+    inspector: Inspector,
+    menu: Option<Preference>,
     tx: mpsc::Sender<Event>,
     rx: mpsc::Receiver<Event>,
     inputs: Vec<Input>,
@@ -176,6 +194,7 @@ impl Desk {
             .flatten()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_else(|| json!({"language":"fr","device":"cpu","self_name":"Moi"}));
+        cx.set_global(Palette::new(settings["light"] == true));
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
         sys.refresh_cpu_list(sysinfo::CpuRefreshKind::everything());
@@ -204,11 +223,17 @@ impl Desk {
             let _ = tx_hw.send(Event::Hardware(gpu.into()));
         });
         let mut s = Self {
+            confirmation: None,
             hardware,
             recommended,
             root,
             db,
             page: Page::Home,
+            settings_origin: Page::Home,
+            drawer_focus: cx.focus_handle(),
+            drawer_was_open: false,
+            inspector: Inspector::Session,
+            menu: None,
             tx,
             rx,
             inputs: vec![],
@@ -370,6 +395,7 @@ impl Desk {
                 let v = r?;
                 self.settings["whisper"] = v["folder"].clone();
                 self.settings["whisper_revision"] = v["revision"].clone();
+                self.settings["whisper_repo"] = v["repo"].clone();
                 self.save_settings()?;
                 self.message = "Modèle vérifié et sélectionné.".into();
             }
@@ -381,6 +407,7 @@ impl Desk {
             }
             Event::Stage(s) => self.stage = s,
             Event::Recorded(id, res) => {
+                self.confirmation = None;
                 let duration = self.ctl.take().map(|c| c.elapsed_ms()).unwrap_or(0);
                 self.stopping = false;
                 if self.discard {
@@ -534,6 +561,27 @@ impl Desk {
         });
         Ok(())
     }
+    fn ask(
+        &mut self,
+        title: &'static str,
+        detail: impl Into<String>,
+        accept: &'static str,
+        action: impl FnOnce(&mut Self) -> Result<()> + 'static,
+    ) -> Result<()> {
+        self.confirmation = Some(Confirmation {
+            title,
+            detail: detail.into(),
+            accept,
+            action: Box::new(action),
+        });
+        Ok(())
+    }
+    fn request_remote_summary(&mut self) -> Result<()> {
+        let url = self.settings["endpoint"]
+            .as_str()
+            .context("Configurez le fournisseur dans Paramètres.")?;
+        self.ask("Envoyer la transcription ?", format!("Le texte et les noms des intervenants seront envoyés à {url} pour générer le résumé."), "Envoyer", |s|s.process_via(true,true))
+    }
     fn process(&mut self, summary: bool) -> Result<()> {
         self.process_via(summary, false)
     }
@@ -552,12 +600,6 @@ impl Desk {
                     settings["endpoint"].is_string() && settings["remote_model"].is_string(),
                     "Configurez le fournisseur dans Paramètres."
                 );
-                if !view::confirm(&format!(
-                    "Envoyer le texte et les noms des intervenants de cette réunion à {} pour générer un résumé ?",
-                    settings["endpoint"].as_str().unwrap_or_default()
-                )) {
-                    return Ok(());
-                }
             }
             ensure!(
                 !self.segments.is_empty() && (remote || settings["gguf"].is_string()),
@@ -594,10 +636,15 @@ impl Desk {
         Ok(())
     }
     fn go(&mut self, page: Page) -> Result<()> {
-        super::playback::stop();
-        self.hits.clear();
         if self.busy() {
             return Ok(());
+        }
+        self.menu = None;
+        super::playback::stop();
+        if page == Page::Settings {
+            self.settings_origin = self.page;
+        } else {
+            self.hits.clear();
         }
         self.page = page;
         self.message.clear();
@@ -631,18 +678,39 @@ impl Desk {
         });
         Ok(())
     }
-    fn pick(&mut self, key: &str, folder: bool) -> Result<()> {
-        let dlg = rfd::FileDialog::new().set_title("Sélectionner un modèle local");
-        let path = if folder {
-            dlg.pick_folder()
-        } else {
-            dlg.add_filter("Modèle", &[if key == "gguf" { "gguf" } else { "onnx" }])
-                .pick_file()
-        };
-        if let Some(p) = path {
-            self.settings[key] = json!(p);
-            self.save_settings()?;
-        }
+    fn pick(
+        &mut self,
+        key: &'static str,
+        folder: bool,
+        w: &Window,
+        cx: &mut Context<Self>,
+    ) -> Result<()> {
+        let dlg = rfd::AsyncFileDialog::new()
+            .set_parent(w)
+            .set_title("Sélectionner un modèle local");
+        cx.spawn(async move |desk, cx| {
+            let path = if folder {
+                dlg.pick_folder().await
+            } else {
+                dlg.add_filter("Modèle", &[if key == "gguf" { "gguf" } else { "onnx" }])
+                    .pick_file()
+                    .await
+            };
+            if let Some(path) = path {
+                let _ = desk.update(cx, |s, cx| {
+                    s.settings[key] = json!(path.path());
+                    if key == "whisper" {
+                        s.settings["whisper_revision"] = Value::Null;
+                        s.settings["whisper_repo"] = Value::Null;
+                    }
+                    if let Err(e) = s.save_settings() {
+                        s.message = e.to_string();
+                    }
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
         Ok(())
     }
     fn delete(&mut self, id: i64, all: bool) -> Result<()> {
@@ -678,10 +746,12 @@ impl Desk {
             "Choisissez un modèle d’empreintes ONNX dans Paramètres."
         );
         ensure!(!name.trim().is_empty(), "Indiquez le nom du profil.");
+        self.ask("Créer un profil vocal ?",format!("La personne autorise-t-elle la conservation locale de cet extrait de voix et de son empreinte sous le nom « {name} » ?"),"Créer le profil",move |s| s.enroll_confirmed(seg,name))
+    }
+    fn enroll_confirmed(&mut self, seg: Segment, name: String) -> Result<()> {
         let id = self.id;
         let label = seg.acoustic_label.clone();
         let file = self.audio_dir(id).join(&seg.track);
-        ensure!(rfd::MessageDialog::new().set_title("Créer un profil vocal").set_description(format!("La personne autorise-t-elle la conservation locale de cet extrait de sa voix et de son empreinte sous le nom « {name} » ?")).set_buttons(rfd::MessageButtons::YesNo).show()==rfd::MessageDialogResult::Yes,"Création annulée");
         let params =
             json!({"consent":true,"segment":seg,"name":name,"file":file,"settings":self.settings});
         let ctl = Arc::new(AtomicBool::new(false));
@@ -696,14 +766,11 @@ impl Desk {
         });
         Ok(())
     }
-    fn export(&self, fmt: &str) -> Result<()> {
-        let Some(p) = rfd::FileDialog::new()
+    fn export(&self, fmt: &'static str, w: &Window, cx: &mut Context<Self>) -> Result<()> {
+        let dlg = rfd::AsyncFileDialog::new()
+            .set_parent(w)
             .add_filter(fmt, &[fmt])
-            .set_file_name(format!("reunion-{}.{}", self.id, fmt))
-            .save_file()
-        else {
-            return Ok(());
-        };
+            .set_file_name(format!("reunion-{}.{}", self.id, fmt));
         let meeting = self
             .library
             .iter()
@@ -737,9 +804,38 @@ impl Desk {
                 text
             }
         };
-        fs::write(p, text)?;
+        cx.spawn(async move |desk, cx| {
+            if let Some(file) = dlg.save_file().await {
+                let result = cx
+                    .background_executor()
+                    .spawn(async move { fs::write(file.path(), text) })
+                    .await;
+                let _ = desk.update(cx, |s, cx| {
+                    s.message = match result {
+                        Ok(()) => "Export enregistré.".into(),
+                        Err(e) => e.to_string(),
+                    };
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
         Ok(())
     }
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Inspector {
+    Session,
+    Audio,
+    Models,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Preference {
+    Theme,
+    Device,
+    Language,
 }
 fn pref_key(s: &Source) -> String {
     match s {

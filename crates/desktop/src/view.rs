@@ -1,100 +1,228 @@
+use super::appearance::*;
 use super::*;
 use gpui::Div;
+
+#[derive(Clone, Copy)]
+enum Button {
+    Primary,
+    Secondary,
+    Quiet,
+    Selected,
+}
 
 fn action(
     label: impl Into<String>,
     primary: bool,
     cx: &Context<Desk>,
     f: impl Fn(&mut Desk, &mut Context<Desk>) -> Result<()> + 'static,
-) -> impl IntoElement {
+) -> Stateful<Div> {
+    button(
+        label,
+        if primary {
+            Button::Primary
+        } else {
+            Button::Secondary
+        },
+        None,
+        false,
+        cx,
+        f,
+    )
+}
+
+fn button(
+    label: impl Into<String>,
+    style: Button,
+    icon: Option<&'static str>,
+    icon_only: bool,
+    cx: &Context<Desk>,
+    f: impl Fn(&mut Desk, &mut Context<Desk>) -> Result<()> + 'static,
+) -> Stateful<Div> {
+    window_button(label, style, icon, icon_only, cx, move |s, _, cx| f(s, cx))
+}
+
+fn window_button(
+    label: impl Into<String>,
+    style: Button,
+    icon: Option<&'static str>,
+    icon_only: bool,
+    cx: &Context<Desk>,
+    f: impl Fn(&mut Desk, &mut Window, &mut Context<Desk>) -> Result<()> + 'static,
+) -> Stateful<Div> {
     let label = label.into();
+    let p = *cx.global::<Palette>();
+    let (bg, fg) = match style {
+        Button::Primary => (p.primary, p.on_primary),
+        Button::Secondary => (p.control, p.text),
+        Button::Selected => (p.selected, p.text),
+        Button::Quiet => (p.base, p.muted),
+    };
     div()
         .id(SharedString::from(label.clone()))
-        .rounded_md()
-        .px_3()
-        .py_2()
-        .text_sm()
+        .aria_label(label.clone())
+        .flex()
+        .items_center()
+        .justify_center()
+        .gap(px(6.))
+        .min_h(px(28.))
+        .px(px(9.))
+        .py(px(3.))
+        .rounded(px(9.))
+        .text_size(px(12.))
+        .font_weight(FontWeight::MEDIUM)
         .role(gpui::Role::Button)
+        .focusable()
         .tab_stop(true)
         .cursor_pointer()
-        .bg(rgb(if primary { 0xe3e7df } else { 0x303035 }))
-        .text_color(rgb(if primary { 0x242824 } else { 0xededf0 }))
-        .hover(|s| s.opacity(0.84))
-        .active(|s| s.opacity(0.70))
-        .child(label)
-        .on_click(cx.listener(move |s, _, _, cx| {
+        .when(!matches!(style, Button::Quiet), |d| d.bg(rgb(bg)))
+        .border_1()
+        .border_color(if matches!(style, Button::Quiet) {
+            transparent_black()
+        } else {
+            rgb_to_hsla(rgb(p.edge))
+        })
+        .text_color(rgb(fg))
+        .hover(move |s| {
+            s.border_color(rgb(p.muted))
+                .bg(rgb(if matches!(style, Button::Quiet) {
+                    p.control
+                } else {
+                    bg
+                }))
+        })
+        .focus_visible(move |s| s.border_color(rgb(p.text)))
+        .active(|s| s.opacity(0.8))
+        .when_some(icon, |s, icon| s.child(glyph(icon, 15., fg)))
+        .when(!icon_only, |s| s.child(label))
+        .on_click(cx.listener(move |s, _, w, cx| {
             s.message.clear();
-            if let Err(e) = f(s, cx) {
+            if let Err(e) = f(s, w, cx) {
                 s.message = format!("{e:#}");
             }
             cx.notify();
         }))
 }
 fn col() -> Div {
-    div().flex().flex_col().gap_3()
+    div().min_w_0().flex().flex_col().gap(px(9.))
 }
 fn row() -> Div {
     div().flex().flex_wrap().items_center().gap_2()
 }
+fn table_row(name: Div, duration: &str, status: &str, p: Palette) -> Div {
+    div()
+        .flex()
+        .items_center()
+        .gap(px(12.))
+        .min_h(px(40.))
+        .px(px(16.))
+        .border_b_1()
+        .border_color(rgb(p.edge))
+        .child(div().flex_1().min_w_0().child(name))
+        .child(div().w(px(65.)).child(duration.to_owned()))
+        .child(div().w(px(110.)).truncate().child(status.to_owned()))
+}
 fn label(s: impl Into<SharedString>) -> Div {
     div()
-        .text_sm()
+        .text_size(px(13.))
         .font_weight(FontWeight::SEMIBOLD)
         .child(s.into())
 }
-fn input(f: &Field, id: &'static str, hint: &'static str) -> impl IntoElement {
+fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl IntoElement {
+    let p = *cx.global::<Palette>();
     text_input(id)
         .state(f.downgrade())
         .placeholder(hint)
         .caret_blink_interval_500ms()
-        .px_3()
-        .py_2()
-        .rounded_md()
+        .px(px(9.))
+        .py(px(6.))
+        .min_h(px(29.))
+        .rounded(px(9.))
         .border_1()
-        .border_color(rgb(0x77777c))
+        .border_color(rgb(p.edge))
+        .bg(rgb(p.base))
+        .text_color(rgb(p.text))
+        .placeholder_color(rgb(p.muted))
+        .caret_color(rgb_to_hsla(rgb(p.text)))
         .w_full()
 }
 impl Desk {
-    fn meetings_view(&self, cx: &Context<Self>, limit: usize) -> Div {
-        let mut list = col();
+    fn meetings_view(&self, cx: &Context<Self>, limit: usize, interactive: bool) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut list = div()
+            .flex()
+            .flex_col()
+            .child(table_row(div().child("Réunion"), "Durée", "État", p).text_color(rgb(p.muted)));
         if self.library.is_empty() {
-            return list.child("Aucune réunion trouvée.");
+            return list.child(
+                div()
+                    .p_4()
+                    .text_color(rgb(p.muted))
+                    .child("Aucune réunion trouvée."),
+            );
         }
         for m in self.library.iter().take(limit) {
             let id = m.id;
-            list = list.child(
-                div()
-                    .id(("meeting", id as usize))
-                    .cursor_pointer()
-                    .py_3()
-                    .border_b_1()
-                    .border_color(rgb(0x454549))
-                    .child(label(m.title.clone()))
-                    .child(div().text_sm().child(format!(
-                        "{}    ·    {}    ·    {}    {}",
-                        m.date,
-                        time(m.duration_ms as u64),
-                        m.status,
-                        m.project
-                    )))
-                    .on_click(cx.listener(move |s, _, _, cx| {
-                        if let Err(e) = s.detail(id) {
-                            s.message = e.to_string();
-                        }
-                        cx.notify();
-                    })),
-            );
+            let mut caption = m.date.clone();
+            if !m.project.is_empty() {
+                caption.push_str("  ·  ");
+                caption.push_str(&m.project);
+            }
+            let name = div()
+                .flex()
+                .flex_col()
+                .min_w_0()
+                .child(div().truncate().child(m.title.clone()))
+                .child(
+                    div()
+                        .truncate()
+                        .text_size(px(11.))
+                        .text_color(rgb(p.muted))
+                        .child(caption),
+                );
+            let line = table_row(name, &time(m.duration_ms as u64), &m.status, p);
+            if interactive {
+                list = list.child(
+                    line.id(("meeting", id as usize))
+                        .focusable()
+                        .tab_stop(true)
+                        .role(Role::Button)
+                        .aria_label(format!("Ouvrir {}", m.title))
+                        .cursor_pointer()
+                        .hover(move |s| s.bg(rgb(p.control)))
+                        .focus_visible(move |s| s.bg(rgb(p.selected)))
+                        .on_click(cx.listener(move |s, _, _, cx| {
+                            if let Err(e) = s.detail(id) {
+                                s.message = e.to_string();
+                            }
+                            cx.notify();
+                        })),
+                );
+            } else {
+                list = list.child(line);
+            }
         }
         list
     }
     fn setup_view(&self, cx: &Context<Self>) -> Div {
-        let mut body = col()
-            .child(label("Titre"))
-            .child(input(&self.title, "title", "Titre de la réunion"))
-            .child(label("Projet"))
-            .child(input(&self.project, "project", "Facultatif"));
+        let mut body = col().child(
+            div()
+                .flex()
+                .gap_3()
+                .child(col().flex_1().child(label("Titre")).child(input(
+                    cx,
+                    &self.title,
+                    "title",
+                    "Titre de la réunion",
+                )))
+                .child(col().flex_1().child(label("Projet")).child(input(
+                    cx,
+                    &self.project,
+                    "project",
+                    "Facultatif",
+                ))),
+        );
         for mic in [false, true] {
-            body = body.child(label(if mic { "Microphone" } else { "Applications" }));
+            body = body.child(label(if mic { "Microphone" } else { "Applications" }).mt_3());
             let mut found = false;
             for (index, i) in self
                 .inputs
@@ -108,21 +236,21 @@ impl Desk {
                     Source::Application { pid, .. } => format!(" · PID {pid}"),
                     _ => String::new(),
                 };
-                body = body.child(action(
-                    format!(
-                        "{}  {}{}   ·   {:.0} %",
-                        if self.chosen.contains(&src) {
-                            "☑"
-                        } else {
-                            "☐"
-                        },
-                        i.name,
-                        pid,
-                        i.peak * 100.
-                    ),
-                    false,
-                    cx,
-                    move |s, _| {
+                let selected = self.chosen.contains(&src);
+                let name = format!("{}{pid}", i.name);
+                let p = *cx.global::<Palette>();
+                let control = checkbox(name, selected, p)
+                    .id(("source", index))
+                    .justify_between()
+                    .px_2()
+                    .min_h(px(36.))
+                    .child(div().flex_1())
+                    .child(
+                        div()
+                            .text_color(rgb(p.muted))
+                            .child(format!("{:.0} %", i.peak * 100.)),
+                    )
+                    .on_click(cx.listener(move |s, _, _, cx| {
                         if s.inputs.get(index).is_some_and(|i| i.source == src)
                             && !s.chosen.remove(&src)
                         {
@@ -131,9 +259,9 @@ impl Desk {
                             }
                             s.chosen.insert(src.clone());
                         }
-                        Ok(())
-                    },
-                ));
+                        cx.notify();
+                    }));
+                body = body.child(control);
             }
             if !found {
                 body = body.child(if self.scanning {
@@ -148,21 +276,33 @@ impl Desk {
         body.child(toggle("Identifier les intervenants","diarization",self,cx))
             .when(self.settings["diarization"]==true,|d|d.child(toggle("Proposer les voix connues","recognize",self,cx)))
             .child(toggle("Générer le compte rendu à l’arrêt","auto_summary",self,cx))
-            .child(div().text_sm().child("Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets."))
+            .child(div().text_color(rgb(cx.global::<Palette>().muted)).child("Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets."))
             .child(action("Démarrer l’enregistrement",true,cx,|s,cx|s.start(cx)))
     }
     fn detail_view(&self, cx: &Context<Self>) -> Div {
         let mut body = col().child(
-            row().children(
+            workspace::strip(*cx.global::<Palette>()).children(
                 ["Résumé", "Transcription", "Intervenants"]
                     .into_iter()
                     .enumerate()
                     .map(|(i, t)| {
-                        action(t, self.tab == i as u8, cx, move |s, _| {
-                            s.tab = i as u8;
-                            s.edit_id = None;
-                            Ok(())
-                        })
+                        button(
+                            t,
+                            if self.tab == i as u8 {
+                                Button::Selected
+                            } else {
+                                Button::Quiet
+                            },
+                            None,
+                            false,
+                            cx,
+                            move |s, _| {
+                                s.tab = i as u8;
+                                s.edit_id = None;
+                                Ok(())
+                            },
+                        )
+                        .flex_1()
                     }),
             ),
         );
@@ -177,10 +317,15 @@ impl Desk {
         }
         if self.metadata {
             return body
-                .child(input(&self.title, "rename", "Titre"))
-                .child(input(&self.project, "category", "Projet"))
-                .child(input(&self.description, "description", "Description"))
-                .child(input(&self.tags, "tags", "Tags séparés par des virgules"))
+                .child(input(cx, &self.title, "rename", "Titre"))
+                .child(input(cx, &self.project, "category", "Projet"))
+                .child(input(cx, &self.description, "description", "Description"))
+                .child(input(
+                    cx,
+                    &self.tags,
+                    "tags",
+                    "Tags séparés par des virgules",
+                ))
                 .child(action("Enregistrer les informations", true, cx, |s, cx| {
                     s.db.update_metadata(
                         s.id,
@@ -210,6 +355,11 @@ impl Desk {
                             .child(
                                 text_area("summary-edit")
                                     .state(self.edit.downgrade())
+                                    .bg(rgb(cx.global::<Palette>().base))
+                                    .rounded(px(9.))
+                                    .p_3()
+                                    .text_color(rgb(cx.global::<Palette>().text))
+                                    .caret_color(rgb_to_hsla(rgb(cx.global::<Palette>().text)))
                                     .w_full()
                                     .h(px(200.)),
                             )
@@ -228,19 +378,19 @@ impl Desk {
                                 },
                             ));
                     }
-                    if let Ok(versions) = self.db.versions(self.id) {
-                        if versions.len() > 1 {
-                            for (id, body_text) in versions {
-                                body = body.child(action(
-                                    format!("Lire la version {id}"),
-                                    false,
-                                    cx,
-                                    move |s, _| {
-                                        s.summary = body_text.clone();
-                                        Ok(())
-                                    },
-                                ));
-                            }
+                    if let Ok(versions) = self.db.versions(self.id)
+                        && versions.len() > 1
+                    {
+                        for (id, body_text) in versions {
+                            body = body.child(action(
+                                format!("Lire la version {id}"),
+                                false,
+                                cx,
+                                move |s, _| {
+                                    s.summary = body_text.clone();
+                                    Ok(())
+                                },
+                            ));
                         }
                     }
                 }
@@ -253,7 +403,7 @@ impl Desk {
                             "Envoyer le texte au fournisseur…",
                             false,
                             cx,
-                            |s, _| s.process_via(true, true),
+                            |s, _| s.request_remote_summary(),
                         ));
                     }
                 }
@@ -262,20 +412,20 @@ impl Desk {
                 body = body.child(action("Transcrire les pistes", false, cx, |s, _| {
                     s.process(false)
                 }));
-                if let Ok(versions) = self.db.transcript_versions(self.id) {
-                    if versions.len() > 1 {
-                        for v in versions {
-                            body = body.child(action(
-                                format!("Ouvrir la transcription v{v}"),
-                                false,
-                                cx,
-                                move |s, _| {
-                                    s.segments = s.db.segments_at(s.id, Some(v))?;
-                                    s.limit = 80;
-                                    Ok(())
-                                },
-                            ));
-                        }
+                if let Ok(versions) = self.db.transcript_versions(self.id)
+                    && versions.len() > 1
+                {
+                    for v in versions {
+                        body = body.child(action(
+                            format!("Ouvrir la transcription v{v}"),
+                            false,
+                            cx,
+                            move |s, _| {
+                                s.segments = s.db.segments_at(s.id, Some(v))?;
+                                s.limit = 80;
+                                Ok(())
+                            },
+                        ));
                     }
                 }
                 for seg in self.segments.iter().take(self.limit) {
@@ -293,6 +443,11 @@ impl Desk {
                             .child(
                                 text_area("edit")
                                     .state(self.edit.downgrade())
+                                    .bg(rgb(cx.global::<Palette>().base))
+                                    .rounded(px(9.))
+                                    .p_3()
+                                    .text_color(rgb(cx.global::<Palette>().text))
+                                    .caret_color(rgb_to_hsla(rgb(cx.global::<Palette>().text)))
                                     .w_full()
                                     .min_h(px(90.))
                                     .border_1()
@@ -387,6 +542,7 @@ impl Desk {
                     }
                 }
                 body = body.child(input(
+                    cx,
                     &self.profile_name,
                     "profile-name",
                     "Nom de l’intervenant ou du profil autorisé",
@@ -434,15 +590,25 @@ impl Desk {
             ("Supprimer la réunion", true),
         ] {
             body = body.child(action(title, false, cx, move |s, _| {
-                if confirm(title) {
-                    s.delete(s.id, all)?;
+                let id = s.id;
+                s.ask(
+                    title,
                     if all {
-                        s.go(Page::Library)?;
+                        "La réunion, sa transcription et ses pistes seront supprimées."
                     } else {
-                        s.message = "Fichiers audio supprimés.".into();
-                    }
-                }
-                Ok(())
+                        "Les pistes audio de cette réunion seront supprimées."
+                    },
+                    "Supprimer",
+                    move |s| {
+                        s.delete(id, all)?;
+                        if all {
+                            s.go(Page::Library)?;
+                        } else {
+                            s.message = "Fichiers audio supprimés.".into();
+                        }
+                        Ok(())
+                    },
+                )
             }));
         }
         body.child(action(
@@ -459,102 +625,272 @@ impl Desk {
             },
         ))
         .child(row().children(["md", "txt", "json"].into_iter().map(|fmt| {
-            action(format!("Exporter .{fmt}"), false, cx, move |s, _| {
-                s.export(fmt)
-            })
+            window_button(
+                format!("Exporter .{fmt}"),
+                Button::Secondary,
+                None,
+                false,
+                cx,
+                move |s, w, cx| s.export(fmt, w, cx),
+            )
         })))
     }
-    fn settings_view(&self, cx: &Context<Self>) -> Div {
-        let mut body = col()
-            .child(label("Cet ordinateur"))
-            .child(self.hardware.clone())
-            .child(format!("Profil CPU conseillé : {}", self.recommended))
-            .child(label("Modèles locaux"))
-            .child("Sélectionnez des modèles déjà téléchargés sur cet ordinateur.");
-        body = body
-            .child(label("Télécharger un modèle de transcription"))
-            .child(
-                row().children(Page::MODEL_PRESETS.into_iter().map(|preset| {
-                    action(preset, false, cx, move |s, _| {
-                        tracing::info!(preset, "Sélection du modèle");
-                        s.page = Page::ConfirmDownload(preset);
-                        Ok(())
-                    })
-                })),
+    fn preference(&self, pref: Preference, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let (name, key, choices, current) = match pref {
+            Preference::Theme => (
+                "Thème",
+                "light",
+                ["Sombre", "Clair"],
+                usize::from(self.settings["light"] == true),
+            ),
+            Preference::Device => (
+                "Calcul",
+                "device",
+                ["CPU", "CUDA"],
+                usize::from(self.settings["device"] == "cuda"),
+            ),
+            Preference::Language => (
+                "Langue",
+                "language",
+                ["Français", "Automatique"],
+                usize::from(self.settings["language"] != "fr"),
+            ),
+        };
+        let open = self.menu == Some(pref);
+        let field = action(choices[current], false, cx, move |s, _| {
+            s.menu = if open { None } else { Some(pref) };
+            Ok(())
+        })
+        .id(SharedString::from(format!("pref-{name}")))
+        .aria_label(format!("{name} · {}", choices[current]))
+        .justify_between()
+        .child(glyph(CHEVRON, 14., p.muted));
+        let mut anchor = div().relative().child(field.w_full());
+        if open {
+            let mut menu = col()
+                .gap(px(2.))
+                .p(px(3.))
+                .bg(rgb(p.raised))
+                .rounded(px(10.))
+                .border_1()
+                .border_color(rgb(p.edge));
+            for (index, choice) in choices.into_iter().enumerate() {
+                let selected = current == index;
+                let item = button(
+                    choice,
+                    if selected {
+                        Button::Selected
+                    } else {
+                        Button::Quiet
+                    },
+                    None,
+                    false,
+                    cx,
+                    move |s, cx| {
+                        s.menu = None;
+                        s.settings[key] = match pref {
+                            Preference::Theme => json!(index == 1),
+                            Preference::Device => json!(if index == 1 { "cuda" } else { "cpu" }),
+                            Preference::Language => json!(if index == 1 { "" } else { "fr" }),
+                        };
+                        if pref == Preference::Theme {
+                            cx.set_global(Palette::new(index == 1));
+                        }
+                        s.save_settings()
+                    },
+                )
+                .id((name, index))
+                .justify_between()
+                .when(selected, |d| d.child(glyph(CHECK, 14., p.text)));
+                menu = menu.child(item);
+            }
+            let popover = menu
+                .id(SharedString::from(format!("menu-{name}")))
+                .occlude()
+                .shadow_sm()
+                .on_mouse_down_out(cx.listener(move |s, _, _, cx| {
+                    if s.menu == Some(pref) {
+                        s.menu = None;
+                        cx.notify();
+                    }
+                }));
+            anchor = anchor.child(
+                div()
+                    .absolute()
+                    .top_full()
+                    .left_0()
+                    .right_0()
+                    .pt(px(3.))
+                    .child(deferred(popover)),
             );
-        for (key, name, folder) in [
-            ("whisper", "Transcription · dossier Faster-Whisper", true),
-            ("segmentation", "Diarisation · segmentation ONNX", false),
-            ("embedding", "Diarisation · empreintes ONNX", false),
-            ("gguf", "Résumé · fichier GGUF", false),
-        ] {
-            body = body
-                .child(action(name, false, cx, move |s, _| s.pick(key, folder)))
+        }
+        col().flex_1().gap(px(5.)).child(label(name)).child(anchor)
+    }
+
+    fn settings_view(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut presets = col().gap(px(2.)).child(label("Modèle de transcription"));
+        for (preset, model) in Page::MODEL_PRESETS
+            .into_iter()
+            .zip(["tiny", "small", "medium"])
+        {
+            let recommended = preset == self.recommended;
+            let repo = format!("Systran/faster-whisper-{model}");
+            let selected = self.settings["whisper_repo"].as_str() == Some(repo.as_str());
+            presets = presets.child(
+                button(preset, Button::Quiet, None, false, cx, move |s, _| {
+                    tracing::info!(preset, "Sélection du modèle");
+                    s.menu = None;
+                    s.page = Page::ConfirmDownload(preset);
+                    Ok(())
+                })
+                .justify_between()
+                .min_h(px(35.))
+                .text_color(rgb(p.text))
                 .child(
-                    div().text_sm().child(
-                        self.settings[key]
-                            .as_str()
-                            .unwrap_or("Aucun modèle sélectionné")
-                            .to_string(),
-                    ),
+                    div()
+                        .flex()
+                        .gap_2()
+                        .items_center()
+                        .text_color(rgb(p.muted))
+                        .when(selected, |d| d.child(glyph(CHECK, 14., p.text)))
+                        .child(if recommended {
+                            format!("{model} · conseillé")
+                        } else {
+                            model.to_owned()
+                        }),
+                ),
+            );
+        }
+        let mut local = col().child(label("Modèles déjà téléchargés"));
+        for (key, name, folder) in [
+            ("whisper", "Dossier Faster-Whisper", true),
+            ("segmentation", "Segmentation ONNX", false),
+            ("embedding", "Empreintes ONNX", false),
+            ("gguf", "Résumé GGUF", false),
+        ] {
+            local = local
+                .child(
+                    window_button(name, Button::Secondary, None, false, cx, move |s, w, cx| {
+                        s.pick(key, folder, w, cx)
+                    })
+                    .w_full(),
+                )
+                .child(
+                    div()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .whitespace_nowrap()
+                        .text_ellipsis_start()
+                        .text_size(px(11.))
+                        .text_color(rgb(p.muted))
+                        .child(
+                            self.settings[key]
+                                .as_str()
+                                .unwrap_or("Aucun modèle sélectionné")
+                                .to_owned(),
+                        ),
                 );
         }
-        body.child(action(format!("Calcul · {}",self.settings["device"].as_str().unwrap_or("cpu")),false,cx,|s,_|{s.settings["device"]=json!(if s.settings["device"]=="cuda"{"cpu"}else{"cuda"});s.save_settings()}))
-            .child(action(format!("Langue · {}",if self.settings["language"]=="fr"{"Français"}else{"Automatique"}),false,cx,|s,_|{s.settings["language"]=json!(if s.settings["language"]=="fr"{""}else{"fr"});s.save_settings()}))
-            .child(label("Nom de la piste microphone")).child(input(&self.self_name,"self-name","Moi")).child(action("Enregistrer mon nom",false,cx,|s,cx|{let name=s.self_name.read(cx).as_str().trim();anyhow::ensure!(!name.is_empty(),"Indiquez un nom.");s.settings["self_name"]=json!(name);s.save_settings()}))
-            .child(label("Fournisseur distant facultatif")).child(input(&self.endpoint,"endpoint","URL de base HTTPS, par exemple https://exemple.fr/v1")).child(input(&self.remote_model,"remote_model","Nom du modèle distant"))
-            .child(div().text_sm().child("Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique MeetingNotes/hôte avec votre clé comme mot de passe."))
-            .child(action("Enregistrer le fournisseur",false,cx,|s,cx|{let url=s.endpoint.read(cx).as_str().trim();
+        let audio = col()
+            .child(label("Nom de la piste microphone"))
+            .child(input(cx, &self.self_name, "self-name", "Moi"))
+            .child(action("Enregistrer mon nom", false, cx, |s, cx| {
+                let name = s.self_name.read(cx).as_str().trim();
+                anyhow::ensure!(!name.is_empty(), "Indiquez un nom.");
+                s.settings["self_name"] = json!(name);
+                s.save_settings()
+            }));
+        let provider = col().child(label("Fournisseur distant facultatif"))
+            .child(input(cx,&self.endpoint,"endpoint","URL HTTPS du fournisseur"))
+            .child(input(cx,&self.remote_model,"remote_model","Nom du modèle distant"))
+            .child(div().text_color(rgb(p.muted)).child("Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique MeetingNotes/hôte avec votre clé comme mot de passe."))
+            .child(action("Enregistrer le fournisseur",false,cx,|s,cx|{
+                let url=s.endpoint.read(cx).as_str().trim();
                 anyhow::ensure!(url.is_empty() || (url.starts_with("https://") && !url.contains(['@','?','#'])),"URL HTTPS sans identifiants requise.");
-                s.settings["endpoint"]=if url.is_empty(){Value::Null}else{json!(url)};s.settings["remote_model"]=json!(s.remote_model.read(cx).as_str());s.save_settings()}))
-            .child(toggle("Thème clair","light",self,cx)).child(label("Dossier des réunions")).child(self.root.display().to_string())
+                s.settings["endpoint"]=if url.is_empty(){Value::Null}else{json!(url)};
+                s.settings["remote_model"]=json!(s.remote_model.read(cx).as_str());s.save_settings()
+            }));
+        col()
+            .gap(px(20.))
+            .child(presets)
+            .child(
+                col()
+                    .child(label("Apparence"))
+                    .child(self.preference(Preference::Theme, cx)),
+            )
+            .child(
+                col().child(label("Transcription")).child(
+                    div()
+                        .flex()
+                        .items_start()
+                        .gap_2()
+                        .child(self.preference(Preference::Device, cx))
+                        .child(self.preference(Preference::Language, cx)),
+                ),
+            )
+            .child(local)
+            .child(audio)
+            .child(provider)
+            .child(
+                col()
+                    .child(label("Cet ordinateur"))
+                    .child(self.hardware.clone()),
+            )
+            .child(
+                col()
+                    .child(label("Dossier des réunions"))
+                    .child(self.root.display().to_string()),
+            )
     }
 }
-fn toggle(text: &'static str, key: &'static str, s: &Desk, cx: &Context<Desk>) -> impl IntoElement {
-    action(
-        format!(
-            "{}  {text}",
-            if s.settings[key] == true {
-                "☑"
-            } else {
-                "☐"
-            }
-        ),
-        false,
-        cx,
-        move |s, _| {
-            s.settings[key] = json!(s.settings[key] != true);
-            s.save_settings()
-        },
-    )
+fn checkbox(text: String, on: bool, p: Palette) -> Stateful<Div> {
+    div()
+        .id(SharedString::from(text.clone()))
+        .role(Role::CheckBox)
+        .aria_label(text.clone())
+        .aria_toggled(on.into())
+        .focusable()
+        .tab_stop(true)
+        .flex()
+        .items_center()
+        .gap_2()
+        .min_h(px(28.))
+        .rounded(px(6.))
+        .cursor_pointer()
+        .focus_visible(move |d| d.bg(rgb(p.selected)))
+        .child(
+            div()
+                .size(px(16.))
+                .border_1()
+                .border_color(rgb(p.muted))
+                .rounded(px(4.))
+                .flex()
+                .items_center()
+                .justify_center()
+                .bg(rgb(if on { p.primary } else { p.base }))
+                .when(on, |d| d.child(glyph(CHECK, 13., p.on_primary))),
+        )
+        .child(text)
 }
-impl Render for Desk {
-    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        let light = self.settings["light"] == true;
-        let mut side = col()
-            .w(px(174.))
-            .flex_shrink_0()
-            .p_4()
-            .bg(rgb(if light { 0xe6e6e7 } else { 0x19191c }))
-            .child(
-                div()
-                    .text_lg()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .mb_5()
-                    .child("MeetingNotes"),
-            );
-        if !self.busy() {
-            for (p, t) in [
-                (Page::Home, "Accueil"),
-                (Page::New, "Nouvelle réunion"),
-                (Page::Library, "Mes réunions"),
-                (Page::Profiles, "Intervenants"),
-                (Page::Settings, "Paramètres"),
-            ] {
-                side = side.child(action(t, self.page == p, cx, move |s, _| s.go(p)));
+
+fn toggle(text: &'static str, key: &'static str, s: &Desk, cx: &Context<Desk>) -> impl IntoElement {
+    let on = s.settings[key] == true;
+    checkbox(text.to_owned(), on, *cx.global::<Palette>())
+        .id(key)
+        .on_click(cx.listener(move |s, _, _, cx| {
+            s.settings[key] = json!(!on);
+            if let Err(e) = s.save_settings() {
+                s.message = e.to_string();
             }
-        }
-        let (title, body) = if let Some(ctl) = &self.ctl {
+            cx.notify();
+        }))
+}
+
+impl Desk {
+    fn page_body(&self, page: Page, show_activity: bool, cx: &Context<Self>) -> (String, Div) {
+        let (title, body) = if let Some(ctl) = self.ctl.as_ref().filter(|_| show_activity) {
             let mut info = col()
                 .child(div().text_3xl().child(time(ctl.elapsed_ms())))
                 .child(label(if self.stopping {
@@ -578,7 +914,7 @@ impl Render for Desk {
                         div()
                             .h(px(3.))
                             .w(px(level.clamp(0., 1.) * 220.))
-                            .bg(rgb(0x78ad88)),
+                            .bg(rgb(cx.global::<Palette>().level)),
                     );
             }
             for notice in ctl.incidents().into_values() {
@@ -586,14 +922,19 @@ impl Render for Desk {
             }
             if !self.stopping {
                 info = info.child(action("Annuler la réunion", false, cx, |s, _| {
-                    if confirm("Abandonner la réunion et supprimer ses pistes ?") {
-                        s.discard = true;
-                        if let Some(c) = &s.ctl {
-                            c.stop();
-                            s.stopping = true;
-                        }
-                    }
-                    Ok(())
+                    s.ask(
+                        "Abandonner la réunion ?",
+                        "Les pistes de cet enregistrement seront supprimées.",
+                        "Abandonner",
+                        |s| {
+                            s.discard = true;
+                            if let Some(c) = &s.ctl {
+                                c.stop();
+                                s.stopping = true;
+                            }
+                            Ok(())
+                        },
+                    )
                 }));
                 info = info.child(
                     row()
@@ -623,7 +964,7 @@ impl Render for Desk {
                 );
             }
             (self.title.read(cx).as_str().to_string(), info)
-        } else if self.cancel.is_some() {
+        } else if show_activity && self.cancel.is_some() {
             (
                 "Traitement".into(),
                 col().child(label(self.stage.clone())).child(action(
@@ -639,35 +980,18 @@ impl Render for Desk {
                 )),
             )
         } else {
-            match self.page {
-                Page::Home => {
-                    (
-                        "Accueil".into(),
-                        col()
-                            .child(action("Créer une réunion", true, cx, |s, _| {
-                                s.go(Page::New)
-                            }))
-                            .child(label("Réunions récentes"))
-                            .child(self.meetings_view(cx, 5))
-                            .child(div().text_sm().child(
-                                if self.settings["whisper"].is_string() {
-                                    "Modèle de transcription sélectionné"
-                                } else {
-                                    "Modèle de transcription à configurer dans Paramètres"
-                                },
-                            )),
-                    )
-                }
+            match page {
+                Page::Home => ("Espace de travail".into(), self.preview(cx)),
                 Page::New => ("Nouvelle réunion".into(), self.setup_view(cx)),
                 Page::Library => {
                     let mut d = col()
-                        .child(input(
+                        .child(input(cx,
                             &self.search,
                             "search",
                             "Titre, paroles ou intervenant",
                         ))
-                        .child(input(&self.filter, "filter", "Projet ou tag"))
-                        .child(input(&self.day, "day", "Date · AAAA-MM ou AAAA-MM-JJ"))
+                        .child(input(cx, &self.filter, "filter", "Projet ou tag"))
+                        .child(input(cx, &self.day, "day", "Date · AAAA-MM ou AAAA-MM-JJ"))
                         .child(action("Rechercher", false, cx, |s, cx| s.search_db(cx)));
                     for h in &self.hits {
                         let (id, seg) = (h.meeting, h.segment);
@@ -688,7 +1012,7 @@ impl Render for Desk {
                     }
                     (
                         "Mes réunions".into(),
-                        d.child(self.meetings_view(cx, usize::MAX)),
+                        d.child(self.meetings_view(cx, usize::MAX, true)),
                     )
                 }
                 Page::Detail => (
@@ -700,7 +1024,7 @@ impl Render for Desk {
                     self.detail_view(cx),
                 ),
                 Page::Profiles => {
-                    let mut d = col().child(input(
+                    let mut d = col().child(input(cx,
                         &self.profile_name,
                         "new-name",
                         "Nouveau nom du profil",
@@ -708,12 +1032,25 @@ impl Render for Desk {
                     if self.profiles.is_empty() {
                         d=d.child("Aucun profil vocal enregistré. Créez un profil depuis une intervention transcrite, avec l’accord de la personne.");
                     }
-                    for p in &self.profiles {
-                        let id = p["id"].as_i64().unwrap_or_default();
-                        let n = p["name"].as_str().unwrap_or("");
-                        d=d.child(row().child(label(n.to_owned())).child(action(format!("Renommer le profil {id}"),false,cx,move|s,cx|{s.db.rename_profile(id,s.profile_name.read(cx).as_str())?;s.profiles=s.db.profiles(false)?;Ok(())})).child(action(format!("Supprimer le profil {id}"),false,cx,move|s,_|{
-                        if rfd::MessageDialog::new().set_title("Supprimer ce profil vocal ?").set_description("L’extrait autorisé, son empreinte et les suggestions associées seront supprimés.").set_buttons(rfd::MessageButtons::YesNo).show()==rfd::MessageDialogResult::Yes{s.db.delete_profile(id)?;s.profiles=s.db.profiles(false)?;}Ok(())
-                    })));
+                    for profile in &self.profiles {
+                        let id = profile["id"].as_i64().unwrap_or_default();
+                        let name = profile["name"].as_str().unwrap_or("");
+                        let entry = div().flex().items_center().gap_2().min_h(px(40.))
+                            .border_b_1().border_color(rgb(cx.global::<Palette>().edge))
+                            .child(div().flex_1().child(name.to_owned()))
+                            .child(action("Renommer", false, cx, move |s,cx| {
+                                s.db.rename_profile(id,s.profile_name.read(cx).as_str())?;
+                                s.profiles = s.db.profiles(false)?;
+                                Ok(())
+                            }).id(("rename-profile",id as usize)).aria_label(format!("Renommer {name}")))
+                            .child(action("Supprimer",false,cx,move |s,_| {
+                                s.ask("Supprimer ce profil vocal ?", "L’extrait autorisé, son empreinte et les suggestions associées seront supprimés.", "Supprimer", move |s| {
+                                    s.db.delete_profile(id)?;
+                                    s.profiles = s.db.profiles(false)?;
+                                    Ok(())
+                                })
+                            }).id(("delete-profile",id as usize)).aria_label(format!("Supprimer {name}")));
+                        d = d.child(entry);
                     }
                     ("Intervenants".into(), d)
                 }
@@ -728,51 +1065,9 @@ impl Render for Desk {
                 ),
             }
         };
-        div()
-            .size_full()
-            .flex()
-            .font_family("Inter")
-            .bg(rgb(if light { 0xf6f6f7 } else { 0x111113 }))
-            .text_color(rgb(if light { 0x222226 } else { 0xededf0 }))
-            .child(side)
-            .child(
-                div()
-                    .id("content")
-                    .flex_1()
-                    .min_w_0()
-                    .h_full()
-                    .overflow_y_scroll()
-                    .p_6()
-                    .child(
-                        col()
-                            .max_w(px(760.))
-                            .child(
-                                div()
-                                    .text_2xl()
-                                    .font_weight(FontWeight::SEMIBOLD)
-                                    .mb_2()
-                                    .child(title),
-                            )
-                            .when(!self.message.is_empty(), |s| {
-                                s.child(
-                                    div()
-                                        .p_3()
-                                        .border_1()
-                                        .rounded_md()
-                                        .child(self.message.clone()),
-                                )
-                            })
-                            .child(body),
-                    ),
-            )
+        (title, body)
     }
 }
 
-pub(super) fn confirm(title: &str) -> bool {
-    rfd::MessageDialog::new()
-        .set_title("MeetingNotes")
-        .set_description(title)
-        .set_buttons(rfd::MessageButtons::YesNo)
-        .show()
-        == rfd::MessageDialogResult::Yes
-}
+#[path = "workspace.rs"]
+mod workspace;
