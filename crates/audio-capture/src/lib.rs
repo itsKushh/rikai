@@ -16,6 +16,23 @@ mod native;
 pub use native::*;
 
 pub const RATE: u32 = 16_000;
+pub const MIN_GAIN_DB: i8 = -18;
+pub const MAX_GAIN_DB: i8 = 24;
+
+#[cfg(any(windows, test))]
+fn apply_gain(bytes: &mut [u8], gain: f32) -> f32 {
+    let mut peak = 0u16;
+    for pair in bytes.as_chunks_mut::<2>().0 {
+        let mut value = i16::from_le_bytes(*pair);
+        if gain != 1.0 {
+            // La conversion saturante évite tout repliement à pleine échelle.
+            value = (f32::from(value) * gain).round() as i16;
+            *pair = value.to_le_bytes();
+        }
+        peak = peak.max(value.unsigned_abs());
+    }
+    f32::from(peak) / 32768.
+}
 pub const TICKS: u64 = 10_000_000;
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -196,6 +213,27 @@ pub fn mix_apps(dir: &Path, tracks: &[Track]) -> Result<Option<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn calibration_measures_the_adjusted_pcm_and_saturates() {
+        let source = [-24000i16, 18000, 400, -400, 0];
+        let original: Vec<u8> = source.into_iter().flat_map(i16::to_le_bytes).collect();
+        let mut samples = original.clone();
+        assert_eq!(apply_gain(&mut samples, 1.), 24000. / 32768.);
+        assert_eq!(original, samples);
+        assert_eq!(apply_gain(&mut samples, 2.), 1.);
+        let decoded: Vec<_> = samples
+            .as_chunks::<2>()
+            .0
+            .iter()
+            .copied()
+            .map(i16::from_le_bytes)
+            .collect();
+        assert_eq!(decoded, [i16::MIN, i16::MAX, 800, -800, 0]);
+        let mut attenuated = original;
+        assert_eq!(apply_gain(&mut attenuated, 0.5), 12000. / 32768.);
+        assert_eq!(apply_gain(&mut [0; 16], 12.), 0.);
+    }
+
     #[test]
     fn gaps_and_pause_preserve_samples_and_order() -> Result<()> {
         let path = std::env::temp_dir().join(format!("mn-test-{}.wav", std::process::id()));

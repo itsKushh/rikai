@@ -5,6 +5,11 @@ import os
 import sys
 import threading
 
+if __name__ == "__main__":
+    from multiprocessing import freeze_support
+
+    freeze_support()
+
 from models import capabilities, install
 from voices import enroll
 from processing import summarize, transcribe
@@ -99,8 +104,11 @@ def main():
         }
         if req["method"] not in engines:
             raise ValueError("Méthode inconnue")
+        if reader is not None:
+            emit(job, "progress", stage="Requête reçue par le moteur IA", phase="startup")
         result = engines[req["method"]](
-            req.get("params", {}), lambda stage: emit(job, "progress", stage=stage)
+            req.get("params", {}),
+            lambda stage, **fields: emit(job, "progress", stage=stage, **fields),
         )
         emit(job, "result", result=result)
         return 0

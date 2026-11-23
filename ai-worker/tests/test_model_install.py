@@ -5,9 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import patch
-
-from huggingface_hub.file_download import HfFileMetadata
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from models import install
@@ -32,30 +30,29 @@ class ModelInstall(unittest.TestCase):
             )
         metadata = SimpleNamespace(sha=revision, siblings=entries)
 
-        def head(url, **_):
-            name = url.rsplit("/", 1)[1]
-            self.assertIn(f"/resolve/{revision}/", url)
-            return HfFileMetadata(
-                commit_hash=revision,
-                etag=hashlib.sha256(content[name]).hexdigest(),
-                location=url,
-                size=len(content[name]),
-                xet_file_data=None,
-            )
-
         transfers = []
+        updates = []
         payloads = {**content, "model.bin": b"damaged"}
 
-        def download(url, stream, **_):
+        def download(url, *, stream, timeout):
+            self.assertTrue(stream)
+            self.assertIn(f"/resolve/{revision}/", url)
             name = url.rsplit("/", 1)[1]
             transfers.append(name)
-            stream.write(payloads[name])
+            data = payloads[name]
+            response = MagicMock()
+            response.__enter__.return_value = response
+            response.iter_content.return_value = (data[:1], data[1:])
+            return response
+
+        def progress(stage, *, received=None, total=None):
+            if total is not None:
+                updates.append((stage, received, total))
 
         with (
             tempfile.TemporaryDirectory() as cache,
             patch("huggingface_hub.HfApi.model_info", return_value=metadata),
-            patch("huggingface_hub.file_download.get_hf_file_metadata", side_effect=head),
-            patch("huggingface_hub.file_download.http_get", side_effect=download),
+            patch("huggingface_hub.utils.get_session", return_value=SimpleNamespace(get=download)),
             patch(
                 "huggingface_hub.file_download.try_to_load_from_cache",
                 side_effect=OSError("WinError 448"),
@@ -63,12 +60,20 @@ class ModelInstall(unittest.TestCase):
         ):
             params = {"preset": "Rapide", "consent": True, "cache": cache}
             with self.assertRaisesRegex(ValueError, "model.bin"):
-                install(params, lambda _: None)
+                install(params, progress)
 
+            self.assertFalse(list(Path(cache).rglob("*.part")))
+            self.assertFalse(list(Path(cache).rglob("model.bin")))
             transfers.clear()
+            updates.clear()
             payloads["model.bin"] = content["model.bin"]
-            result = install(params, lambda _: None)
+            result = install(params, progress)
             self.assertEqual(transfers, ["model.bin", "tokenizer.json"])
+            total = sum(map(len, content.values()))
+            self.assertIn(("Téléchargement de model.bin", 3, total), updates)
+            self.assertEqual(updates[-1], ("Modèle vérifié", total, total))
+            self.assertEqual([u[1] for u in updates], sorted(u[1] for u in updates))
+            self.assertTrue(all(u[2] == total for u in updates))
             self.assertEqual(result["repo"], "Systran/faster-whisper-tiny")
             self.assertEqual(result["revision"], revision)
             folder = Path(result["folder"])
@@ -80,5 +85,5 @@ class ModelInstall(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), data)
 
             transfers.clear()
-            self.assertEqual(install(params, lambda _: None), result)
+            self.assertEqual(install(params, progress), result)
             self.assertEqual(transfers, [])

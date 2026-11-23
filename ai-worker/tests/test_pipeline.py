@@ -14,7 +14,7 @@ from voices import candidate, enroll  # noqa: E402
 from models import install  # noqa: E402
 
 
-def worker_exchange(request, *, command=None, cancel_on_progress=False, timeout=25):
+def worker_exchange(request, *, command=None, cancel_on_progress=False, on_progress=None, timeout=25):
     """Conserver stdin ouvert pendant le travail, borner la réponse ET la sortie."""
     process = subprocess.Popen(
         command or [sys.executable, ROOT / "worker.py"],
@@ -48,11 +48,14 @@ def worker_exchange(request, *, command=None, cancel_on_progress=False, timeout=
             event = json.loads(line)
             if event["event"] in ("result", "error"):
                 break
+            if on_progress and event["event"] == "progress":
+                on_progress(event)
             if cancel_on_progress and event["event"] == "progress":
                 process.stdin.write(
                     json.dumps({"id": request["id"], "method": "cancel"}) + "\n"
                 )
                 process.stdin.flush()
+                cancel_on_progress = False
         process.stdin.close()
         return event, process.wait(timeout=timeout)
     finally:

@@ -13,7 +13,7 @@ use gpui_ce_elements::editable_text::{
 use meeting_storage::{Library, Meeting, Segment};
 use serde_json::{Value, json};
 use std::{
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs,
     path::PathBuf,
     sync::{
@@ -117,7 +117,8 @@ enum Event {
     Enrolled(i64, String, Result<Value>),
     Sources(Result<Vec<Input>>),
     Recorded(i64, Result<Manifest>),
-    Stage(String),
+    Stage(super::worker::Progress),
+    LevelsTested(Result<()>),
     Processed(i64, bool, Value, Result<Value>),
 }
 type Field = Entity<EditableTextState>;
@@ -131,6 +132,13 @@ struct Confirmation {
     accept: &'static str,
     action: ConfirmAction,
 }
+struct LevelTest {
+    ctl: Control,
+    tracks: Vec<Source>,
+    stopping: bool,
+    start_after: bool,
+}
+
 struct Desk {
     confirmation: Option<Confirmation>,
     hardware: String,
@@ -152,6 +160,11 @@ struct Desk {
     initial: bool,
     ctl: Option<Control>,
     capture_names: Vec<String>,
+    preview: Option<LevelTest>,
+    gains: HashMap<Source, i8>,
+    work_started: Instant,
+    last_progress: Instant,
+    transfer: Option<(u64, u64)>,
     paused: bool,
     stopping: bool,
     cancel: Option<Arc<AtomicBool>>,
@@ -245,6 +258,11 @@ impl Desk {
             summary_only: false,
             ctl: None,
             capture_names: vec![],
+            preview: None,
+            gains: HashMap::new(),
+            work_started: Instant::now(),
+            last_progress: Instant::now(),
+            transfer: None,
             paused: false,
             stopping: false,
             cancel: None,
@@ -335,25 +353,29 @@ impl Desk {
     }
     fn tick(&mut self, cx: &mut Context<Self>) {
         while let Ok(event) = self.rx.try_recv() {
-            if let Err(e) = self.apply(event) {
+            if let Err(e) = self.apply(event, cx) {
                 self.message = format!("{e:#}");
             }
             cx.notify();
         }
-        if self.ctl.is_some() {
+        if self.busy() || self.preview.is_some() {
             cx.notify();
         }
         if self.page == Page::New
             && !self.busy()
+            && self.preview.is_none()
             && self.last_scan.elapsed() > Duration::from_secs(2)
         {
             self.list_sources();
         }
     }
-    fn apply(&mut self, event: Event) -> Result<()> {
+    fn apply(&mut self, event: Event, cx: &App) -> Result<()> {
         match event {
             Event::Sources(result) => {
                 self.scanning = false;
+                if self.preview.is_some() {
+                    return Ok(());
+                }
                 self.inputs = result?;
                 self.chosen
                     .retain(|src| self.inputs.iter().any(|i| &i.source == src));
@@ -405,7 +427,26 @@ impl Desk {
                 self.db.confirm(id, &label, Some(profile))?;
                 self.detail(id)?;
             }
-            Event::Stage(s) => self.stage = s,
+            Event::Stage(update) => {
+                if self.stage != update.stage {
+                    tracing::info!(etape = %update.stage, "Progression IA");
+                }
+                self.stage = update.stage;
+                self.transfer = update.bytes;
+                self.last_progress = Instant::now();
+            }
+            Event::LevelsTested(result) => {
+                let start_after = self
+                    .preview
+                    .take()
+                    .is_some_and(|preview| preview.start_after);
+                if self.page == Page::New {
+                    result.context("Test des niveaux")?;
+                    if start_after {
+                        self.start(cx)?;
+                    }
+                }
+            }
             Event::Recorded(id, res) => {
                 self.confirmation = None;
                 let duration = self.ctl.take().map(|c| c.elapsed_ms()).unwrap_or(0);
@@ -476,8 +517,24 @@ impl Desk {
                     self.db.status(id, "Traitement interrompu")?;
                 }
                 self.detail(id)?;
-                saved?;
                 self.tab = if summary { 0 } else { 1 };
+                tracing::info!(
+                    reussite = saved.is_ok(),
+                    duree_s = self.work_started.elapsed().as_secs(),
+                    "Fin du traitement IA"
+                );
+                saved.with_context(|| format!("Traitement interrompu · {}", self.stage))?;
+                self.message = if summary {
+                    "Compte rendu enregistré.".into()
+                } else if self.segments.is_empty() {
+                    "Transcription terminée. Aucune parole détectée sur les pistes.".into()
+                } else {
+                    format!(
+                        "Transcription terminée · {} segment{}.",
+                        self.segments.len(),
+                        if self.segments.len() > 1 { "s" } else { "" }
+                    )
+                };
                 if !summary && settings["auto_summary"] == true && !self.segments.is_empty() {
                     self.process(true)?;
                 }
@@ -485,15 +542,87 @@ impl Desk {
         }
         Ok(())
     }
-    fn start(&mut self, cx: &App) -> Result<()> {
-        ensure!(!self.busy(), "Une réunion est déjà active");
-        super::playback::stop();
-        let inputs: Vec<_> = self
-            .inputs
+    fn selected_inputs(&self) -> Vec<Input> {
+        self.inputs
             .iter()
             .filter(|i| self.chosen.contains(&i.source))
             .cloned()
-            .collect();
+            .collect()
+    }
+    fn gain_db(&self, source: &Source) -> i8 {
+        self.gains.get(source).copied().unwrap_or_else(|| {
+            self.settings["input_gains_db"][pref_key(source)]
+                .as_i64()
+                .unwrap_or(0)
+                .clamp(
+                    i64::from(audio_capture::MIN_GAIN_DB),
+                    i64::from(audio_capture::MAX_GAIN_DB),
+                ) as i8
+        })
+    }
+    fn set_gain(&mut self, source: &Source, db: i8) -> Result<()> {
+        let db = db.clamp(audio_capture::MIN_GAIN_DB, audio_capture::MAX_GAIN_DB);
+        if self.gain_db(source) == db {
+            return Ok(());
+        }
+        self.gains.insert(source.clone(), db);
+        if let Some(preview) = &self.preview {
+            preview.ctl.set_gain_db(source, db);
+        }
+        let key = pref_key(source);
+        if self
+            .inputs
+            .iter()
+            .filter(|i| pref_key(&i.source) == key)
+            .count()
+            == 1
+        {
+            self.settings["input_gains_db"][key] = json!(db);
+            self.save_settings()?;
+        }
+        Ok(())
+    }
+    fn audio_control(&self, inputs: &[Input]) -> Control {
+        let ctl = Control::default();
+        for input in inputs {
+            ctl.set_gain_db(&input.source, self.gain_db(&input.source));
+        }
+        ctl
+    }
+    fn test_levels(&mut self) -> Result<()> {
+        ensure!(
+            self.preview.is_none() && !self.busy(),
+            "Un flux audio est déjà actif."
+        );
+        let inputs = self.selected_inputs();
+        ensure!(
+            !inputs.is_empty(),
+            "Sélectionnez une application ou un microphone à tester."
+        );
+        let ctl = self.audio_control(&inputs);
+        self.preview = Some(LevelTest {
+            ctl: ctl.clone(),
+            tracks: inputs.iter().map(|i| i.source.clone()).collect(),
+            stopping: false,
+            start_after: false,
+        });
+        let tx = self.tx.clone();
+        thread::spawn(move || {
+            let _ = tx.send(Event::LevelsTested(audio_capture::test_levels(inputs, ctl)));
+        });
+        Ok(())
+    }
+    fn stop_test(&mut self, start_after: bool) {
+        if let Some(test) = &mut self.preview {
+            test.start_after = start_after;
+            test.stopping = true;
+            test.ctl.stop();
+        }
+    }
+    fn start(&mut self, cx: &App) -> Result<()> {
+        ensure!(!self.busy(), "Une réunion est déjà active");
+        super::playback::stop();
+        let inputs = self.selected_inputs();
         ensure!(
             !inputs.is_empty(),
             "Sélectionnez une application ou un microphone."
@@ -512,6 +641,10 @@ impl Desk {
                 "Sélectionnez un modèle GGUF et un modèle Faster-Whisper pour le résumé automatique."
             );
         }
+        if self.preview.is_some() {
+            self.stop_test(true);
+            return Ok(());
+        }
         self.db.set_pref(
             "selection",
             &serde_json::to_string(
@@ -527,7 +660,7 @@ impl Desk {
             &self.settings.to_string(),
         )?;
         self.capture_names = inputs.iter().map(|i| i.name.clone()).collect();
-        let ctl = Control::default();
+        let ctl = self.audio_control(&inputs);
         self.ctl = Some(ctl.clone());
         self.paused = false;
         self.stopping = false;
@@ -548,11 +681,18 @@ impl Desk {
             root
         }
     }
+    fn begin_work(&mut self) -> Arc<AtomicBool> {
+        let ctl = Arc::new(AtomicBool::new(false));
+        self.cancel = Some(ctl.clone());
+        self.work_started = Instant::now();
+        self.last_progress = self.work_started;
+        self.transfer = None;
+        ctl
+    }
     fn recover_audio(&mut self) -> Result<()> {
         let id = self.id;
         let dir = self.audio_dir(id);
-        let ctl = Arc::new(AtomicBool::new(false));
-        self.cancel = Some(ctl.clone());
+        let ctl = self.begin_work();
         self.stage = "Récupération des fragments audio".into();
         let tx = self.tx.clone();
         thread::spawn(move || {
@@ -617,10 +757,9 @@ impl Desk {
             self.db
                 .start_job(id, if summary { "Résumé" } else { "Transcription" })?,
         );
-        let ctl = Arc::new(AtomicBool::new(false));
-        self.cancel = Some(ctl.clone());
+        let ctl = self.begin_work();
         let tx = self.tx.clone();
-        self.stage = "Démarrage du worker IA".into();
+        self.stage = "Ouverture du moteur IA…".into();
         thread::spawn(move || {
             let res = super::worker::run(
                 id,
@@ -639,6 +778,7 @@ impl Desk {
         if self.busy() {
             return Ok(());
         }
+        self.stop_test(false);
         self.menu = None;
         super::playback::stop();
         if page == Page::Settings {
@@ -665,8 +805,7 @@ impl Desk {
         };
         ensure!(!self.busy(), "Un travail est déjà actif");
         tracing::info!(preset, "Téléchargement du modèle confirmé");
-        let ctl = Arc::new(AtomicBool::new(false));
-        self.cancel = Some(ctl.clone());
+        let ctl = self.begin_work();
         self.stage = "Mise en relation avec le catalogue public".into();
         let params = json!({"consent":true,"cache":self.root.join("modeles"),"preset":preset});
         let tx = self.tx.clone();
@@ -754,8 +893,7 @@ impl Desk {
         let file = self.audio_dir(id).join(&seg.track);
         let params =
             json!({"consent":true,"segment":seg,"name":name,"file":file,"settings":self.settings});
-        let ctl = Arc::new(AtomicBool::new(false));
-        self.cancel = Some(ctl.clone());
+        let ctl = self.begin_work();
         self.stage = "Création du profil vocal".into();
         let tx = self.tx.clone();
         thread::spawn(move || {
@@ -837,6 +975,12 @@ enum Preference {
     Device,
     Language,
 }
+impl Drop for Desk {
+    fn drop(&mut self) {
+        self.stop_test(false);
+    }
+}
+
 fn pref_key(s: &Source) -> String {
     match s {
         Source::Application { exe, .. } => format!("app:{}", exe.display()),

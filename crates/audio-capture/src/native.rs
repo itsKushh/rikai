@@ -183,6 +183,7 @@ pub struct Control {
     incidents: Arc<Mutex<HashMap<String, String>>>,
     ready: Arc<AtomicUsize>,
     levels: Arc<Mutex<HashMap<String, f32>>>,
+    gains: Arc<Mutex<HashMap<Source, f32>>>,
 }
 impl Default for Control {
     fn default() -> Self {
@@ -191,10 +192,18 @@ impl Default for Control {
             incidents: Default::default(),
             ready: Default::default(),
             levels: Default::default(),
+            gains: Default::default(),
         }
     }
 }
 impl Control {
+    pub fn set_gain_db(&self, source: &Source, db: i8) {
+        let db = db.clamp(MIN_GAIN_DB, MAX_GAIN_DB);
+        self.gains
+            .lock()
+            .unwrap()
+            .insert(source.clone(), 10f32.powf(f32::from(db) / 20.));
+    }
     pub fn stop(&self) {
         self.timeline.lock().unwrap().stop(now());
     }
@@ -259,26 +268,44 @@ pub fn record(dir: &Path, inputs: Vec<Input>, ctl: Control) -> Result<Manifest> 
     check_windows()?;
     validate(&inputs)?;
     std::fs::create_dir(dir)?;
-    let tracks: Vec<_> = inputs
+    let manifest = Manifest {
+        version: 1,
+        rate: RATE,
+        tracks: make_tracks(inputs),
+    };
+    std::fs::write(
+        dir.join("sources.json"),
+        serde_json::to_vec_pretty(&manifest)?,
+    )?;
+    if let Err(e) = capture_tracks(Some(dir), &manifest.tracks, &ctl) {
+        std::fs::write(dir.join("erreur.txt"), format!("{e:#}"))?;
+        return Err(e);
+    }
+    mix_apps(dir, &manifest.tracks)?;
+    std::fs::write(dir.join("finalise"), ctl.elapsed_ms().to_string())?;
+    Ok(manifest)
+}
+
+/// Mesure les mêmes flux et applique le même gain que l'enregistreur, en mémoire.
+pub fn test_levels(inputs: Vec<Input>, ctl: Control) -> Result<()> {
+    check_windows()?;
+    validate(&inputs)?;
+    capture_tracks(None, &make_tracks(inputs), &ctl)
+}
+
+fn make_tracks(inputs: Vec<Input>) -> Vec<Track> {
+    inputs
         .into_iter()
         .enumerate()
         .map(|(i, input)| Track {
             file: format!("piste-{}.wav", i + 1),
             input,
         })
-        .collect();
-    let manifest = Manifest {
-        version: 1,
-        rate: RATE,
-        tracks,
-    };
-    std::fs::write(
-        dir.join("sources.json"),
-        serde_json::to_vec_pretty(&manifest)?,
-    )?;
-    let result: Result<()> = thread::scope(|scope| {
-        let handles: Vec<_> = manifest
-            .tracks
+        .collect()
+}
+fn capture_tracks(dir: Option<&Path>, tracks: &[Track], ctl: &Control) -> Result<()> {
+    thread::scope(|scope| {
+        let handles: Vec<_> = tracks
             .iter()
             .map(|t| {
                 let ctl = ctl.clone();
@@ -297,25 +324,23 @@ pub fn record(dir: &Path, inputs: Vec<Input>, ctl: Control) -> Result<Manifest> 
                 .map_err(|_| anyhow!("Interruption du thread audio"))??;
         }
         Ok(())
-    });
-    if let Err(e) = result {
-        std::fs::write(dir.join("erreur.txt"), format!("{e:#}"))?;
-        return Err(e);
-    }
-    mix_apps(dir, &manifest.tracks)?;
-    std::fs::write(dir.join("finalise"), ctl.elapsed_ms().to_string())?;
-    Ok(manifest)
+    })
 }
-fn capture_one(dir: &Path, track: &Track, ctl: &Control) -> Result<()> {
-    let mut wav = TrackWriter::create(&dir.join(&track.file))?;
-    let mut log = File::create_new(dir.join(format!("{}.log", track.file)))?;
+fn capture_one(dir: Option<&Path>, track: &Track, ctl: &Control) -> Result<()> {
+    let mut wav = dir
+        .map(|dir| TrackWriter::create(&dir.join(&track.file)))
+        .transpose()?;
+    let mut log: Box<dyn Write> = match dir {
+        Some(dir) => Box::new(File::create_new(dir.join(format!("{}.log", track.file)))?),
+        None => Box::new(std::io::sink()),
+    };
     let mut opened = false;
     let mut deadline = None;
     loop {
         if ctl.timeline.lock().unwrap().stop.is_some() {
             break;
         }
-        let result = capture_stream(track, ctl, &mut wav, &mut log, &mut opened);
+        let result = capture_stream(track, ctl, wav.as_mut(), &mut log, &mut opened);
         match result {
             Ok(()) => break,
             Err(e) if opened && matches!(track.input.source, Source::Microphone { .. }) => {
@@ -336,14 +361,17 @@ fn capture_one(dir: &Path, track: &Track, ctl: &Control) -> Result<()> {
             Err(e) => return Err(e),
         }
     }
-    let clock = ctl.timeline.lock().unwrap().clone();
-    wav.finish(clock.frames(now()))
+    if let Some(wav) = wav {
+        let clock = ctl.timeline.lock().unwrap().clone();
+        wav.finish(clock.frames(now()))?;
+    }
+    Ok(())
 }
 fn capture_stream(
     track: &Track,
     ctl: &Control,
-    wav: &mut TrackWriter,
-    log: &mut File,
+    mut wav: Option<&mut TrackWriter>,
+    log: &mut dyn Write,
     opened: &mut bool,
 ) -> Result<()> {
     let _com = Apartment::enter()?;
@@ -389,6 +417,8 @@ fn capture_stream(
     }
     ctl.incidents.lock().unwrap().remove(&track.file);
     let mut last_packet = Instant::now();
+    let mut held_peak = 0.;
+    let mut peak_time = Instant::now();
     let mut prev_end = None;
     loop {
         let _ = event.wait_for_event(50);
@@ -402,7 +432,7 @@ fn capture_stream(
         while let Some(n) = capture.get_next_packet_size()?.filter(|&n| n > 0) {
             buf.resize(2 * n as usize, 0);
             let (frames, info) = capture.read_from_device(&mut buf)?;
-            let bytes = &buf[..frames as usize * 2];
+            let bytes = &mut buf[..frames as usize * 2];
             let duration = u64::from(frames) * TICKS / u64::from(RATE);
             let at = if info.flags.timestamp_error || info.timestamp == 0 {
                 writeln!(log, "Horodatage estimé, position {}", info.index)?;
@@ -418,23 +448,33 @@ fn capture_stream(
                 "Horodatage de périphérique incohérent. Capture interrompue."
             );
             prev_end = Some(at + duration);
-            wav.packet(at, bytes, &clock)?;
-            let peak = bytes
-                .chunks_exact(2)
-                .map(|b| i16::from_le_bytes([b[0], b[1]]).unsigned_abs())
-                .max()
-                .unwrap_or(0);
-            ctl.levels.lock().unwrap().insert(
-                track.file.clone(),
-                if clock.paused() {
-                    0.
-                } else {
-                    f32::from(peak) / 32768.
-                },
-            );
+            let gain = ctl
+                .gains
+                .lock()
+                .unwrap()
+                .get(&track.input.source)
+                .copied()
+                .unwrap_or(1.);
+            let peak = apply_gain(bytes, gain);
+            if let Some(writer) = wav.as_deref_mut() {
+                writer.packet(at, bytes, &clock)?;
+            }
+            // Maintenir une crête au moins un rafraîchissement de l'interface.
+            if peak >= held_peak
+                || peak_time.elapsed() >= Duration::from_millis(300)
+                || clock.paused()
+            {
+                held_peak = if clock.paused() { 0. } else { peak };
+                peak_time = Instant::now();
+                ctl.levels
+                    .lock()
+                    .unwrap()
+                    .insert(track.file.clone(), held_peak);
+            }
             last_packet = Instant::now();
         }
-        if last_packet.elapsed() > Duration::from_millis(250) {
+        if last_packet.elapsed() > Duration::from_millis(300) {
+            held_peak = 0.;
             ctl.levels.lock().unwrap().insert(track.file.clone(), 0.);
         }
         if clock.stop.is_some() {

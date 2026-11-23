@@ -108,6 +108,47 @@ fn col() -> Div {
 fn row() -> Div {
     div().flex().flex_wrap().items_center().gap_2()
 }
+fn bar(fraction: f32, color: u32, p: Palette) -> Div {
+    div()
+        .w_full()
+        .h(px(5.))
+        .flex_shrink_0()
+        .overflow_hidden()
+        .rounded_full()
+        .bg(rgb(p.control))
+        .child(
+            div()
+                .h_full()
+                .w(relative(fraction.clamp(0., 1.)))
+                .rounded_full()
+                .bg(rgb(color)),
+        )
+}
+
+fn meter(peak: f32, p: Palette) -> Div {
+    let db = 20. * peak.log10();
+    let value = if db < -60. {
+        "Silence".to_owned()
+    } else if peak >= 0.9999 {
+        "Saturation · 0 dBFS".to_owned()
+    } else {
+        format!("{db:.1} dBFS")
+    };
+    col()
+        .gap(px(4.))
+        .child(
+            div()
+                .text_size(px(12.))
+                .text_color(rgb(p.muted))
+                .child(value),
+        )
+        .child(bar(
+            (db + 60.) / 60.,
+            if peak >= 0.9999 { p.text } else { p.level },
+            p,
+        ))
+}
+
 fn table_row(name: Div, duration: &str, status: &str, p: Palette) -> Div {
     div()
         .flex()
@@ -239,28 +280,42 @@ impl Desk {
                 let selected = self.chosen.contains(&src);
                 let name = format!("{}{pid}", i.name);
                 let p = *cx.global::<Palette>();
+                let testing = self.preview.is_some();
                 let control = checkbox(name, selected, p)
                     .id(("source", index))
                     .justify_between()
                     .px_2()
                     .min_h(px(36.))
                     .child(div().flex_1())
-                    .child(
-                        div()
-                            .text_color(rgb(p.muted))
-                            .child(format!("{:.0} %", i.peak * 100.)),
-                    )
-                    .on_click(cx.listener(move |s, _, _, cx| {
-                        if s.inputs.get(index).is_some_and(|i| i.source == src)
-                            && !s.chosen.remove(&src)
-                        {
-                            if mic {
-                                s.chosen.retain(|v| !matches!(v, Source::Microphone { .. }));
+                    .when(selected, |d| {
+                        d.child(
+                            div()
+                                .text_color(rgb(p.muted))
+                                .child(format!("Gain {:+} dB", self.gain_db(&src))),
+                        )
+                    })
+                    .when(!testing && !selected, |d| {
+                        d.child(
+                            div()
+                                .text_color(rgb(p.muted))
+                                .child(format!("{:.0} %", i.peak * 100.)),
+                        )
+                    })
+                    .aria_disabled(testing)
+                    .tab_stop(!testing)
+                    .when(!testing, |d| {
+                        d.on_click(cx.listener(move |s, _, _, cx| {
+                            if s.inputs.get(index).is_some_and(|i| i.source == src)
+                                && !s.chosen.remove(&src)
+                            {
+                                if mic {
+                                    s.chosen.retain(|v| !matches!(v, Source::Microphone { .. }));
+                                }
+                                s.chosen.insert(src.clone());
                             }
-                            s.chosen.insert(src.clone());
-                        }
-                        cx.notify();
-                    }));
+                            cx.notify();
+                        }))
+                    });
                 body = body.child(control);
             }
             if !found {
@@ -273,12 +328,95 @@ impl Desk {
                 });
             }
         }
+        if !self.chosen.is_empty() {
+            body = body.child(self.level_setup(cx));
+        }
         body.child(toggle("Identifier les intervenants","diarization",self,cx))
             .when(self.settings["diarization"]==true,|d|d.child(toggle("Proposer les voix connues","recognize",self,cx)))
             .child(toggle("Générer le compte rendu à l’arrêt","auto_summary",self,cx))
             .child(div().text_color(rgb(cx.global::<Palette>().muted)).child("Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets."))
             .child(action("Démarrer l’enregistrement",true,cx,|s,cx|s.start(cx)))
     }
+    fn level_setup(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut head = row().justify_between().child(label("Niveaux des sources"));
+        head = match &self.preview {
+            Some(test) if test.stopping => head.child("Fermeture des sources…"),
+            Some(_) => head.child(action("Terminer le test", false, cx, |s, _| {
+                s.stop_test(false);
+                Ok(())
+            })),
+            None => head.child(action("Tester les niveaux", false, cx, |s, _| {
+                s.test_levels()
+            })),
+        };
+        let mut body = col()
+            .border_t_1()
+            .border_color(rgb(p.edge))
+            .pt_3()
+            .child(head);
+        let Some(test) = &self.preview else {
+            return body;
+        };
+        body = body.child(div().text_size(px(12.)).text_color(rgb(p.muted)).child(
+            if test.ctl.ready() < test.tracks.len() && !test.stopping {
+                "Ouverture des sources…"
+            } else {
+                "Parlez ou lancez un son. Visez des crêtes entre −18 et −6 dBFS."
+            },
+        ));
+        let levels = test.ctl.levels();
+        for (index, source) in test.tracks.iter().enumerate() {
+            let Some(input) = self.inputs.iter().find(|i| &i.source == source) else {
+                continue;
+            };
+            let gain = self.gain_db(source);
+            let name = &input.name;
+            let mut controls = row().gap(px(6.));
+            for (step, text, id) in [(-3, "−", "gain-down"), (3, "+", "gain-up")] {
+                let source = source.clone();
+                let bounded = !(audio_capture::MIN_GAIN_DB..=audio_capture::MAX_GAIN_DB)
+                    .contains(&(gain + step));
+                let btn = action(text, false, cx, move |s, _| {
+                    s.set_gain(&source, s.gain_db(&source) + step)
+                })
+                .id((id, index))
+                .aria_label(format!("{name} · gain {step:+} dB"))
+                .aria_disabled(bounded)
+                .tab_stop(!bounded)
+                .when(bounded, |b| b.opacity(0.4));
+                if step > 0 {
+                    controls = controls.child(
+                        div()
+                            .min_w(px(41.))
+                            .text_center()
+                            .child(format!("{gain:+} dB")),
+                    );
+                }
+                controls = controls.child(btn);
+            }
+            let peak = levels
+                .get(&format!("piste-{}.wav", index + 1))
+                .copied()
+                .unwrap_or(0.);
+            body = body.child(
+                col()
+                    .gap(px(4.))
+                    .child(
+                        row()
+                            .justify_between()
+                            .child(label(name.clone()))
+                            .child(controls),
+                    )
+                    .child(meter(peak, p)),
+            );
+        }
+        for notice in test.ctl.incidents().into_values() {
+            body = body.child(notice);
+        }
+        body
+    }
+
     fn detail_view(&self, cx: &Context<Self>) -> Div {
         let mut body = col().child(
             workspace::strip(*cx.global::<Palette>()).children(
@@ -902,20 +1040,18 @@ impl Desk {
                 } else {
                     "● REC"
                 }));
+            let levels = ctl.levels();
             for (i, name) in self.capture_names.iter().enumerate() {
-                let level = ctl
-                    .levels()
+                let level = levels
                     .get(&format!("piste-{}.wav", i + 1))
                     .copied()
                     .unwrap_or(0.);
-                info = info
-                    .child(label(format!("{name}    {:.0} %", level * 100.)))
-                    .child(
-                        div()
-                            .h(px(3.))
-                            .w(px(level.clamp(0., 1.) * 220.))
-                            .bg(rgb(cx.global::<Palette>().level)),
-                    );
+                info = info.child(
+                    col()
+                        .gap(px(4.))
+                        .child(label(name.clone()))
+                        .child(meter(level, *cx.global::<Palette>())),
+                );
             }
             for notice in ctl.incidents().into_values() {
                 info = info.child(notice);
@@ -965,19 +1101,65 @@ impl Desk {
             }
             (self.title.read(cx).as_str().to_string(), info)
         } else if show_activity && self.cancel.is_some() {
+            let p = *cx.global::<Palette>();
+            let elapsed = time(self.work_started.elapsed().as_millis() as u64);
+            let mut body = col().child(label(self.stage.clone()));
+            if let Some((done, total)) = self.transfer.filter(|(_, total)| *total > 0) {
+                let percent = u128::from(done) * 100 / u128::from(total);
+                let value = format!("{percent} %");
+                body = body
+                    .child(
+                        bar(done as f32 / total as f32, p.primary, p)
+                            .id("model-transfer")
+                            .role(Role::ProgressIndicator)
+                            .aria_label("Téléchargement du modèle")
+                            .aria_value(value.clone()),
+                    )
+                    .child(
+                        row()
+                            .justify_between()
+                            .child(div().text_color(rgb(p.muted)).child(format!(
+                                "{:.1} / {:.1} Mio",
+                                done as f64 / 1048576.,
+                                total as f64 / 1048576.
+                            )))
+                            .child(label(value)),
+                    );
+            }
+            let idle = self.last_progress.elapsed().as_secs();
+            let timing = if idle >= 15 {
+                format!("Temps écoulé {elapsed} · dernière réponse il y a {idle} s")
+            } else {
+                format!("Temps écoulé {elapsed}")
+            };
+            body = body.child(
+                div()
+                    .text_size(px(12.))
+                    .text_color(rgb(p.muted))
+                    .child(timing),
+            );
+            if self
+                .cancel
+                .as_ref()
+                .is_some_and(|c| c.load(Ordering::Acquire))
+            {
+                body = body.child(label("Annulation en cours…"));
+            } else {
+                body = body.child(action("Annuler le traitement", false, cx, |s, _| {
+                    if let Some(c) = &s.cancel {
+                        c.store(true, Ordering::Release);
+                    }
+                    Ok(())
+                }));
+            }
             (
-                "Traitement".into(),
-                col().child(label(self.stage.clone())).child(action(
-                    "Annuler le traitement",
-                    false,
-                    cx,
-                    |s, _| {
-                        if let Some(c) = &s.cancel {
-                            c.store(true, Ordering::Release);
-                        }
-                        Ok(())
-                    },
-                )),
+                if matches!(page, Page::Settings | Page::ConfirmDownload(_)) {
+                    "Installation du modèle"
+                } else {
+                    "Traitement"
+                }
+                .into(),
+                body,
             )
         } else {
             match page {

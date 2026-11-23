@@ -4,7 +4,7 @@ version = "0.1.0"
 requires-python = ">=3.11,<3.13"
 dependencies = [
   "av==15.1.0", "huggingface-hub==0.36.0", "faster-whisper==1.2.1", "ctranslate2==4.9.1",
-  "sherpa-onnx==1.12.39", "sherpa-onnx-core==1.12.39", "numpy==2.2.6",
+  "filelock==4.3.0", "sherpa-onnx==1.12.39", "sherpa-onnx-core==1.12.39", "numpy==2.2.6",
 ]
 [project.optional-dependencies]
 summary = ["llama-cpp-python==0.3.37"]

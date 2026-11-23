@@ -4,6 +4,7 @@ from itertools import groupby
 from pathlib import Path
 from bisect import bisect_left, bisect_right
 import json
+import time
 import wave
 
 
@@ -166,10 +167,11 @@ def transcribe(p, progress):
     manifest = json.loads((root / "sources.json").read_text(encoding="utf-8"))
     tracks = manifest["tracks"]
 
+    progress("Initialisation du moteur de transcription", phase="startup")
+    from faster_whisper import WhisperModel
     import onnxruntime
 
     onnxruntime.disable_telemetry_events()
-    from faster_whisper import WhisperModel
 
     turns = []
     if settings.get("diarization") and any(
@@ -177,7 +179,7 @@ def transcribe(p, progress):
     ):
         progress("Identification des intervenants")
         turns = diarize(root / "applications.wav", settings, progress)
-    progress("Chargement du modèle de transcription")
+    progress("Chargement du modèle de transcription", phase="load")
     device = settings.get("device", "cpu")
     engine = WhisperModel(
         str(model),
@@ -187,7 +189,7 @@ def transcribe(p, progress):
     )
     segments = []
     timeline = TurnIndex(turns)
-    for t in tracks:
+    for index, t in enumerate(tracks, 1):
         file = t["file"]
         path = (root / file).resolve()
         if path.parent != root:
@@ -197,8 +199,12 @@ def transcribe(p, progress):
             if t["input"]["source"]["kind"] == "Microphone"
             else None
         )
+        with wave.open(str(path), "rb") as reader:
+            seconds = reader.getnframes() // reader.getframerate()
+        stage = f"Transcription · piste {index}/{len(tracks)}"
+        last_update = 0.0
         for offset, data in blocks(path):
-            progress(f"Transcription · {t['input']['name']} · {offset // 1000} s")
+            progress(f"{stage} · {offset // 1000} / {seconds} s")
             found, _ = engine.transcribe(
                 data,
                 language=settings.get("language") or None,
@@ -207,9 +213,15 @@ def transcribe(p, progress):
             )
             for part in found:
                 segments.extend(align(part, file, mine, timeline, offset))
+                now = time.monotonic()
+                if now - last_update >= 1:
+                    position = min(seconds, int(offset / 1000 + part.end))
+                    progress(f"{stage} · {position} / {seconds} s")
+                    last_update = now
     segments.sort(key=lambda s: (s["start_ms"], s["end_ms"], s["track"]))
     from echo import annotate
 
+    progress("Vérification des échos entre les pistes")
     annotate(root, tracks, segments)
     proposals = {}
     if settings.get("recognize") and turns and p.get("profiles"):
@@ -221,6 +233,7 @@ def transcribe(p, progress):
 
 
 def summarize(p, progress):
+    progress("Préparation du moteur de synthèse")
     if p.get("remote_consent") is True:
         from remote import Remote
 
@@ -231,6 +244,7 @@ def summarize(p, progress):
         llm = Llama(
             model_path=str(local_path(p["settings"]["gguf"])), n_ctx=8192, verbose=False
         )
+    progress("Rédaction du compte rendu")
     return generate_report(p["segments"], llm, progress)
 
 
