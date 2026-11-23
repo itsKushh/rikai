@@ -1,6 +1,9 @@
 """Moteurs strictement locaux. Tous les temps sont relatifs au début de la réunion."""
 
 from itertools import groupby
+from functools import lru_cache
+from dataclasses import replace
+import re
 from pathlib import Path
 from bisect import bisect_left, bisect_right
 import json
@@ -174,10 +177,20 @@ def cuda_unavailable(error):
     )
 
 
+# Une seconde écoute pour un changement d’écriture improbable en français.
+EAST_ASIAN_SCRIPT = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\uf900-\ufaff]")
+
+
+@lru_cache(maxsize=1)
+def french_retry_tokens(tokenizer):
+    tokens = range(tokenizer.get_vocab_size())
+    spellings = tokenizer.decode_batch([[token] for token in tokens])
+    return [-1] + [i for i, text in enumerate(spellings) if EAST_ASIAN_SCRIPT.search(text)]
+
+
 def decode_block(engine, data, language, report):
-    found, _ = engine.transcribe(
-        data, language=language, word_timestamps=True, vad_filter=True
-    )
+    options = dict(language=language, word_timestamps=True, vad_filter=True)
+    found, _ = engine.transcribe(data, **options)
     # Publier le bloc seulement après la fin de la lecture du générateur.
     decoded = []
     last_update = 0.0
@@ -187,7 +200,38 @@ def decode_block(engine, data, language, report):
         if now - last_update >= 1:
             report(part.end)
             last_update = now
+    if language == "fr":
+        for i, part in enumerate(decoded):
+            if EAST_ASIAN_SCRIPT.search(part.text):
+                decoded[i] = reread_french_passage(engine, data, part)
     return decoded
+
+
+def reread_french_passage(engine, data, part):
+    # Garder les autres passages et leur attribution. Les marges donnent au
+    # décodeur le début et la fin des phonèmes proches d’une frontière.
+    first = max(0, int((part.start - 0.15) * 16000))
+    last = min(len(data), int((part.end + 0.15) * 16000))
+    if first >= last:
+        return part
+    found, _ = engine.transcribe(
+        data[first:last], language="fr", word_timestamps=True, vad_filter=False,
+        beam_size=8, temperature=0.0, condition_on_previous_text=False,
+        suppress_tokens=french_retry_tokens(engine.hf_tokenizer),
+    )
+    origin = first / 16000
+    words = []
+    for candidate in found:
+        for word in candidate.words or []:
+            middle = origin + (word.start + word.end) / 2
+            if part.start <= middle <= part.end:
+                words.append(replace(word, start=max(part.start, origin + word.start),
+                                     end=min(part.end, origin + word.end)))
+    text = "".join(w.word for w in words).strip()
+    if (not text or EAST_ASIAN_SCRIPT.search(text)
+            or sum(w.probability for w in words) / len(words) < 0.45):
+        return part
+    return replace(part, words=words, text=text)
 
 
 def transcribe(p, progress):

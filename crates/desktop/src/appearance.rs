@@ -50,6 +50,35 @@ impl Palette {
         }
     }
 
+    pub fn bevel(self) -> Vec<BoxShadow> {
+        vec![
+            BoxShadow::new(
+                px(0.),
+                px(1.),
+                black().opacity(if self.base == 0x111113 { 0.27 } else { 0.12 }),
+            )
+            .blur_radius(px(2.)),
+            BoxShadow::new(
+                px(0.),
+                px(-1.),
+                black().opacity(if self.base == 0x111113 { 0.20 } else { 0.09 }),
+            )
+            .inset(),
+            BoxShadow::new(
+                px(0.),
+                px(1.),
+                white().opacity(if self.base == 0x111113 { 0.10 } else { 0.66 }),
+            )
+            .inset(),
+        ]
+    }
+    pub fn pressed(self) -> Vec<BoxShadow> {
+        vec![
+            BoxShadow::new(px(0.), px(2.), black().opacity(0.34))
+                .blur_radius(px(2.))
+                .inset(),
+        ]
+    }
     pub fn panel(self) -> Div {
         div()
             .flex()
@@ -57,7 +86,7 @@ impl Palette {
             .min_w_0()
             .min_h_0()
             .overflow_hidden()
-            .rounded(px(14.))
+            .rounded(px(16.))
             .border_1()
             .border_color(rgb(self.edge))
             .bg(linear_gradient(
@@ -65,11 +94,14 @@ impl Palette {
                 linear_color_stop(rgb(self.raised), 0.),
                 linear_color_stop(rgb(self.surface), 1.),
             ))
-            .shadow_sm()
+            .shadow(self.bevel())
     }
 }
 
 // Petits pictogrammes monochromes dessinés sur la même grille de 24 unités.
+pub(super) const PLAY: &str = "M7 4.5 20 12 7 19.5Z";
+pub(super) const PAUSE: &str = "M7 5v14m9-14v14";
+pub(super) const SAVE: &str = "M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4";
 pub(super) const WAVE: &str = "M3 10v4m4-8v12m5-16v20m5-17v14m4-10v6";
 pub(super) const MIC: &str =
     "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0ZM5 12a7 7 0 0 0 14 0m-7 7v3m-4 0h8";

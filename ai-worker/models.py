@@ -6,7 +6,7 @@ import re
 import time
 from pathlib import Path
 
-PRESETS = {"Rapide": "tiny", "Équilibré": "small", "Haute qualité": "medium"}
+PRESETS = {"Rapide": "base", "Équilibré": "small", "Haute qualité": "medium"}
 
 
 def matches_hub_file(path, entry):

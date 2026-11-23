@@ -396,12 +396,40 @@ fn capture_stream(
             dev.get_iaudioclient()?
         }
     };
-    let fmt = WaveFormat::new(16, 16, SampleType::Int, RATE as usize, 1, None);
+    let is_mic = matches!(track.input.source, Source::Microphone { .. });
+    let fmt = if is_mic {
+        client.get_mixformat()?
+    } else {
+        WaveFormat::new(16, 16, SampleType::Int, RATE as usize, 1, None)
+    };
+    let stride = fmt.get_blockalign() as usize;
+    let input_rate = u64::from(fmt.get_samplespersec());
+    let mut microphone = if is_mic {
+        ensure!(
+            stride == usize::from(fmt.get_nchannels()) * usize::from(fmt.get_bitspersample() / 8),
+            "Alignement du format micro incompatible"
+        );
+        writeln!(
+            log,
+            "Format micro natif · {} Hz · {} canaux · {} bits",
+            input_rate,
+            fmt.get_nchannels(),
+            fmt.get_bitspersample()
+        )?;
+        Some(microphone::Microphone::new(
+            fmt.get_samplespersec(),
+            usize::from(fmt.get_nchannels()),
+            fmt.get_bitspersample(),
+            matches!(fmt.get_subformat()?, SampleType::Float),
+        )?)
+    } else {
+        None
+    };
     client.initialize_client(
         &fmt,
         Direction::Capture,
         StreamMode::EventsShared {
-            autoconvert: true,
+            autoconvert: !is_mic,
             buffer_duration_hns: 0,
         },
         None,
@@ -430,10 +458,10 @@ fn capture_stream(
             bail!("Application fermée. Pistes partielles conservées.");
         }
         while let Some(n) = capture.get_next_packet_size()?.filter(|&n| n > 0) {
-            buf.resize(2 * n as usize, 0);
+            buf.resize(stride * n as usize, 0);
             let (frames, info) = capture.read_from_device(&mut buf)?;
-            let bytes = &mut buf[..frames as usize * 2];
-            let duration = u64::from(frames) * TICKS / u64::from(RATE);
+            let bytes = &mut buf[..frames as usize * stride];
+            let duration = u64::from(frames) * TICKS / input_rate;
             let at = if info.flags.timestamp_error || info.timestamp == 0 {
                 writeln!(log, "Horodatage estimé, position {}", info.index)?;
                 prev_end.unwrap_or_else(|| now().saturating_sub(duration))
@@ -448,6 +476,12 @@ fn capture_stream(
                 "Horodatage de périphérique incohérent. Capture interrompue."
             );
             prev_end = Some(at + duration);
+            let (at, bytes) = match &mut microphone {
+                Some(converter) => {
+                    converter.packet(bytes, at, info.index, info.flags.data_discontinuity)?
+                }
+                None => (at, bytes),
+            };
             let gain = ctl
                 .gains
                 .lock()

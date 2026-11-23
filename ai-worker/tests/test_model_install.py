@@ -74,7 +74,7 @@ class ModelInstall(unittest.TestCase):
             self.assertEqual(updates[-1], ("Modèle vérifié", total, total))
             self.assertEqual([u[1] for u in updates], sorted(u[1] for u in updates))
             self.assertTrue(all(u[2] == total for u in updates))
-            self.assertEqual(result["repo"], "Systran/faster-whisper-tiny")
+            self.assertEqual(result["repo"], "Systran/faster-whisper-base")
             self.assertEqual(result["revision"], revision)
             folder = Path(result["folder"])
             self.assertTrue(folder.is_relative_to(cache))

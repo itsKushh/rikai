@@ -1,4 +1,6 @@
 //! Pistes mono sur une grille commune de 16 kHz.
+#[cfg(any(windows, test))]
+mod microphone;
 mod recovery;
 use anyhow::{Context, Result, ensure};
 use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
@@ -117,6 +119,39 @@ fn spec() -> WavSpec {
     }
 }
 
+/// Exporte exactement l’intervalle demandé en PCM, avec publication atomique.
+pub fn export_segment(source: &Path, destination: &Path, start_ms: i64, end_ms: i64) -> Result<()> {
+    ensure!(
+        start_ms >= 0 && end_ms > start_ms,
+        "Durée de passage invalide"
+    );
+    if destination.exists() {
+        ensure!(
+            source.canonicalize()? != destination.canonicalize()?,
+            "Choisissez un autre fichier que la piste source."
+        );
+    }
+    let mut input = WavReader::open(source)?;
+    ensure!(input.spec() == spec(), "Format de piste incompatible");
+    let start = (start_ms as u64).saturating_mul(u64::from(RATE)) / 1000;
+    let end =
+        ((end_ms as u64).saturating_mul(u64::from(RATE)) / 1000).min(u64::from(input.duration()));
+    ensure!(start < end, "Passage en dehors de la piste");
+    input.seek(start as u32)?;
+    let mut tmp = tempfile::NamedTempFile::new_in(
+        destination
+            .parent()
+            .context("Dossier de destination absent")?,
+    )?;
+    let mut out = WavWriter::new(BufWriter::new(tmp.as_file_mut()), spec())?;
+    for sample in input.samples::<i16>().take((end - start) as usize) {
+        out.write_sample(sample?)?;
+    }
+    out.finalize()?;
+    tmp.persist(destination)?;
+    Ok(())
+}
+
 pub struct TrackWriter {
     output: WavWriter<BufWriter<File>>,
     frames: u64,
@@ -213,6 +248,29 @@ pub fn mix_apps(dir: &Path, tracks: &[Track]) -> Result<Option<PathBuf>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn segment_export_copies_only_selected_frames_and_preserves_source() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let source = dir.path().join("piste.wav");
+        let out = dir.path().join("extrait.wav");
+        let mut wav = WavWriter::create(&source, spec())?;
+        for i in 0..1600 {
+            wav.write_sample(i as i16)?;
+        }
+        wav.finalize()?;
+        export_segment(&source, &out, 25, 75)?;
+        let mut clip = WavReader::open(&out)?;
+        assert_eq!(clip.spec(), spec());
+        assert_eq!(
+            clip.samples::<i16>().collect::<Result<Vec<_>, _>>()?,
+            (400..1200).collect::<Vec<i16>>()
+        );
+        assert!(export_segment(&source, &source, 0, 10).is_err());
+        assert!(export_segment(&source, &out, 110, 150).is_err());
+        assert_eq!(WavReader::open(&out)?.duration(), 800);
+        Ok(())
+    }
+
     #[test]
     fn calibration_measures_the_adjusted_pcm_and_saturates() {
         let source = [-24000i16, 18000, 400, -400, 0];

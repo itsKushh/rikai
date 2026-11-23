@@ -1,15 +1,48 @@
 use super::*;
 
-pub(super) fn strip(p: Palette) -> Div {
+pub(super) fn strip(
+    p: Palette,
+    group: &'static str,
+    index: usize,
+    geometry: &std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>,
+) -> Div {
+    let (left, width) = geometry.get();
+    let geometry = geometry.clone();
     div()
         .flex()
         .items_center()
         .gap(px(2.))
         .p(px(3.))
-        .rounded(px(12.))
+        .relative()
+        .rounded(px(15.))
         .bg(rgb(p.base))
         .border_1()
         .border_color(rgb(p.edge))
+        .shadow(p.pressed())
+        .child(div().absolute().inset_0().when(width > px(0.), |layer| {
+            layer.child(
+                div()
+                    .id(group)
+                    .absolute()
+                    .left(left)
+                    .w(width)
+                    .top(px(3.))
+                    .bottom(px(3.))
+                    .rounded(px(12.))
+                    .bg(rgb(p.selected))
+                    .shadow(p.bevel())
+                    .transitions(|t| t.left(millis(155)).w(millis(155))),
+            )
+        }))
+        .on_children_prepainted(move |bounds, w, _| {
+            if let (Some(layer), Some(tab)) = (bounds.first(), bounds.get(index + 1)) {
+                let target = (tab.origin.x - layer.origin.x, tab.size.width);
+                if target != geometry.get() {
+                    geometry.set(target);
+                    w.request_animation_frame();
+                }
+            }
+        })
 }
 
 fn header(title: impl Into<SharedString>, p: Palette) -> Div {
@@ -99,7 +132,16 @@ impl Desk {
             )
             .child(div().w(px(1.)).h(px(20.)).bg(rgb(p.edge)));
         let page = self.workspace_page();
-        let mut nav = strip(p);
+        let mut nav = strip(
+            p,
+            "navigation-pill",
+            match page {
+                Page::Library => 1,
+                Page::Profiles => 2,
+                _ => 0,
+            },
+            &self.tab_geometry[0],
+        );
         for (target, name, icon) in [
             (Page::Home, "Espace de travail", DESK),
             (Page::Library, "Bibliothèque", LIBRARY),
@@ -116,18 +158,13 @@ impl Desk {
                         .px_2()
                         .h(px(26.))
                         .rounded(px(8.))
-                        .when(active, |s| s.bg(rgb(p.selected)))
                         .child(glyph(icon, 15., p.muted))
                         .when(!compact || active, |s| s.child(name)),
                 );
             } else {
                 nav = nav.child(button(
                     name,
-                    if active {
-                        Button::Selected
-                    } else {
-                        Button::Quiet
-                    },
+                    if active { Button::Tab } else { Button::Quiet },
                     Some(icon),
                     compact && !active,
                     cx,
@@ -248,14 +285,20 @@ impl Desk {
 
     fn inspector_panel(&self, page: Page, passive: bool, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
-        let mut tabs = strip(p).w_full();
+        let mut tabs = strip(
+            p,
+            "inspector-pill",
+            self.inspector as usize,
+            &self.tab_geometry[1],
+        )
+        .w_full();
         for (tab, title, icon) in [
             (Inspector::Session, "Session", DESK),
             (Inspector::Audio, "Audio", AUDIO),
             (Inspector::Models, "Modèles", MODEL),
         ] {
             let style = if self.inspector == tab {
-                Button::Selected
+                Button::Tab
             } else {
                 Button::Quiet
             };
@@ -496,7 +539,13 @@ impl Desk {
                         cx.notify();
                     })),
             )
-            .child(sheet)
+            .child(
+                sheet.with_animation("sheet-reveal", reveal(cx, 155), |el, t| {
+                    el.relative()
+                        .left(px(16. * (1. - t)))
+                        .opacity(0.75 + 0.25 * t)
+                }),
+            )
     }
 }
 
@@ -522,6 +571,7 @@ impl Render for Desk {
         self.drawer_was_open = drawer;
         let page = self.workspace_page();
         let background_activity = !drawer || self.confirmation.is_some();
+        let transcript = page == Page::Detail && self.tab == 1 && !self.metadata && !self.busy();
         let home = page == Page::Home && !(self.busy() && background_activity);
         let mut left = col().min_h_0().flex_1().gap(px(16.));
         if home {
@@ -552,7 +602,11 @@ impl Render for Desk {
                 p.panel()
                     .flex_1()
                     .child(header(title, p))
-                    .child(scroll("workspace-content", body.p_4())),
+                    .child(if transcript {
+                        body.p_3().into_any_element()
+                    } else {
+                        scroll("workspace-content", body.p_4()).into_any_element()
+                    }),
             );
         }
         let inspector = self.inspector_panel(page, drawer, cx);
@@ -564,7 +618,10 @@ impl Render for Desk {
                 .child(
                     col()
                         .gap_3()
-                        .child(left.min_h(px(320.)))
+                        .child(left.min_h(px(320.)).when(transcript, |d| {
+                            d.h((window.viewport_size().height - px(75.)).max(px(320.)))
+                                .flex_shrink_0()
+                        }))
                         .child(inspector.min_h(px(225.))),
                 )
                 .into_any_element()

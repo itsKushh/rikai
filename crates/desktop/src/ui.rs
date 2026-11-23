@@ -139,6 +139,14 @@ struct LevelTest {
     start_after: bool,
 }
 
+#[derive(Clone, Copy)]
+struct PlayingSegment {
+    id: i64,
+    position: i64,
+    end: i64,
+    paused: bool,
+}
+
 struct Desk {
     confirmation: Option<Confirmation>,
     hardware: String,
@@ -188,7 +196,10 @@ struct Desk {
     description: Field,
     metadata: bool,
     hits: Vec<meeting_storage::Hit>,
-    limit: usize,
+    dialogues: ListState,
+    playing: Option<PlayingSegment>,
+    scroll_grab: Option<Pixels>,
+    tab_geometry: [std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>; 3],
     discard: bool,
     library: Vec<Meeting>,
     segments: Vec<Segment>,
@@ -284,7 +295,10 @@ impl Desk {
             description: field(cx),
             metadata: false,
             hits: vec![],
-            limit: 80,
+            dialogues: ListState::new(0, ListAlignment::Top, px(180.)),
+            playing: None,
+            scroll_grab: None,
+            tab_geometry: Default::default(),
             discard: false,
             library: vec![],
             segments: vec![],
@@ -307,17 +321,95 @@ impl Desk {
             s.message = e.to_string();
         }
         cx.spawn(async move |this, cx| {
+            let mut delay = 200;
             loop {
                 cx.background_executor()
-                    .timer(Duration::from_millis(200))
+                    .timer(Duration::from_millis(delay))
                     .await;
-                if this.update(cx, |s, cx| s.tick(cx)).is_err() {
+                let Ok(next) = this.update(cx, |s, cx| {
+                    s.tick(cx);
+                    if s.playing.is_some_and(|p| !p.paused) {
+                        50
+                    } else {
+                        200
+                    }
+                }) else {
                     break;
-                }
+                };
+                delay = next;
             }
         })
         .detach();
         s
+    }
+    fn stop_segment(&mut self) {
+        self.playing = None;
+        super::playback::stop();
+    }
+    fn listen(&mut self, id: i64, from: Option<f32>) -> Result<()> {
+        let seg = self
+            .segments
+            .iter()
+            .find(|s| s.id == id)
+            .context("Passage introuvable")?;
+        let (start, end) = (seg.start_ms, seg.end_ms);
+        ensure!(end > start, "Ce passage est vide");
+        let current = self.playing.filter(|p| p.id == id);
+        if let Some(mut p) = current
+            && !p.paused
+            && from.is_none()
+        {
+            p.position = super::playback::position()?.clamp(start, end);
+            super::playback::stop();
+            p.paused = true;
+            self.playing = Some(p);
+            return Ok(());
+        }
+        let pos = from
+            .map(|f| start + ((end - start) as f64 * f64::from(f.clamp(0., 1.))) as i64)
+            .or(current.map(|p| p.position))
+            .unwrap_or(start)
+            .clamp(start, end - 1);
+        let path = self.audio_dir(self.id).join(&seg.track);
+        self.playing = None;
+        super::playback::play(&path, pos, end)?;
+        self.playing = Some(PlayingSegment {
+            id,
+            position: pos,
+            end,
+            paused: false,
+        });
+        Ok(())
+    }
+    fn save_clip(&self, id: i64, w: &Window, cx: &mut Context<Self>) -> Result<()> {
+        let seg = self
+            .segments
+            .iter()
+            .find(|s| s.id == id)
+            .context("Passage introuvable")?;
+        let (a, b) = (seg.start_ms, seg.end_ms);
+        let source = self.audio_dir(self.id).join(&seg.track);
+        let dlg = rfd::AsyncFileDialog::new()
+            .set_parent(w)
+            .add_filter("Extrait WAV", &["wav"])
+            .set_file_name(format!("reunion-{}-passage-{id}.wav", self.id));
+        cx.spawn(async move |desk, cx| {
+            if let Some(file) = dlg.save_file().await {
+                let result = cx
+                    .background_executor()
+                    .spawn(async move { audio_capture::export_segment(&source, file.path(), a, b) })
+                    .await;
+                let _ = desk.update(cx, |s, cx| {
+                    s.message = match result {
+                        Ok(()) => "Extrait WAV enregistré.".into(),
+                        Err(e) => format!("{e:#}"),
+                    };
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+        Ok(())
     }
     fn busy(&self) -> bool {
         self.ctl.is_some() || self.cancel.is_some()
@@ -338,11 +430,13 @@ impl Desk {
         });
     }
     fn detail(&mut self, id: i64) -> Result<()> {
-        self.limit = 80;
+        self.stop_segment();
         self.metadata = false;
         self.id = id;
         self.suggestions = self.db.suggestions(id)?;
         self.segments = self.db.segments(id)?;
+        self.dialogues
+            .reset_with_uniform_height(self.segments.len() + 1, px(99.));
         self.summary = self.db.summary(id)?.unwrap_or_default();
         self.edit_id = None;
         self.page = Page::Detail;
@@ -352,6 +446,21 @@ impl Desk {
         self.db.set_pref("settings", &self.settings.to_string())
     }
     fn tick(&mut self, cx: &mut Context<Self>) {
+        if let Some(p) = &mut self.playing
+            && !p.paused
+        {
+            match super::playback::is_playing()
+                .and_then(|playing| Ok((playing, super::playback::position()?)))
+            {
+                Ok((true, position)) if position < p.end => p.position = position,
+                Ok(_) => self.stop_segment(),
+                Err(e) => {
+                    self.stop_segment();
+                    self.message = e.to_string();
+                }
+            }
+            cx.notify();
+        }
         while let Ok(event) = self.rx.try_recv() {
             if let Err(e) = self.apply(event, cx) {
                 self.message = format!("{e:#}");
@@ -631,7 +740,7 @@ impl Desk {
     }
     fn start(&mut self, cx: &App) -> Result<()> {
         ensure!(!self.busy(), "Une réunion est déjà active");
-        super::playback::stop();
+        self.stop_segment();
         let inputs = self.selected_inputs();
         ensure!(
             !inputs.is_empty(),
@@ -790,7 +899,7 @@ impl Desk {
         }
         self.stop_test(false);
         self.menu = None;
-        super::playback::stop();
+        self.stop_segment();
         if page == Page::Settings {
             self.settings_origin = self.page;
         } else {
@@ -863,7 +972,7 @@ impl Desk {
         Ok(())
     }
     fn delete(&mut self, id: i64, all: bool) -> Result<()> {
-        super::playback::stop();
+        self.stop_segment();
         let dir = self.root.join("audio").join(id.to_string());
         if dir.is_dir() {
             fs::remove_dir_all(dir)?;
@@ -988,6 +1097,7 @@ enum Preference {
 impl Drop for Desk {
     fn drop(&mut self) {
         self.stop_test(false);
+        super::playback::stop();
     }
 }
 

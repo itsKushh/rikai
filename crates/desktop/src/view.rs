@@ -1,6 +1,8 @@
 use super::appearance::*;
 use super::*;
 use gpui::Div;
+#[path = "dialogue.rs"]
+mod dialogue;
 
 #[derive(Clone, Copy)]
 enum Button {
@@ -8,6 +10,7 @@ enum Button {
     Secondary,
     Quiet,
     Selected,
+    Tab,
 }
 
 fn action(
@@ -55,7 +58,28 @@ fn window_button(
         Button::Primary => (p.primary, p.on_primary),
         Button::Secondary => (p.control, p.text),
         Button::Selected => (p.selected, p.text),
+        Button::Tab => (p.selected, p.text),
         Button::Quiet => (p.base, p.muted),
+    };
+    let quiet = matches!(style, Button::Quiet | Button::Tab);
+    let hint = label.clone();
+    let hover_bg = match style {
+        Button::Primary => {
+            if p.base == 0x111113 {
+                0xcacace
+            } else {
+                0x414147
+            }
+        }
+        Button::Secondary | Button::Selected => {
+            if p.base == 0x111113 {
+                0x36363a
+            } else {
+                0xe0e0e4
+            }
+        }
+        Button::Quiet => p.control,
+        Button::Tab => p.selected,
     };
     div()
         .id(SharedString::from(label.clone()))
@@ -67,31 +91,37 @@ fn window_button(
         .min_h(px(28.))
         .px(px(9.))
         .py(px(3.))
-        .rounded(px(9.))
+        .rounded(px(11.))
         .text_size(px(12.))
         .font_weight(FontWeight::MEDIUM)
         .role(gpui::Role::Button)
         .focusable()
         .tab_stop(true)
         .cursor_pointer()
-        .when(!matches!(style, Button::Quiet), |d| d.bg(rgb(bg)))
+        .relative()
+        .top(px(0.))
+        .bg(if quiet {
+            transparent_black()
+        } else {
+            rgb_to_hsla(rgb(bg))
+        })
         .border_1()
-        .border_color(if matches!(style, Button::Quiet) {
+        .border_color(if quiet {
             transparent_black()
         } else {
             rgb_to_hsla(rgb(p.edge))
         })
+        .when(!quiet, |s| s.shadow(p.bevel()))
         .text_color(rgb(fg))
-        .hover(move |s| {
-            s.border_color(rgb(p.muted))
-                .bg(rgb(if matches!(style, Button::Quiet) {
-                    p.control
-                } else {
-                    bg
-                }))
+        .when(!matches!(style, Button::Tab), |d| {
+            d.hover(move |s| s.bg(rgb(hover_bg)))
         })
         .focus_visible(move |s| s.border_color(rgb(p.text)))
-        .active(|s| s.opacity(0.8))
+        .active(move |s| s.top(px(1.5)).shadow(p.pressed()))
+        .transitions(|t| t.bg(millis(95)).top(millis(85)).border_color(millis(95)))
+        .when(icon_only, |b| {
+            b.tooltip(move |_, cx| cx.new(|_| ControlHint(hint.clone())).into())
+        })
         .when_some(icon, |s, icon| s.child(glyph(icon, 15., fg)))
         .when(!icon_only, |s| s.child(label))
         .on_click(cx.listener(move |s, _, w, cx| {
@@ -101,6 +131,32 @@ fn window_button(
             }
             cx.notify();
         }))
+}
+struct ControlHint(String);
+impl Render for ControlHint {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let p = *cx.global::<Palette>();
+        div()
+            .font_family("Inter")
+            .bg(rgb(p.raised))
+            .text_color(rgb(p.text))
+            .rounded(px(11.))
+            .border_1()
+            .border_color(rgb(p.edge))
+            .shadow(p.bevel())
+            .child(self.0.clone())
+            .with_animation("hint-reveal", reveal(cx, 110), |el, t| {
+                el.relative()
+                    .top(px(3. * (1. - t)))
+                    .px(px(11. + t))
+                    .py(px(6. + t))
+                    .text_size(px(11.6 + 0.4 * t))
+                    .opacity(t)
+            })
+    }
+}
+fn reveal(cx: &App, ms: u64) -> Animation {
+    Animation::new(millis(if cx.reduce_motion() { 1 } else { ms })).with_easing(ease_out_quint())
 }
 fn col() -> Div {
     div().min_w_0().flex().flex_col().gap(px(9.))
@@ -118,8 +174,10 @@ fn bar(fraction: f32, color: u32, p: Palette) -> Div {
         .bg(rgb(p.control))
         .child(
             div()
+                .id("bar-fill")
                 .h_full()
                 .w(relative(fraction.clamp(0., 1.)))
+                .transitions(|t| t.w(millis(90)))
                 .rounded_full()
                 .bg(rgb(color)),
         )
@@ -173,11 +231,17 @@ fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl Into
     text_input(id)
         .state(f.downgrade())
         .placeholder(hint)
+        .relative()
+        .top(px(0.))
+        .hover(move |s| s.bg(rgb(p.surface)))
+        .active(move |s| s.top(px(1.)).shadow(p.pressed()))
+        .transitions(|t| t.bg(millis(95)).top(millis(85)))
         .caret_blink_interval_500ms()
         .px(px(9.))
         .py(px(6.))
         .min_h(px(29.))
-        .rounded(px(9.))
+        .rounded(px(11.))
+        .shadow(p.bevel())
         .border_1()
         .border_color(rgb(p.edge))
         .bg(rgb(p.base))
@@ -419,7 +483,13 @@ impl Desk {
 
     fn detail_view(&self, cx: &Context<Self>) -> Div {
         let mut body = col().child(
-            workspace::strip(*cx.global::<Palette>()).children(
+            workspace::strip(
+                *cx.global::<Palette>(),
+                "detail-pill",
+                usize::from(self.tab),
+                &self.tab_geometry[2],
+            )
+            .children(
                 ["Résumé", "Transcription", "Intervenants"]
                     .into_iter()
                     .enumerate()
@@ -427,7 +497,7 @@ impl Desk {
                         button(
                             t,
                             if self.tab == i as u8 {
-                                Button::Selected
+                                Button::Tab
                             } else {
                                 Button::Quiet
                             },
@@ -435,6 +505,7 @@ impl Desk {
                             false,
                             cx,
                             move |s, _| {
+                                s.stop_segment();
                                 s.tab = i as u8;
                                 s.edit_id = None;
                                 Ok(())
@@ -494,7 +565,7 @@ impl Desk {
                                 text_area("summary-edit")
                                     .state(self.edit.downgrade())
                                     .bg(rgb(cx.global::<Palette>().base))
-                                    .rounded(px(9.))
+                                    .rounded(px(11.))
                                     .p_3()
                                     .text_color(rgb(cx.global::<Palette>().text))
                                     .caret_color(rgb_to_hsla(rgb(cx.global::<Palette>().text)))
@@ -560,72 +631,16 @@ impl Desk {
                             cx,
                             move |s, _| {
                                 s.segments = s.db.segments_at(s.id, Some(v))?;
-                                s.limit = 80;
+                                s.stop_segment();
+                                s.edit_id = None;
+                                s.dialogues
+                                    .reset_with_uniform_height(s.segments.len() + 1, px(99.));
                                 Ok(())
                             },
                         ));
                     }
                 }
-                for seg in self.segments.iter().take(self.limit) {
-                    let id = seg.id;
-                    let path = self.audio_dir(self.id).join(&seg.track);
-                    let (a, b) = (seg.start_ms, seg.end_ms);
-                    body = body.child(action(
-                        format!("Écouter §{id}"),
-                        false,
-                        cx,
-                        move |_, _| super::super::playback::play(&path, a, b),
-                    ));
-                    if self.edit_id == Some(id) {
-                        body = body
-                            .child(
-                                text_area("edit")
-                                    .state(self.edit.downgrade())
-                                    .bg(rgb(cx.global::<Palette>().base))
-                                    .rounded(px(9.))
-                                    .p_3()
-                                    .text_color(rgb(cx.global::<Palette>().text))
-                                    .caret_color(rgb_to_hsla(rgb(cx.global::<Palette>().text)))
-                                    .w_full()
-                                    .min_h(px(90.))
-                                    .border_1()
-                                    .p_2(),
-                            )
-                            .child(action(
-                                "Enregistrer la correction",
-                                true,
-                                cx,
-                                move |s, cx| {
-                                    s.db.edit(id, s.edit.read(cx).as_str())?;
-                                    s.detail(s.id)
-                                },
-                            ));
-                    } else {
-                        body = body.child(
-                            div()
-                                .id(("segment", id as usize))
-                                .py_2()
-                                .cursor_pointer()
-                                .child(label(format!(
-                                    "{}    {}    §{}",
-                                    time(seg.start_ms as u64),
-                                    seg.speaker,
-                                    id
-                                )))
-                                .child(seg.text.clone())
-                                .when(seg.echo_candidate.is_some(), |d| {
-                                    d.child("Reprise acoustique possible")
-                                })
-                                .on_click(cx.listener(move |s, _, _, cx| {
-                                    if let Some(seg) = s.segments.iter().find(|v| v.id == id) {
-                                        s.edit.update(cx, |v, cx| v.emplace(&seg.text, cx));
-                                        s.edit_id = Some(id);
-                                    }
-                                    cx.notify();
-                                })),
-                        );
-                    }
-                }
+                return body.flex_1().min_h_0().child(self.dialogue_list(cx));
             }
             _ => {
                 let mut people = std::collections::BTreeMap::new();
@@ -704,13 +719,10 @@ impl Desk {
                 }
             }
         }
-        if self.tab == 1 && self.segments.len() > self.limit {
-            body = body.child(action("Afficher la suite", false, cx, |s, _| {
-                s.limit += 80;
-                Ok(())
-            }));
-        }
-        body = body.child(action("Modifier les informations", false, cx, |s, cx| {
+        body.child(self.meeting_actions(cx))
+    }
+    fn meeting_actions(&self, cx: &Context<Self>) -> Div {
+        let mut body = col().child(action("Modifier les informations", false, cx, |s, cx| {
             let (t, p, d, tags) = s.db.metadata(s.id)?;
             for (f, v) in [
                 (&s.title, t),
@@ -860,7 +872,11 @@ impl Desk {
                     .left_0()
                     .right_0()
                     .pt(px(3.))
-                    .child(deferred(popover)),
+                    .child(deferred(popover.with_animation(
+                        "menu-reveal",
+                        reveal(cx, 120),
+                        |el, t| el.relative().top(px(-4. * (1. - t))).opacity(t),
+                    ))),
             );
         }
         col().flex_1().gap(px(5.)).child(label(name)).child(anchor)
@@ -871,7 +887,7 @@ impl Desk {
         let mut presets = col().gap(px(2.)).child(label("Modèle de transcription"));
         for (preset, model) in Page::MODEL_PRESETS
             .into_iter()
-            .zip(["tiny", "small", "medium"])
+            .zip(["base", "small", "medium"])
         {
             let recommended = preset == self.recommended;
             let repo = format!("Systran/faster-whisper-{model}");
@@ -900,6 +916,11 @@ impl Desk {
                         }),
                 ),
             );
+        }
+        if self.settings["whisper_repo"] == "Systran/faster-whisper-tiny" {
+            presets = presets.child(div().text_size(px(12.)).text_color(rgb(p.muted)).child(
+                "Ancien modèle tiny actif. Choisissez Rapide pour télécharger la version base.",
+            ));
         }
         let mut local = col().child(label("Modèles déjà téléchargés"));
         for (key, name, folder) in [
@@ -989,6 +1010,11 @@ fn checkbox(text: String, on: bool, p: Palette) -> Stateful<Div> {
         .role(Role::CheckBox)
         .aria_label(text.clone())
         .aria_toggled(on.into())
+        .top(px(0.))
+        .relative()
+        .hover(move |s| s.bg(rgb(p.control)))
+        .active(move |s| s.top(px(1.)).shadow(p.pressed()))
+        .transitions(|t| t.bg(millis(95)).top(millis(85)))
         .focusable()
         .tab_stop(true)
         .flex()
@@ -1181,12 +1207,11 @@ impl Desk {
                             format!("{} · §{} · {}", time(h.start_ms as u64), seg, h.text),
                             false,
                             cx,
-                            move |s, cx| {
+                            move |s, _| {
                                 s.detail(id)?;
                                 s.tab = 1;
-                                if let Some(p) = s.segments.iter().find(|p| p.id == seg).cloned() {
-                                    s.segments = vec![p.clone()];
-                                    s.edit.update(cx, |v, cx| v.emplace(&p.text, cx));
+                                if let Some(index) = s.segments.iter().position(|p| p.id == seg) {
+                                    s.dialogues.scroll_to_reveal_item(index);
                                 }
                                 Ok(())
                             },
