@@ -51,7 +51,7 @@ impl Desk {
             .flex()
             .items_center()
             .role(Role::Slider)
-            .aria_label(format!("Position du passage {id}"))
+            .aria_label(crate::i18n::message(&format!("Position du passage {id}")))
             .aria_value(duration(pos))
             .focusable()
             .tab_stop(true)
@@ -89,12 +89,21 @@ impl Desk {
             .min_w_0()
             .gap(px(4.))
             .child(
-                row().gap(px(8.)).child(label(seg.speaker.clone())).child(
-                    div()
-                        .text_size(px(11.))
-                        .text_color(rgb(p.muted))
-                        .child(time(seg.start_ms.max(0) as u64)),
-                ),
+                row()
+                    .gap(px(8.))
+                    .child(raw_label(
+                        if matches!(seg.speaker.as_str(), "Moi" | "Voix distante") {
+                            tr(&seg.speaker).to_owned()
+                        } else {
+                            seg.speaker.clone()
+                        },
+                    ))
+                    .child(
+                        div()
+                            .text_size(px(11.))
+                            .text_color(rgb(p.muted))
+                            .child(time(seg.start_ms.max(0) as u64)),
+                    ),
             )
             .child(
                 div().flex().items_center().gap_2().child(seeker).child(
@@ -130,6 +139,7 @@ impl Desk {
                                 if let Some(seg) = s.segments.iter_mut().find(|v| v.id == id) {
                                     seg.text = text;
                                 }
+                                s.translations = s.db.translations(s.id)?;
                                 s.edit_id = None;
                                 s.dialogues.remeasure_items(ix..ix + 1);
                                 Ok(())
@@ -155,7 +165,7 @@ impl Desk {
                     .role(Role::Button)
                     .focusable()
                     .tab_stop(true)
-                    .aria_label(format!("Corriger le passage {id}"))
+                    .aria_label(crate::i18n::message(&format!("Corriger le passage {id}")))
                     .cursor_text()
                     .rounded(px(3.))
                     .focus_visible(move |d| d.bg(rgb(p.selected)))
@@ -182,9 +192,131 @@ impl Desk {
                 div()
                     .text_size(px(11.))
                     .text_color(rgb(p.muted))
-                    .child("Reprise acoustique possible"),
+                    .child(tr("Reprise acoustique possible")),
             );
         }
+        if let Some(items) = self.translations.get(&id) {
+            for (lang, text) in items {
+                info = info.child(
+                    col()
+                        .gap(px(3.))
+                        .mt_1()
+                        .border_t_1()
+                        .border_color(rgb(p.edge))
+                        .pt_1()
+                        .child(
+                            div()
+                                .text_size(px(11.))
+                                .text_color(rgb(p.muted))
+                                .child(crate::i18n::language_name(lang).to_string()),
+                        )
+                        .child(text.clone()),
+                );
+            }
+        }
+        let translate = window_button(
+            "Traduire le passage",
+            Button::Quiet,
+            Some(TRANSLATE),
+            true,
+            cx,
+            move |s, w, cx| {
+                if s.language_picker == Some(id) {
+                    s.language_picker = None;
+                } else {
+                    s.language_picker = Some(id);
+                    s.language_search.update(cx, |v, cx| v.emplace("", cx));
+                    s.language_search.read(cx).focus_handle(cx).focus(w, cx);
+                }
+                Ok(())
+            },
+        )
+        .id(("passage-translate", ix))
+        .size(px(31.))
+        .p_0();
+        let translate =
+            div()
+                .relative()
+                .child(translate)
+                .when(self.language_picker == Some(id), |anchor| {
+                    let q = self.language_search.read(cx).as_str().trim().to_lowercase();
+                    let mut rows = col().gap(px(2.));
+                    let mut found = false;
+                    for (n, row) in crate::i18n::languages()
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, r)| {
+                            q.is_empty() || r.iter().any(|s| s.to_lowercase().contains(&q))
+                        })
+                    {
+                        found = true;
+                        let target = row[0].clone();
+                        let native = &row[1];
+                        let local = crate::i18n::language_name(&target);
+                        let item = if local.eq_ignore_ascii_case(native) {
+                            native.clone()
+                        } else {
+                            format!("{local} · {native}")
+                        };
+                        rows = rows.child(
+                            button(item, Button::Quiet, None, false, cx, move |s, _| {
+                                s.start_translation(id, target.clone())
+                            })
+                            .id(("target-language", n))
+                            .justify_start()
+                            .rounded(px(9.)),
+                        );
+                    }
+                    if !found {
+                        rows = rows.child(tr("Aucune langue trouvée"));
+                    }
+                    let popup = col()
+                        .id(("languages", ix))
+                        .occlude()
+                        .w(px(272.))
+                        .p(px(6.))
+                        .gap(px(5.))
+                        .rounded(px(16.))
+                        .border_1()
+                        .border_color(rgb(p.edge))
+                        .bg(rgb(p.raised))
+                        .shadow(p.bevel())
+                        .on_mouse_down_out(cx.listener(|s, _, _, cx| {
+                            s.language_picker = None;
+                            cx.notify();
+                        }))
+                        .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
+                            if e.keystroke.key == "escape" {
+                                s.language_picker = None;
+                                cx.stop_propagation();
+                                cx.notify();
+                            }
+                        }))
+                        .child(input(
+                            cx,
+                            &self.language_search,
+                            "filter-language",
+                            "Rechercher une langue",
+                        ))
+                        .child(
+                            div()
+                                .id("language-results")
+                                .max_h(px(208.))
+                                .overflow_y_scroll()
+                                .child(rows),
+                        )
+                        .with_animation("language-picker", reveal(cx, 140), |d, t| {
+                            d.relative().top(px(-3. * (1. - t))).opacity(t)
+                        });
+                    anchor.child(
+                        div().absolute().top_full().right_0().child(deferred(
+                            anchored()
+                                .anchor(Anchor::TopRight)
+                                .snap_to_window_with_margin(px(10.))
+                                .child(popup),
+                        )),
+                    )
+                });
         let actions = div()
             .flex()
             .items_center()
@@ -222,7 +354,8 @@ impl Desk {
                 .id(("passage-save", ix))
                 .size(px(31.))
                 .p_0(),
-            );
+            )
+            .child(translate);
         div().pb(px(8.)).pr(px(3.)).child(
             p.panel()
                 .px(px(13.))
@@ -253,7 +386,7 @@ impl Desk {
         div()
             .id("dialogue-scrollbar")
             .role(Role::ScrollBar)
-            .aria_label("Parcourir les passages")
+            .aria_label(tr("Parcourir les passages"))
             .focusable()
             .tab_stop(true)
             .relative()

@@ -9,6 +9,7 @@ import subprocess
 dest = Path("dist/notices")
 dest.mkdir(parents=True, exist_ok=True)
 shutil.copyfile("assets/inter/OFL.txt", dest / "Inter-OFL.txt")
+shutil.copyfile("assets/scripts-ui/NOTICE.txt", dest / "RikaiScriptUI-Noto.txt")
 meta = json.loads(
     subprocess.check_output(
         [

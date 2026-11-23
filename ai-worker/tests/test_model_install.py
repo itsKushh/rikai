@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from models import install
+from models import install, inventory
 
 
 class ModelInstall(unittest.TestCase):
@@ -87,3 +87,6 @@ class ModelInstall(unittest.TestCase):
             transfers.clear()
             self.assertEqual(install(params, progress), result)
             self.assertEqual(transfers, [])
+            self.assertEqual(inventory(cache)["Rapide"]["revision"], revision)
+            (folder/"model.bin").unlink()
+            self.assertNotIn("Rapide",inventory(cache))

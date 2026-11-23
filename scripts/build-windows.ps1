@@ -25,13 +25,14 @@ if ($Stage -in 'All','Binaries') {
     Run-Checked cargo @('build','--locked','--release','--workspace')
 }
 if ($Stage -in 'All','Worker') {
-    Run-Checked $Python @('-m','PyInstaller','--noconfirm','--clean','--onedir','--name','meetingnotes-worker','--collect-all','sherpa_onnx','--copy-metadata','sherpa-onnx-core','--collect-all','onnxruntime','--collect-all','ctranslate2','--collect-all','faster_whisper','--collect-all','llama_cpp','--copy-metadata','tqdm','--copy-metadata','huggingface-hub','ai-worker/worker.py')
-    Run-Checked $Python @('scripts/test-worker-bundle.py','dist/meetingnotes-worker/meetingnotes-worker.exe')
+    Run-Checked $Python @('-m','PyInstaller','--noconfirm','--clean','--onedir','--name','rikai-worker','--collect-all','sherpa_onnx','--copy-metadata','sherpa-onnx-core','--collect-all','onnxruntime','--collect-all','ctranslate2','--collect-all','faster_whisper','--collect-all','llama_cpp','--collect-all','sentencepiece','--collect-data','py3langid','--copy-metadata','tqdm','--copy-metadata','huggingface-hub','ai-worker/worker.py')
+    Run-Checked $Python @('scripts/test-worker-bundle.py','dist/rikai-worker/rikai-worker.exe')
 }
 if ($Stage -in 'All','Installer') {
     Run-Checked $Python @('scripts/notices.py')
     $Compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     if ($Compiler) { $IsccPath = $Compiler.Source }
     else { $IsccPath = Join-Path "${env:ProgramFiles(x86)}" 'Inno Setup 6\ISCC.exe' }
-    Run-Checked $IsccPath @('packaging/MeetingNotes.iss')
+    $Version = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
+    Run-Checked $IsccPath @("/DRikaiVersion=$Version", 'packaging/Rikai.iss')
 }

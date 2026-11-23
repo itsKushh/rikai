@@ -3,7 +3,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 repo_root="$(pwd)"
-tools_dir="${MEETINGNOTES_TOOLS:-/workspace/.meetingnotes-tools}"
+tools_dir="${RIKAI_TOOLS:-/workspace/.rikai-tools}"
 export CARGO_HOME="$tools_dir/cargo" RUSTUP_HOME="$tools_dir/rustup"
 export UV_CACHE_DIR="$tools_dir/uv-cache" UV_LINK_MODE=copy
 export PATH="$CARGO_HOME/bin:$PATH"

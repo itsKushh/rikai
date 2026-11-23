@@ -1,5 +1,6 @@
 """Installation explicite de modèles publics. Aucune donnée de réunion n'est lue ici."""
 
+import json
 import hashlib
 import os
 import re
@@ -12,6 +13,65 @@ PRESETS = {
     "Haute qualité": "Systran/faster-whisper-medium",
     "Précision Turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
 }
+
+
+# The release pins the weights used by the bundled summarizer and translator.
+GGUF = "qwen2.5-3b-instruct-q4_k_m.gguf"
+PACKAGES = {
+    "Résumé local": (
+        "Qwen/Qwen2.5-3B-Instruct-GGUF",
+        "7dabda4d13d513e3e842b20f0d435c732f172cbe",
+        "summary",
+        [GGUF, "LICENSE"],
+    ),
+    "Traduction locale": (
+        "jncraton/m2m100_418M-ct2-int8",
+        "7c1b2620a4e58dacecbd8bf89cfd6da7eb9eb7b0",
+        "translation",
+        [
+            "model.bin",
+            "config.json",
+            "shared_vocabulary.json",
+            "sentencepiece.bpe.model",
+        ],
+    ),
+}
+
+
+def inventory(cache):
+    items = {}
+    for marker in Path(cache).glob("*/*/rikai-install.json"):
+        try:
+            m = json.loads(marker.read_text(encoding="utf8"))
+            if all(
+                (marker.parent / name).stat().st_size == size
+                for name, size in m["files"].items()
+            ):
+                items[m["preset"]] = m["result"]
+        except (OSError, KeyError, TypeError, ValueError):
+            continue
+    # Versions installed before Rikai 0.2 had no receipt.
+    for preset, repo in PRESETS.items():
+        if preset in items:
+            continue
+        for folder in sorted(
+            (Path(cache) / repo.split("/")[-1].removeprefix("faster-whisper-")).glob(
+                "*"
+            )
+        ):
+            if (folder / "rikai-install.json").exists() or any(folder.glob("*.part")):
+                continue
+            if re.fullmatch("[a-f0-9]{40}", folder.name) and all(
+                (folder / f).is_file()
+                for f in ("model.bin", "config.json", "tokenizer.json")
+            ):
+                items[preset] = {
+                    "folder": str(folder),
+                    "repo": repo,
+                    "revision": folder.name,
+                }
+                break
+    return items
 
 
 def matches_hub_file(path, entry):
@@ -31,19 +91,26 @@ def install(p, progress):
     from huggingface_hub import HfApi, hf_hub_url
     from huggingface_hub.utils import get_session
 
-    repo = PRESETS[p["preset"]]
-    size = repo.split("/")[1].removeprefix("faster-whisper-")
+    preset = p["preset"]
+    revision = None
+    if preset in PACKAGES:
+        repo, revision, size, needed = PACKAGES[preset]
+        optional = ()
+    else:
+        repo = PRESETS[preset]
+        size = repo.split("/")[1].removeprefix("faster-whisper-")
+        needed = ["config.json", "model.bin", "tokenizer.json"]
+        optional = ("vocabulary.txt", "vocabulary.json", "preprocessor_config.json")
     progress("Lecture de la liste des fichiers du modèle")
-    metadata = HfApi().model_info(repo, files_metadata=True, token=False, timeout=20)
-    if not re.fullmatch(r"[0-9a-f]{40}", metadata.sha or ""):
+    metadata = HfApi().model_info(
+        repo, revision=revision, files_metadata=True, token=False, timeout=20
+    )
+    if not re.fullmatch(r"[0-9a-f]{40}", metadata.sha or "") or (
+        revision and revision != metadata.sha
+    ):
         raise ValueError("Révision du modèle invalide")
-    needed = ["config.json", "model.bin", "tokenizer.json"]
     files = [
-        f
-        for f in metadata.siblings
-        if f.rfilename in needed
-        or f.rfilename
-        in ("vocabulary.txt", "vocabulary.json", "preprocessor_config.json")
+        f for f in metadata.siblings if f.rfilename in needed or f.rfilename in optional
     ]
     if not set(needed).issubset(f.rfilename for f in files):
         raise ValueError("Distribution de modèle incomplète")
@@ -96,7 +163,23 @@ def install(p, progress):
             os.replace(part, folder / entry.rfilename)
             done += entry.size
         progress("Modèle vérifié", received=done, total=total)
-    return {"folder": str(folder), "repo": repo, "revision": metadata.sha}
+        result = {"folder": str(folder), "repo": repo, "revision": metadata.sha}
+        if preset in PACKAGES:
+            result["kind"] = size
+            result["path"] = str(folder / GGUF if size == "summary" else folder)
+        marker = folder / "rikai-install.tmp"
+        marker.write_text(
+            json.dumps(
+                {
+                    "preset": preset,
+                    "files": {f.rfilename: f.size for f in files},
+                    "result": result,
+                }
+            ),
+            encoding="utf8",
+        )
+        marker.replace(folder / "rikai-install.json")
+    return result
 
 
 def capabilities(p, progress):
@@ -108,6 +191,7 @@ def capabilities(p, progress):
 
     return {
         "runtime": runtime_versions(),
+        "installed": inventory(p["cache"]) if p.get("cache") else {},
         "python": sys.version.split()[0],
         "cpu": platform.machine(),
         "cuda": ctranslate2.get_cuda_device_count(),

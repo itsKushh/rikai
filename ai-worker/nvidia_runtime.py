@@ -47,7 +47,7 @@ _handles = {}
 
 
 def runtime_root():
-    return Path(os.environ["LOCALAPPDATA"]) / "MeetingNotes" / "nvidia"
+    return Path(os.environ["LOCALAPPDATA"]) / "Rikai" / "nvidia"
 
 
 def ready(folder):

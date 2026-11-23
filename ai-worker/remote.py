@@ -68,7 +68,13 @@ class Remote:
         self.model = settings["remote_model"].strip()
         if not self.model:
             raise ValueError("Indiquez le nom du modèle distant")
-        self.token = credential("MeetingNotes/" + self.url.netloc)
+        try:
+            self.token = credential("Rikai/" + self.url.netloc)
+        except ValueError as err:
+            try:
+                self.token = credential("MeetingNotes/" + self.url.netloc)
+            except ValueError:
+                raise err from None
 
     def tokenize(self, text):
         # Une borne prudente du nombre de tokens pour une API dont le tokenizer est inconnu.

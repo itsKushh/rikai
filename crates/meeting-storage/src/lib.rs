@@ -52,7 +52,7 @@ impl Library {
             "PRAGMA foreign_keys=ON; PRAGMA secure_delete=ON; PRAGMA journal_mode=WAL;",
         )?;
         let v: i32 = c.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        ensure!(v <= 3, "Version de bibliothèque trop récente");
+        ensure!(v <= 4, "Version de bibliothèque trop récente");
         if v == 0 {
             let tx = c.transaction()?;
             tx.execute_batch(include_str!("../../../migrations/001_library.sql"))?;
@@ -66,6 +66,11 @@ impl Library {
         if v < 3 {
             let tx = c.transaction()?;
             tx.execute_batch(include_str!("../../../migrations/003_echo.sql"))?;
+            tx.commit()?;
+        }
+        if v < 4 {
+            let tx = c.transaction()?;
+            tx.execute_batch(include_str!("../../../migrations/004_translation.sql"))?;
             tx.commit()?;
         }
         Ok(Self(c))
@@ -212,6 +217,31 @@ impl Library {
         }
         Ok(out)
     }
+    pub fn store_translation(
+        &self,
+        id: i64,
+        original: &str,
+        language: &str,
+        text: &str,
+    ) -> Result<()> {
+        ensure!(self.0.execute("INSERT OR REPLACE INTO segment_translation(segment_id,language,text) SELECT id,?3,?4 FROM transcript_segment WHERE id=?1 AND coalesce(edited,raw)=?2",params![id,original,language,text])? == 1,"Le passage a été modifié.");
+        Ok(())
+    }
+    pub fn translations(
+        &self,
+        meeting: i64,
+    ) -> Result<std::collections::HashMap<i64, Vec<(String, String)>>> {
+        let mut q=self.0.prepare("SELECT segment_id, language, t.text FROM segment_translation t JOIN transcript_segment s ON s.id=t.segment_id JOIN transcript v ON v.id=s.transcript_id WHERE v.meeting_id=? ORDER BY language")?;
+        let mut data = std::collections::HashMap::<_, Vec<_>>::new();
+        for row in q.query_map([meeting], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))? {
+            let (id, lang, text) = row?;
+            data.entry(id).or_default().push((lang, text));
+        }
+        Ok(data)
+    }
+    pub fn segment_language(&self, id: i64) -> Result<Option<String>> {
+        Ok(self.0.query_row("SELECT json_extract(v.settings,'$.language') FROM transcript v JOIN transcript_segment s ON s.transcript_id=v.id WHERE s.id=?", [id], |r|r.get(0))?)
+    }
     pub fn edit(&self, id: i64, text: &str) -> Result<()> {
         ensure!(
             self.0.execute(
@@ -254,10 +284,8 @@ mod tests {
     use super::*;
     #[test]
     fn edits_search_and_versions_survive_reopen() -> Result<()> {
-        let path = std::env::temp_dir().join(format!(
-            "meetingnotes-storage-{}.sqlite",
-            std::process::id()
-        ));
+        let path =
+            std::env::temp_dir().join(format!("rikai-storage-{}.sqlite", std::process::id()));
         let mut db = Library::open(&path)?;
         let id = db.create("Réunion étude", "Produit", "{}")?;
         let s = Segment {
@@ -273,7 +301,15 @@ mod tests {
             confidence: None,
         };
         db.publish(id, "{}", std::slice::from_ref(&s), &[], Default::default())?;
-        db.edit(db.segments(id)?[0].id, "validation jeudi")?;
+        let segment = db.segments(id)?[0].id;
+        db.store_translation(segment, "maquette", "en", "mock-up")?;
+        assert_eq!(db.translations(id)?[&segment][0].1, "mock-up");
+        db.edit(segment, "validation jeudi")?;
+        assert!(db.translations(id)?.is_empty());
+        assert!(
+            db.store_translation(segment, "maquette", "en", "old text")
+                .is_err()
+        );
         db.publish(id, "{}", &[s], &[], Default::default())?;
         drop(db);
         let db = Library::open(&path)?;

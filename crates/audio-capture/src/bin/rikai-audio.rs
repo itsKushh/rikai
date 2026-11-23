@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
                 .map_err(|_| anyhow::anyhow!("Capture interrompue"))??;
         }
         _ => anyhow::bail!(
-            "Usage : meetingnotes-audio sources | enregistrer DOSSIER_NOUVEAU SÉLECTION.json (stdin : pause, reprendre, stop)"
+            "Usage : rikai-audio sources | enregistrer DOSSIER_NOUVEAU SÉLECTION.json (stdin : pause, reprendre, stop)"
         ),
     }
     Ok(())

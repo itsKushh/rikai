@@ -11,6 +11,8 @@ if __name__ == "__main__":
     freeze_support()
 
 from models import capabilities, install
+from translation import translate
+from updates import apply_update, check_update, download_update, connect_github, disconnect_github
 from voices import enroll
 from processing import gpu_probe, summarize, transcribe
 from nvidia_runtime import install_runtime
@@ -140,10 +142,11 @@ def main():
                     os._exit(2)
 
         # os.read/readline en arrière-plan ne doit pas bloquer la fermeture de l'interpréteur.
-        if req["method"] in ("transcribe", "summarize", "enroll", "install", "install_cuda", "test_cuda"):
+        if req["method"] in ("transcribe", "summarize", "enroll", "install", "install_cuda", "test_cuda", "translate", "download_update","connect_github"):
             reader = threading.Thread(target=controls, daemon=True)
             reader.start()
         engines = {
+            "apply_update":apply_update,"translate":translate, "check_update":check_update,"download_update":download_update,"connect_github":connect_github,"disconnect_github":disconnect_github,
             "selftest": selftest,
             "install_cuda": install_runtime,
             "test_cuda": gpu_probe,

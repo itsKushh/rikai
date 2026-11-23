@@ -6,6 +6,7 @@ pub(super) fn strip(
     index: usize,
     geometry: &std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>,
 ) -> Div {
+    let radius = if group == "inspector-pill" { 11. } else { 14. };
     let (left, width) = geometry.get();
     let geometry = geometry.clone();
     div()
@@ -14,7 +15,7 @@ pub(super) fn strip(
         .gap(px(2.))
         .p(px(3.))
         .relative()
-        .rounded(px(15.))
+        .rounded(px(radius))
         .bg(rgb(p.base))
         .border_1()
         .border_color(linear_gradient(
@@ -32,7 +33,7 @@ pub(super) fn strip(
                     .w(width)
                     .top(px(3.))
                     .bottom(px(3.))
-                    .rounded(px(12.))
+                    .rounded(px(radius - 3.))
                     .bg(rgb(p.selected))
                     .shadow(p.bevel())
                     .transitions(|t| t.left(motion(180)).w(motion(180))),
@@ -72,14 +73,35 @@ fn scroll(id: &'static str, content: Div) -> Stateful<Div> {
 }
 
 fn fact(name: &'static str, value: impl Into<String>, p: Palette) -> Div {
+    let value = value.into();
+    let value = if matches!(
+        name,
+        "État"
+            | "Profil conseillé"
+            | "Calcul préféré"
+            | "Intervenants"
+            | "Compte rendu"
+            | "Identification des intervenants"
+            | "Résumé"
+            | "Transcription"
+    ) {
+        crate::i18n::message(&value)
+    } else {
+        value
+    };
     div()
         .flex()
         .items_start()
         .justify_between()
         .gap_3()
         .py(px(5.))
-        .child(div().flex_shrink_0().text_color(rgb(p.muted)).child(name))
-        .child(div().min_w_0().text_right().child(value.into()))
+        .child(
+            div()
+                .flex_shrink_0()
+                .text_color(rgb(p.muted))
+                .child(tr(name)),
+        )
+        .child(div().min_w_0().text_right().child(value))
 }
 
 fn selected_file(settings: &Value, key: &str) -> String {
@@ -109,6 +131,8 @@ impl Desk {
             return;
         }
         if !self.busy() {
+            self.pending_translation = None;
+            self.pending_summary = false;
             self.menu = None;
             self.page = self.settings_origin;
             self.message.clear();
@@ -131,7 +155,7 @@ impl Desk {
                     .h_full()
                     .flex()
                     .items_center()
-                    .when(!self.drawer_open(), |s| {
+                    .when(!self.drawer_open() && !self.release_was_open, |s| {
                         s.window_control_area(WindowControlArea::Drag)
                     })
                     .pr_2()
@@ -166,7 +190,7 @@ impl Desk {
                         .h(px(26.))
                         .rounded(px(8.))
                         .child(glyph(icon, 15., p.muted))
-                        .when(!compact || active, |s| s.child(name)),
+                        .when(!compact || active, |s| s.child(tr(name))),
                 );
             } else {
                 nav = nav.child(button(
@@ -179,11 +203,14 @@ impl Desk {
                 ));
             }
         }
-        bar = bar
-            .child(nav)
-            .child(div().flex_1().h_full().when(!self.drawer_open(), |s| {
-                s.window_control_area(WindowControlArea::Drag)
-            }));
+        bar = bar.child(nav).child(
+            div()
+                .flex_1()
+                .h_full()
+                .when(!self.drawer_open() && !self.release_was_open, |s| {
+                    s.window_control_area(WindowControlArea::Drag)
+                }),
+        );
         if !locked {
             bar = bar
                 .child(button(
@@ -220,7 +247,7 @@ impl Desk {
             controls = controls.child(
                 div()
                     .id(name)
-                    .aria_label(name)
+                    .aria_label(tr(name))
                     .role(Role::Button)
                     .focusable()
                     .tab_stop(true)
@@ -267,17 +294,19 @@ impl Desk {
             .justify_center()
             .gap(px(12.))
             .p_4()
-            .rounded(px(10.))
+            .rounded(px(8.))
             .bg(rgb(p.base))
             .text_center()
             .child(glyph(MIC, 34., p.muted));
         if let Some(m) = self.library.first() {
-            center = center.child(label(m.title.clone())).child(
-                div().text_color(rgb(p.muted)).child(format!(
-                    "{}   ·   {}",
-                    m.date,
-                    time(m.duration_ms as u64)
-                )),
+            center = center.child(raw_label(m.title.clone())).child(
+                div()
+                    .text_color(rgb(p.muted))
+                    .child(crate::i18n::message(&format!(
+                        "{}   ·   {}",
+                        m.date,
+                        time(m.duration_ms as u64)
+                    ))),
             );
             if !self.drawer_open() {
                 let id = m.id;
@@ -289,7 +318,7 @@ impl Desk {
             center = center.child(label("Prêt à enregistrer")).child(
                 div()
                     .text_color(rgb(p.muted))
-                    .child("Créez une réunion pour choisir vos sources audio."),
+                    .child(tr("Créez une réunion pour choisir vos sources audio.")),
             );
         }
         center
@@ -315,7 +344,7 @@ impl Desk {
                 Button::IdleTab
             };
             tabs = if passive {
-                tabs.child(div().flex_1().text_center().py_1().child(title))
+                tabs.child(div().flex_1().text_center().py_1().child(tr(title)))
             } else {
                 tabs.child(
                     button(title, style, Some(icon), false, cx, move |s, _| {
@@ -401,7 +430,7 @@ impl Desk {
                     content = content.child(
                         div()
                             .text_color(rgb(p.muted))
-                            .child("Aucune source sélectionnée."),
+                            .child(tr("Aucune source sélectionnée.")),
                     );
                 }
                 content = content
@@ -436,7 +465,9 @@ impl Desk {
                 if !passive && !self.busy() {
                     content =
                         content.child(action("Configurer les modèles", false, cx, |s, _| {
-                            s.go(Page::Settings)
+                            s.go(Page::Settings)?;
+                            s.section = 0;
+                            Ok(())
                         }));
                 }
             }
@@ -457,7 +488,7 @@ impl Desk {
         let (title, fields) = if let Some(prompt) = &self.confirmation {
             (
                 prompt.title.to_owned(),
-                col().child(prompt.detail.clone()).child(
+                col().child(crate::i18n::message(&prompt.detail)).child(
                     row()
                         .child(action("Annuler", false, cx, |s, _| {
                             s.confirmation = None;
@@ -511,7 +542,7 @@ impl Desk {
             .panel()
             .id("settings-sheet")
             .h_full()
-            .w(px(390.))
+            .w(px(434.))
             .max_w(relative(0.92))
             .occlude()
             .track_focus(&self.drawer_focus)
@@ -522,7 +553,7 @@ impl Desk {
                 if e.keystroke.key == "escape" {
                     if s.menu.take().is_none() {
                         if matches!(s.page, Page::ConfirmDownload(_)) {
-                            s.page = Page::Settings;
+                            let _ = s.answer_download(false);
                         } else {
                             s.dismiss_drawer();
                         }
@@ -546,13 +577,26 @@ impl Desk {
                         s.child(close)
                     }),
             )
-            .child(scroll("drawer-fields", body));
+            .when(
+                self.page == Page::Settings && self.confirmation.is_none() && !self.busy(),
+                |d| d.child(self.settings_tabs(cx)),
+            )
+            .child(scroll("drawer-fields", body))
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .px_4()
+                    .py_2()
+                    .text_size(px(11.))
+                    .text_color(rgb(p.muted))
+                    .child(concat!("Rikai v", env!("CARGO_PKG_VERSION"))),
+            );
         div()
             .absolute()
             .inset_0()
             .flex()
             .justify_end()
-            .p(px(3.))
+            .p(px(12.))
             .child(
                 div()
                     .id("drawer-backdrop")
@@ -583,13 +627,23 @@ fn notice(message: &str, p: Palette) -> Div {
         .border_1()
         .border_color(rgb(p.edge))
         .bg(rgb(p.control))
-        .child(message.to_owned())
+        .child(crate::i18n::message(message))
 }
 
 impl Render for Desk {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = *cx.global::<Palette>();
         let narrow = window.viewport_size().width < px(810.);
+        let update = self.update_info.is_some()
+            && (self.cancel.is_none() && self.ctl.is_none() && self.preview.is_none()
+                || self.update_downloading);
+        if update && !self.release_was_open {
+            self.release_focus.focus(window, cx);
+        }
+        if !update && self.release_was_open && self.drawer_open() {
+            self.drawer_focus.focus(window, cx);
+        }
+        self.release_was_open = update;
         let drawer = self.drawer_open();
         let goal = if drawer { 1.0 } else { 0.0 };
         let transition =
@@ -602,7 +656,7 @@ impl Render for Desk {
         } else {
             *transition.evaluate(window, cx)
         };
-        if drawer && !self.drawer_was_open {
+        if drawer && !self.drawer_was_open && !update {
             self.drawer_focus.focus(window, cx);
         }
         self.drawer_was_open = drawer;
@@ -617,7 +671,7 @@ impl Render for Desk {
                     p.panel()
                         .flex_1()
                         .min_h(px(160.))
-                        .p_4()
+                        .p(px(8.))
                         .child(self.preview(cx)),
                 )
                 .child(
@@ -687,12 +741,17 @@ impl Render for Desk {
                     Window::focus_next
                 };
                 step(w, cx);
-                if s.drawer_open() {
+                if s.release_was_open || s.drawer_open() {
+                    let modal = if s.release_was_open {
+                        &s.release_focus
+                    } else {
+                        &s.drawer_focus
+                    };
                     let first = w.focused(cx);
-                    while !s.drawer_focus.contains_focused(w, cx) {
+                    while !modal.contains_focused(w, cx) {
                         step(w, cx);
                         if w.focused(cx) == first {
-                            s.drawer_focus.focus(w, cx);
+                            modal.focus(w, cx);
                             break;
                         }
                     }
@@ -703,7 +762,7 @@ impl Render for Desk {
             .flex_col()
             .bg(rgb(p.base))
             .text_color(rgb(p.text))
-            .font_family("Inter")
+            .font(interface_font())
             .text_size(px(12.))
             .child(self.toolbar(
                 window.viewport_size().width < px(900.),
@@ -728,5 +787,6 @@ impl Render for Desk {
             .when(drawer || visibility > 0.001, |s| {
                 s.child(self.settings_drawer(visibility, cx))
             })
+            .when(update, |s| s.child(self.release_modal(cx)))
     }
 }

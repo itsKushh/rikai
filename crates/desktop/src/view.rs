@@ -66,7 +66,8 @@ fn window_button(
     };
     let tab = matches!(style, Button::Tab | Button::IdleTab);
     let quiet = matches!(style, Button::Quiet) || tab;
-    let hint = label.clone();
+    let display = crate::i18n::message(&label);
+    let hint = display.clone();
     let hover_bg = match style {
         Button::Primary => {
             if p.base == 0x111113 {
@@ -87,7 +88,7 @@ fn window_button(
     };
     div()
         .id(SharedString::from(label.clone()))
-        .aria_label(label.clone())
+        .aria_label(display.clone())
         .flex()
         .items_center()
         .justify_center()
@@ -115,11 +116,18 @@ fn window_button(
         } else {
             rgb_to_hsla(rgb(p.edge)).opacity(0.25)
         })
+        .when(tab, |s| s.rounded(px(8.)))
         .when(!quiet, |s| s.shadow(p.bevel()))
         .text_color(rgb(fg))
         .when(!tab, |d| d.hover(move |s| s.bg(rgb(hover_bg))))
-        .when(matches!(style, Button::IdleTab), |d| {
-            d.opacity(0.66).hover(|s| s.opacity(1.))
+        .when(tab, |d| {
+            d.opacity(if matches!(style, Button::IdleTab) {
+                0.66
+            } else {
+                1.
+            })
+            .hover(|s| s.opacity(1.))
+            .active(|s| s.opacity(1.))
         })
         .focus_visible(move |s| s.border_color(rgb(p.text)))
         .when(!tab, |d| {
@@ -135,7 +143,7 @@ fn window_button(
             b.tooltip(move |_, cx| cx.new(|_| ControlHint(hint.clone())).into())
         })
         .when_some(icon, |s, icon| s.child(glyph(icon, 15., fg)))
-        .when(!icon_only, |s| s.child(label))
+        .when(!icon_only, |s| s.child(display))
         .on_click(cx.listener(move |s, _, w, cx| {
             s.message.clear();
             if let Err(e) = f(s, w, cx) {
@@ -220,7 +228,7 @@ fn meter(peak: f32, p: Palette) -> Div {
             div()
                 .text_size(px(12.))
                 .text_color(rgb(p.muted))
-                .child(value),
+                .child(crate::i18n::message(&value)),
         )
         .child(bar(
             (db + 60.) / 60.,
@@ -239,10 +247,13 @@ fn table_row(name: Div, duration: &str, status: &str, p: Palette) -> Div {
         .border_b_1()
         .border_color(rgb(p.edge))
         .child(div().flex_1().min_w_0().child(name))
-        .child(div().w(px(65.)).child(duration.to_owned()))
-        .child(div().w(px(110.)).truncate().child(status.to_owned()))
+        .child(div().w(px(65.)).child(tr(duration).to_owned()))
+        .child(div().w(px(110.)).truncate().child(tr(status).to_owned()))
 }
 fn label(s: impl Into<SharedString>) -> Div {
+    raw_label(crate::i18n::message(s.into().as_ref()))
+}
+fn raw_label(s: impl Into<SharedString>) -> Div {
     div()
         .text_size(px(13.))
         .font_weight(FontWeight::SEMIBOLD)
@@ -252,7 +263,7 @@ fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl Into
     let p = *cx.global::<Palette>();
     text_input(id)
         .state(f.downgrade())
-        .placeholder(hint)
+        .placeholder(tr(hint))
         .focus(move |s| s.border_color(rgb(p.muted)))
         .transitions(|t| t.border_color(motion(100)))
         .caret_blink_interval_500ms()
@@ -272,16 +283,15 @@ fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl Into
 impl Desk {
     fn meetings_view(&self, cx: &Context<Self>, limit: usize, interactive: bool) -> Div {
         let p = *cx.global::<Palette>();
-        let mut list = div()
-            .flex()
-            .flex_col()
-            .child(table_row(div().child("Réunion"), "Durée", "État", p).text_color(rgb(p.muted)));
+        let mut list = div().flex().flex_col().child(
+            table_row(div().child(tr("Réunion")), "Durée", "État", p).text_color(rgb(p.muted)),
+        );
         if self.library.is_empty() {
             return list.child(
                 div()
                     .p_4()
                     .text_color(rgb(p.muted))
-                    .child("Aucune réunion trouvée."),
+                    .child(tr("Aucune réunion trouvée.")),
             );
         }
         for m in self.library.iter().take(limit) {
@@ -310,7 +320,7 @@ impl Desk {
                         .focusable()
                         .tab_stop(true)
                         .role(Role::Button)
-                        .aria_label(format!("Ouvrir {}", m.title))
+                        .aria_label(crate::i18n::message(&format!("Ouvrir {}", m.title)))
                         .cursor_pointer()
                         .hover(move |s| s.bg(rgb(p.control)))
                         .focus_visible(move |s| s.bg(rgb(p.selected)))
@@ -371,17 +381,15 @@ impl Desk {
                     .min_h(px(36.))
                     .child(div().flex_1())
                     .when(selected, |d| {
-                        d.child(
-                            div()
-                                .text_color(rgb(p.muted))
-                                .child(format!("Gain {:+} dB", self.gain_db(&src))),
-                        )
+                        d.child(div().text_color(rgb(p.muted)).child(crate::i18n::message(
+                            &format!("Gain {:+} dB", self.gain_db(&src)),
+                        )))
                     })
                     .when(!testing && !selected, |d| {
                         d.child(
                             div()
                                 .text_color(rgb(p.muted))
-                                .child(format!("{:.0} %", i.peak * 100.)),
+                                .child(crate::i18n::message(&format!("{:.0} %", i.peak * 100.))),
                         )
                     })
                     .aria_disabled(testing)
@@ -402,13 +410,13 @@ impl Desk {
                 body = body.child(control);
             }
             if !found {
-                body = body.child(if self.scanning {
+                body = body.child(tr(if self.scanning {
                     "Détection en cours…"
                 } else if mic {
                     "Aucune entrée disponible."
                 } else {
                     "Aucune session détectée. Lancez un son dans l’application."
-                });
+                }));
             }
         }
         if !self.chosen.is_empty() {
@@ -417,14 +425,14 @@ impl Desk {
         body.child(toggle("Identifier les intervenants","diarization",self,cx))
             .when(self.settings["diarization"]==true,|d|d.child(toggle("Proposer les voix connues","recognize",self,cx)))
             .child(toggle("Générer le compte rendu à l’arrêt","auto_summary",self,cx))
-            .child(div().text_color(rgb(cx.global::<Palette>().muted)).child("Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets."))
+            .child(div().text_color(rgb(cx.global::<Palette>().muted)).child(tr("Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets.")))
             .child(action("Démarrer l’enregistrement",true,cx,|s,cx|s.start(cx)))
     }
     fn level_setup(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let mut head = row().justify_between().child(label("Niveaux des sources"));
         head = match &self.preview {
-            Some(test) if test.stopping => head.child("Fermeture des sources…"),
+            Some(test) if test.stopping => head.child(tr("Fermeture des sources…")),
             Some(_) => head.child(action("Terminer le test", false, cx, |s, _| {
                 s.stop_test(false);
                 Ok(())
@@ -468,13 +476,13 @@ impl Desk {
                     })
                 }
                 .id((id, index))
-                .aria_label(format!("{name} · gain {step:+} dB"));
+                .aria_label(crate::i18n::message(&format!("{name} · gain {step:+} dB")));
                 if step > 0 {
                     controls = controls.child(
                         div()
                             .min_w(px(41.))
                             .text_center()
-                            .child(format!("{gain:+} dB")),
+                            .child(crate::i18n::message(&format!("{gain:+} dB"))),
                     );
                 }
                 controls = controls.child(btn);
@@ -489,14 +497,14 @@ impl Desk {
                     .child(
                         row()
                             .justify_between()
-                            .child(label(name.clone()))
+                            .child(raw_label(name.clone()))
                             .child(controls),
                     )
                     .child(meter(peak, p)),
             );
         }
         for notice in test.ctl.incidents().into_values() {
-            body = body.child(notice);
+            body = body.child(crate::i18n::message(&notice));
         }
         body
     }
@@ -569,7 +577,7 @@ impl Desk {
         match self.tab {
             0 => {
                 body = body.child(if self.summary.is_empty() {
-                    "Aucun résumé enregistré.".to_owned()
+                    tr("Aucun résumé enregistré.").to_owned()
                 } else {
                     self.summary.clone()
                 });
@@ -625,7 +633,7 @@ impl Desk {
                 }
                 if !self.segments.is_empty() {
                     body = body.child(action("Générer le résumé local", false, cx, |s, _| {
-                        s.process(true)
+                        s.offer_summary()
                     }));
                     if self.settings["endpoint"].is_string() {
                         body = body.child(action(
@@ -670,7 +678,7 @@ impl Desk {
                         .or_insert(0) += 1;
                 }
                 if people.is_empty() {
-                    body = body.child("Aucune intervention transcrite.");
+                    body = body.child(tr("Aucune intervention transcrite."));
                 }
                 for ((raw, name), count) in people {
                     body = body.child(label(format!("{name} · {count} passages")));
@@ -721,9 +729,9 @@ impl Desk {
                     "Nom de l’intervenant ou du profil autorisé",
                 ));
                 for (raw, p, name, score) in &self.suggestions {
-                    body = body.child(format!(
+                    body = body.child(crate::i18n::message(&format!(
                         "{raw} · proposition {name} · similarité {score:.2}"
-                    ));
+                    )));
                     for (txt, choice) in [("Confirmer", Some(*p)), ("Refuser", None)] {
                         let raw = raw.clone();
                         body = body.child(action(
@@ -808,6 +816,7 @@ impl Desk {
     fn preference(&self, pref: Preference, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let (name, key, choices, current) = match pref {
+            Preference::Locale => unreachable!(),
             Preference::Theme => (
                 "Thème",
                 "light",
@@ -833,7 +842,10 @@ impl Desk {
             Ok(())
         })
         .id(SharedString::from(format!("pref-{name}")))
-        .aria_label(format!("{name} · {}", choices[current]))
+        .aria_label(crate::i18n::message(&format!(
+            "{name} · {}",
+            choices[current]
+        )))
         .justify_between()
         .child(glyph(CHEVRON, 14., p.muted));
         let mut anchor = div().relative().child(field.w_full());
@@ -842,7 +854,7 @@ impl Desk {
                 .gap(px(2.))
                 .p(px(3.))
                 .bg(rgb(p.raised))
-                .rounded(px(10.))
+                .rounded(px(12.))
                 .border_1()
                 .border_color(rgb(p.edge));
             for (index, choice) in choices.into_iter().enumerate() {
@@ -860,6 +872,7 @@ impl Desk {
                     move |s, cx| {
                         s.menu = None;
                         s.settings[key] = match pref {
+                            Preference::Locale => unreachable!(),
                             Preference::Theme => json!(index == 1),
                             Preference::Device => json!(if index == 1 { "cuda" } else { "cpu" }),
                             Preference::Language => json!(if index == 1 { "" } else { "fr" }),
@@ -874,6 +887,7 @@ impl Desk {
                     },
                 )
                 .id((name, index))
+                .rounded(px(9.))
                 .justify_between()
                 .when(selected, |d| d.child(glyph(CHECK, 14., p.text)));
                 menu = menu.child(item);
@@ -907,6 +921,33 @@ impl Desk {
 
     fn settings_view(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
+        match self.section {
+            0 => self.models_settings(cx),
+            1 => col()
+                .gap(px(18.))
+                .child(self.package_row("Traduction locale", "M2M100 · 100 langues · 496 Mo", cx))
+                .child(
+                    col()
+                        .child(label("Moteur NVIDIA"))
+                        .child(if self.nvidia_ready {
+                            disabled_button("Déjà installé", p)
+                        } else {
+                            action("Installer le moteur NVIDIA", false, cx, |s, _| {
+                                s.page = Page::ConfirmDownload("NVIDIA CUDA");
+                                Ok(())
+                            })
+                        }),
+                ),
+            2 => col()
+                .gap(px(18.))
+                .child(self.locale_control(cx))
+                .child(self.preference(Preference::Theme, cx)),
+            3 => self.compute_settings(cx),
+            _ => self.update_settings(cx),
+        }
+    }
+    fn models_settings(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
         let mut presets = col().gap(px(2.)).child(label("Modèle de transcription"));
         for (preset, model) in
             Page::MODEL_PRESETS
@@ -914,19 +955,19 @@ impl Desk {
                 .zip(["base", "small", "medium", "large-v3-turbo"])
         {
             let recommended = preset == self.recommended;
-            let owner = if preset == "Précision Turbo" {
-                "mobiuslabsgmbh"
-            } else {
-                "Systran"
-            };
-            let repo = format!("{owner}/faster-whisper-{model}");
-            let selected = self.settings["whisper_repo"].as_str() == Some(repo.as_str());
+            let repo = Self::repo_for(preset);
+            let selected =
+                self.settings["whisper_repo"].as_str() == Some(repo) && self.available(preset);
             presets = presets.child(
-                button(preset, Button::Quiet, None, false, cx, move |s, _| {
-                    tracing::info!(preset, "Sélection du modèle");
-                    s.menu = None;
-                    s.page = Page::ConfirmDownload(preset);
-                    Ok(())
+                (if selected {
+                    disabled_button(preset, p)
+                        .bg(transparent_black())
+                        .opacity(0.85)
+                        .shadow(vec![])
+                } else {
+                    button(preset, Button::Quiet, None, false, cx, move |s, _| {
+                        s.select_model(preset)
+                    })
                 })
                 .justify_between()
                 .min_h(px(35.))
@@ -938,8 +979,10 @@ impl Desk {
                         .items_center()
                         .text_color(rgb(p.muted))
                         .when(selected, |d| d.child(glyph(CHECK, 14., p.text)))
-                        .child(if recommended {
-                            format!("{model} · conseillé")
+                        .child(if self.available(preset) {
+                            format!("{model} · {}", tr("Téléchargé"))
+                        } else if recommended {
+                            format!("{model} · {}", tr("conseillé"))
                         } else {
                             model.to_owned()
                         }),
@@ -947,9 +990,9 @@ impl Desk {
             );
         }
         if self.settings["whisper_repo"] == "Systran/faster-whisper-tiny" {
-            presets = presets.child(div().text_size(px(12.)).text_color(rgb(p.muted)).child(
+            presets = presets.child(div().text_size(px(12.)).text_color(rgb(p.muted)).child(tr(
                 "Ancien modèle tiny actif. Choisissez Rapide pour télécharger la version base.",
-            ));
+            )));
         }
         let mut local = col().child(label("Modèles déjà téléchargés"));
         for (key, name, folder) in [
@@ -976,11 +1019,30 @@ impl Desk {
                         .child(
                             self.settings[key]
                                 .as_str()
-                                .unwrap_or("Aucun modèle sélectionné")
+                                .unwrap_or(tr("Aucun modèle sélectionné"))
                                 .to_owned(),
                         ),
                 );
         }
+        let provider = col().child(label("Fournisseur distant facultatif"))
+            .child(input(cx,&self.endpoint,"endpoint","URL HTTPS du fournisseur"))
+            .child(input(cx,&self.remote_model,"remote_model","Nom du modèle distant"))
+            .child(div().text_color(rgb(p.muted)).child(tr("Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique Rikai/hôte avec votre clé comme mot de passe.")))
+            .child(action("Enregistrer le fournisseur",false,cx,|s,cx|{
+                let url=s.endpoint.read(cx).as_str().trim();
+                anyhow::ensure!(url.is_empty() || (url.starts_with("https://") && !url.contains(['@','?','#'])),"URL HTTPS sans identifiants requise.");
+                s.settings["endpoint"]=if url.is_empty(){Value::Null}else{json!(url)};
+                s.settings["remote_model"]=json!(s.remote_model.read(cx).as_str());s.save_settings()
+            }));
+        col()
+            .gap(px(18.))
+            .child(presets)
+            .child(self.package_row("Résumé local", "Qwen2.5 · 3B · GGUF · 2,10 Go", cx))
+            .child(local)
+            .child(provider)
+    }
+    fn compute_settings(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
         let audio = col()
             .child(label("Nom de la piste microphone"))
             .child(input(cx, &self.self_name, "self-name", "Moi"))
@@ -990,24 +1052,8 @@ impl Desk {
                 s.settings["self_name"] = json!(name);
                 s.save_settings()
             }));
-        let provider = col().child(label("Fournisseur distant facultatif"))
-            .child(input(cx,&self.endpoint,"endpoint","URL HTTPS du fournisseur"))
-            .child(input(cx,&self.remote_model,"remote_model","Nom du modèle distant"))
-            .child(div().text_color(rgb(p.muted)).child("Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique MeetingNotes/hôte avec votre clé comme mot de passe."))
-            .child(action("Enregistrer le fournisseur",false,cx,|s,cx|{
-                let url=s.endpoint.read(cx).as_str().trim();
-                anyhow::ensure!(url.is_empty() || (url.starts_with("https://") && !url.contains(['@','?','#'])),"URL HTTPS sans identifiants requise.");
-                s.settings["endpoint"]=if url.is_empty(){Value::Null}else{json!(url)};
-                s.settings["remote_model"]=json!(s.remote_model.read(cx).as_str());s.save_settings()
-            }));
         col()
-            .gap(px(20.))
-            .child(presets)
-            .child(
-                col()
-                    .child(label("Apparence"))
-                    .child(self.preference(Preference::Theme, cx)),
-            )
+            .gap(px(18.))
             .child(
                 col().child(label("Transcription")).child(
                     div()
@@ -1021,10 +1067,12 @@ impl Desk {
             .when(self.settings["device"] == "cuda", |d| {
                 d.child(
                     col()
-                        .child(action("Installer le moteur NVIDIA", false, cx, |s, _| {
-                            s.page = Page::ConfirmDownload("NVIDIA CUDA");
-                            Ok(())
-                        }))
+                        .when(!self.nvidia_ready, |c| {
+                            c.child(action("Installer le moteur NVIDIA", false, cx, |s, _| {
+                                s.page = Page::ConfirmDownload("NVIDIA CUDA");
+                                Ok(())
+                            }))
+                        })
                         .child(if self.settings["whisper"].is_string() {
                             action("Vérifier CUDA avec ce modèle", false, cx, |s, _| {
                                 s.check_cuda()
@@ -1065,13 +1113,11 @@ impl Desk {
                         ),
                 )
             })
-            .child(local)
             .child(audio)
-            .child(provider)
             .child(
                 col()
                     .child(label("Cet ordinateur"))
-                    .child(self.hardware.clone()),
+                    .child(crate::i18n::message(&self.hardware)),
             )
             .child(
                 col()
@@ -1096,7 +1142,7 @@ fn disabled_button(text: &'static str, p: Palette) -> Stateful<Div> {
         .text_color(rgb(p.muted))
         .shadow(p.bevel())
         .opacity(0.5)
-        .child(text)
+        .child(tr(text))
 }
 #[derive(IntoElement)]
 struct CheckMark {
@@ -1162,7 +1208,7 @@ fn checkbox(text: String, on: bool, disabled: bool, p: Palette) -> Stateful<Div>
 
 fn toggle(text: &'static str, key: &'static str, s: &Desk, cx: &Context<Desk>) -> impl IntoElement {
     let on = s.settings[key] == true;
-    checkbox(text.to_owned(), on, false, *cx.global::<Palette>())
+    checkbox(tr(text).to_owned(), on, false, *cx.global::<Palette>())
         .id(key)
         .on_click(cx.listener(move |s, _, _, cx| {
             s.settings[key] = json!(!on);
@@ -1196,12 +1242,12 @@ impl Desk {
                 info = info.child(
                     col()
                         .gap(px(4.))
-                        .child(label(name.clone()))
+                        .child(raw_label(name.clone()))
                         .child(meter(level, *cx.global::<Palette>())),
                 );
             }
             for notice in ctl.incidents().into_values() {
-                info = info.child(notice);
+                info = info.child(crate::i18n::message(&notice));
             }
             if !self.stopping {
                 info = info.child(action("Annuler la réunion", false, cx, |s, _| {
@@ -1259,16 +1305,18 @@ impl Desk {
                         bar(done as f32 / total as f32, p.primary, p)
                             .id("model-transfer")
                             .role(Role::ProgressIndicator)
-                            .aria_label("Téléchargement du modèle")
+                            .aria_label(tr("Téléchargement du modèle"))
                             .aria_value(value.clone()),
                     )
                     .child(
                         row()
                             .justify_between()
-                            .child(div().text_color(rgb(p.muted)).child(format!(
-                                "{:.1} / {:.1} Mio",
-                                done as f64 / 1048576.,
-                                total as f64 / 1048576.
+                            .child(div().text_color(rgb(p.muted)).child(crate::i18n::message(
+                                &format!(
+                                    "{:.1} / {:.1} Mio",
+                                    done as f64 / 1048576.,
+                                    total as f64 / 1048576.
+                                ),
                             )))
                             .child(label(value)),
                     );
@@ -1283,7 +1331,7 @@ impl Desk {
                 div()
                     .text_size(px(12.))
                     .text_color(rgb(p.muted))
-                    .child(timing),
+                    .child(crate::i18n::message(&timing)),
             );
             if self
                 .cancel
@@ -1358,7 +1406,7 @@ impl Desk {
                         "Nouveau nom du profil",
                     ));
                     if self.profiles.is_empty() {
-                        d=d.child("Aucun profil vocal enregistré. Créez un profil depuis une intervention transcrite, avec l’accord de la personne.");
+                        d=d.child(tr("Aucun profil vocal enregistré. Créez un profil depuis une intervention transcrite, avec l’accord de la personne."));
                     }
                     for profile in &self.profiles {
                         let id = profile["id"].as_i64().unwrap_or_default();
@@ -1370,23 +1418,23 @@ impl Desk {
                                 s.db.rename_profile(id,s.profile_name.read(cx).as_str())?;
                                 s.profiles = s.db.profiles(false)?;
                                 Ok(())
-                            }).id(("rename-profile",id as usize)).aria_label(format!("Renommer {name}")))
+                            }).id(("rename-profile",id as usize)).aria_label(crate::i18n::message(&format!("Renommer {name}"))))
                             .child(action("Supprimer",false,cx,move |s,_| {
                                 s.ask("Supprimer ce profil vocal ?", "L’extrait autorisé, son empreinte et les suggestions associées seront supprimés.", "Supprimer", move |s| {
                                     s.db.delete_profile(id)?;
                                     s.profiles = s.db.profiles(false)?;
                                     Ok(())
                                 })
-                            }).id(("delete-profile",id as usize)).aria_label(format!("Supprimer {name}")));
+                            }).id(("delete-profile",id as usize)).aria_label(crate::i18n::message(&format!("Supprimer {name}"))));
                         d = d.child(entry);
                     }
                     ("Intervenants".into(), d)
                 }
                 Page::Settings => ("Paramètres".into(), self.settings_view(cx)),
                 Page::ConfirmDownload(preset) => (
-                    if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("Télécharger le modèle « {preset} » ?")},
+                    if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("{} · {}",tr("Télécharger"),tr(preset))},
                     col()
-                        .child(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."})
+                        .child(tr(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else if preset=="Résumé local" {"Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?"} else if preset=="Traduction locale" {"La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?"} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."}))
                         .child(row()
                             .child(action("Annuler", false, cx, |s, _| s.answer_download(false)))
                             .child(action("Télécharger", true, cx, |s, _| s.answer_download(true)))),
@@ -1399,3 +1447,6 @@ impl Desk {
 
 #[path = "workspace.rs"]
 mod workspace;
+
+#[path = "settings.rs"]
+mod settings;

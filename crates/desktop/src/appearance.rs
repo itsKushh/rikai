@@ -98,6 +98,7 @@ impl Palette {
     }
 }
 
+pub(super) const TRANSLATE: &str = include_str!("../../../assets/nucleo/language.svg");
 pub(super) const PLAY: &str = include_str!("../../../assets/nucleo/media-play.svg");
 pub(super) const PAUSE: &str = include_str!("../../../assets/nucleo/media-pause.svg");
 pub(super) const SAVE: &str = include_str!("../../../assets/nucleo/download.svg");
@@ -134,4 +135,28 @@ pub(super) fn brand() -> Img {
         .clone())
     .size(px(24.))
     .flex_shrink_0()
+}
+
+pub(super) fn interface_font() -> Font {
+    static FACE: std::sync::OnceLock<Font> = std::sync::OnceLock::new();
+    FACE.get_or_init(|| {
+        let mut face = font("Inter");
+        face.fallbacks = Some(FontFallbacks::from_fonts(
+            [
+                "Segoe UI",
+                "Yu Gothic UI",
+                "Microsoft YaHei UI",
+                "Malgun Gothic",
+                "Rikai Script UI",
+                "Noto Sans",
+                "Noto Sans Arabic",
+                "Noto Sans Ethiopic",
+            ]
+            .into_iter()
+            .map(str::to_owned)
+            .collect(),
+        ));
+        face
+    })
+    .clone()
 }

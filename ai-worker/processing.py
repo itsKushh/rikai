@@ -500,10 +500,10 @@ def summarize(p, progress):
             model_path=str(local_path(p["settings"]["gguf"])), n_ctx=8192, verbose=False
         )
     progress("Rédaction du compte rendu")
-    return generate_report(p["segments"], llm, progress)
+    return generate_report(p["segments"], llm, progress, constrain=p.get("remote_consent") is not True)
 
 
-def generate_report(parts, llm, progress):
+def generate_report(parts, llm, progress, *, constrain=False):
     if not parts:
         raise ValueError("Transcription vide")
     # Un fait garde ses identifiants durant toutes les réductions.
@@ -527,13 +527,25 @@ def generate_report(parts, llm, progress):
             + ". Regroupe les doublons. Garde les décisions et actions explicites, "
             "leur responsable et échéance ou Non précisé. Chaque fait doit citer ses sources."
         )
+        response_format={"type":"json_object"}
+        if constrain:
+            columns = {
+                "type":{"type":"string","enum":list(fields)},
+                "texte":{"type":"string","minLength":1},
+                "responsable":{"type":"string"},
+                "echeance":{"type":"string"},
+                "preuves":{"type":"array","minItems":1,"items":{"type":"integer","enum":sorted(ids)}},
+            }
+            fact={"type":"object","properties":columns,"required":list(columns),"additionalProperties":False}
+            response_format["schema"]={"type":"object","properties":{"faits":{"type":"array","items":fact}},
+                                       "required":["faits"],"additionalProperties":False}
         result = llm.create_chat_completion(
             messages=[
                 {"role": "system", "content": prompt},
                 {"role": "user", "content": json.dumps(rows, ensure_ascii=False)},
             ],
             temperature=0,
-            response_format={"type": "json_object"},
+            response_format=response_format,
             max_tokens=2000,
         )
         if result["choices"][0]["finish_reason"] == "length":
@@ -565,7 +577,8 @@ def generate_report(parts, llm, progress):
 
     rows = [dict(id=s["id"], voix=s["speaker"], texte=s["text"]) for s in parts]
     facts = []
-    for i, group in enumerate(batches(rows), 1):
+    blocks = list(batches(rows))
+    for i, group in enumerate(blocks, 1):
         progress(f"Extraction des faits · bloc {i}")
         facts.extend(infer(group, {r["id"] for r in group}))
     progress("Consolidation du compte rendu")
@@ -573,6 +586,8 @@ def generate_report(parts, llm, progress):
     important = [f for f in facts if f["type"] in ("Action", "Décision")]
     consolidated = facts
     for round_number in range(8):
+        if len(blocks) == 1:
+            break
         groups = list(batches(consolidated))
         if not groups:
             break

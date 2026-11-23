@@ -1,0 +1,3411 @@
+{
+ "Abandonner": [
+  "Discard",
+  "Descartar",
+  "Отбросить",
+  "破棄",
+  "放弃"
+ ],
+ "Abandonner la réunion ?": [
+  "Discard this meeting?",
+  "¿Descartar esta reunión?",
+  "Отбросить эту встречу?",
+  "この会議を破棄しますか？",
+  "要放弃这次会议吗？"
+ ],
+ "Action": [
+  "Action",
+  "Acción",
+  "Действие",
+  "アクション",
+  "行动"
+ ],
+ "Adresse de téléchargement GitHub inattendue.": [
+  "Unpredictable GitHub download address.",
+  "Dirección de descarga inesperada de GitHub.",
+  "Неожиданный адрес загрузки GitHub.",
+  "予想外のGitHubダウンロードアドレス。",
+  "GitHub 意外下载地址。"
+ ],
+ "Agrandir": [
+  "Maximize",
+  "Maximizar",
+  "Развернуть",
+  "最大化",
+  "最大化"
+ ],
+ "Ajoutez un identifiant générique Windows nommé {target}, avec votre clé API comme mot de passe": [
+  "Add a Windows generic ID named {0} , with your API key as a password",
+  "Añade un identificador genérico de Windows llamado {0} , con su clave API como contraseña",
+  "Добавьте генеральный идентификатор Windows под названием {0} с ключом API в качестве пароля",
+  "パスワードとしてAPIキーを使用して、Windowsの一般識別子 {0} を追加します。",
+  "添加一个名为 {0} 的 Windows 通用识别器,并将您的 API 密钥作为密码"
+ ],
+ "Alignement du format micro incompatible": [
+  "Micro incompatible format",
+  "Alineación del formato micro incompatible",
+  "Сочетание микрокомпатибильного формата",
+  "マイクロ不互換形式の調整",
+  "不兼容的微型格式"
+ ],
+ "Analyse de l’extrait autorisé": [
+  "Analysis of the authorized extract",
+  "Análisis del extracto autorizado",
+  "Анализ разрешенного экстракта",
+  "許可された抽出物の分析",
+  "批准的提取物的分析"
+ ],
+ "Ancien modèle tiny actif. Choisissez Rapide pour télécharger la version base.": [
+  "Select Fast to download the basic version.",
+  "Modelo Tiny antiguo activo. Seleccione Rapide para descargar la versión básica.",
+  "Выберите Rapide для загрузки базовой версии.",
+  "古いTinyアクティブモデル. ベースバージョンをダウンロードするには、Fastを選択します。",
+  "以前的Tiny模型是活跃的. 选择快速下载基本版本。"
+ ],
+ "Annulation en cours…": [
+  "Cancelling…",
+  "Cancelando…",
+  "Отмена…",
+  "キャンセル中…",
+  "正在取消…"
+ ],
+ "Annuler": [
+  "Cancel",
+  "Cancelar",
+  "Отмена",
+  "キャンセル",
+  "取消"
+ ],
+ "Annuler la réunion": [
+  "Discard meeting",
+  "Descartar reunión",
+  "Отменить встречу",
+  "会議を破棄",
+  "放弃会议"
+ ],
+ "Annuler le traitement": [
+  "Cancel processing",
+  "Cancelar el procesamiento",
+  "Отменить обработку",
+  "処理をキャンセル",
+  "取消处理"
+ ],
+ "Annulé": [
+  "cancelled",
+  "Anulado",
+  "отменены",
+  "キャンセル",
+  "取消"
+ ],
+ "Application": [
+  "App",
+  "Aplicación",
+  "Приложение",
+  "アプリ",
+  "应用"
+ ],
+ "Application fermée. Actualisez les sources.": [
+  "Application closed. update the sources.",
+  "Aplicación cerrada. actualizar las fuentes.",
+  "Приложение закрыто. обновляйте источники.",
+  "アプリが閉じられ、情報源を更新します。",
+  "关闭应用程序,更新源。"
+ ],
+ "Application fermée. Pistes partielles conservées.": [
+  "Closed application, partial tracks preserved.",
+  "Aplicación cerrada. pistas parciales conservadas.",
+  "Закрытое приложение. Частичные трассы сохранены.",
+  "アプリケーションは閉鎖され、部分的なトラックは保管されています。",
+  "关闭应用程序,保留部分线路。"
+ ],
+ "Application sélectionnée deux fois": [
+  "Application selected twice",
+  "Aplicación seleccionada dos veces",
+  "Приложение выбранное дважды",
+  "2回選ばれたアプリ",
+  "应用程序选择两次"
+ ],
+ "Applications": [
+  "Apps",
+  "Aplicaciones",
+  "Приложения",
+  "アプリ",
+  "应用"
+ ],
+ "Arrêter": [
+  "Stop",
+  "Detener",
+  "Остановить",
+  "停止",
+  "停止"
+ ],
+ "Arrêtez la capture ou annulez le traitement avant de fermer.": [
+  "Stop recording or cancel processing before closing.",
+  "Detén la grabación o cancela el procesamiento antes de cerrar.",
+  "Перед выходом остановите запись или отмените обработку.",
+  "閉じる前に録音を停止するか、処理をキャンセルしてください。",
+  "关闭前请停止录音或取消处理。"
+ ],
+ "Aucun": [
+  "None",
+  "Ninguno",
+  "Нет",
+  "なし",
+  "无"
+ ],
+ "Aucun fragment PCM lisible": [
+  "No readable PCM fragments",
+  "No hay fragmentos de PCM lisibles",
+  "Нет читаемых фрагментов PCM",
+  "読みやすいPCMフラグメントなし",
+  "没有可读的PCM片段"
+ ],
+ "Aucun modèle sélectionné": [
+  "No model selected",
+  "Ningún modelo seleccionado",
+  "Модель не выбрана",
+  "モデル未選択",
+  "未选择模型"
+ ],
+ "Aucun profil vocal enregistré. Créez un profil depuis une intervention transcrite, avec l’accord de la personne.": [
+  "No saved voice profiles. Create one from a transcribed passage with the speaker’s consent.",
+  "No hay perfiles de voz guardados. Crea uno a partir de un fragmento transcrito con el consentimiento del hablante.",
+  "Голосовых профилей пока нет. Профиль можно создать по расшифрованному фрагменту с согласия участника.",
+  "登録済みの音声プロファイルはありません。話者の同意を得て、文字起こし済みの発言から作成できます。",
+  "尚无已保存的声纹档案。征得发言人同意后，可根据已转写的片段创建档案。"
+ ],
+ "Aucun résumé enregistré.": [
+  "No saved summary.",
+  "No hay ningún resumen guardado.",
+  "Сводка ещё не сохранена.",
+  "要約はまだ保存されていません。",
+  "尚未保存摘要。"
+ ],
+ "Aucune": [
+  "None",
+  "Ninguna",
+  "Нет",
+  "なし",
+  "无"
+ ],
+ "Aucune entrée disponible.": [
+  "No input devices available.",
+  "No hay entradas disponibles.",
+  "Нет доступных входов.",
+  "使用できる入力がありません。",
+  "无可用输入设备。"
+ ],
+ "Aucune intervention transcrite.": [
+  "No transcribed passages yet.",
+  "Aún no hay intervenciones transcritas.",
+  "Расшифрованных фрагментов пока нет.",
+  "文字起こしされた発言はまだありません。",
+  "尚无已转写的发言。"
+ ],
+ "Aucune langue trouvée": [
+  "No matching languages",
+  "No se encontraron idiomas",
+  "Языки не найдены",
+  "該当する言語がありません",
+  "未找到匹配的语言"
+ ],
+ "Aucune réunion trouvée.": [
+  "No meetings found.",
+  "No se encontraron reuniones.",
+  "Встречи не найдены.",
+  "会議が見つかりません。",
+  "未找到会议。"
+ ],
+ "Aucune session détectée. Lancez un son dans l’application.": [
+  "No audio sessions found. Play audio in the app.",
+  "No se detectó ninguna sesión. Reproduce sonido en la aplicación.",
+  "Аудиосеансы не найдены. Включите звук в приложении.",
+  "オーディオセッションが見つかりません。アプリで音声を再生してください。",
+  "未检测到音频会话。请在应用中播放声音。"
+ ],
+ "Aucune source sélectionnée.": [
+  "No sources selected.",
+  "No se ha seleccionado ninguna fuente.",
+  "Источники не выбраны.",
+  "音源が選択されていません。",
+  "未选择音源。"
+ ],
+ "Audio": [
+  "Audio",
+  "Audio",
+  "Аудио",
+  "オーディオ",
+  "音频"
+ ],
+ "Audio enregistré. Choisissez un modèle de transcription dans Paramètres.": [
+  "Audio recorded. Select a transcription template in Settings.",
+  "Audio grabado. Seleccione un modelo de transcripción en Configuraciones.",
+  "Запись звука. Выберите шаблон транскрипции в Показаниях.",
+  "音声が保存されます. 設定のトランスクリプション テンプレートを選択します。",
+  "音频存储:在设置中选择一个翻译模型。"
+ ],
+ "Audio finalisé": [
+  "Audio Finished",
+  "Audio finalizado",
+  "Окончательный аудио",
+  "オーディオ終了",
+  "音频完成"
+ ],
+ "Audio incomplet. Vérifiez les pistes récupérées.": [
+  "Audio incomplete. check the track recovered.",
+  "Audio incompleto. verifique las pistas recuperadas.",
+  "Неполный звук. Проверьте восстановленные трассы.",
+  "未完成の音声 回収されたトラックをチェック",
+  "不完整的音频. 检查收回的轨道。"
+ ],
+ "Auto": [
+  "Auto",
+  "Automático",
+  "Авто",
+  "自動",
+  "自动"
+ ],
+ "Automatique": [
+  "Automatic",
+  "Automático",
+  "Автоматически",
+  "自動",
+  "自动"
+ ],
+ "Autorisation de téléchargement requise": [
+  "Required download permission",
+  "Autorización de descarga requerida",
+  "Требованное разрешение на загрузку",
+  "ダウンロード許可が必要",
+  "需要下载许可"
+ ],
+ "Autorisation explicite requise": [
+  "Explicit permission required",
+  "Autorización expresa requerida",
+  "Обязательное разрешение требуется",
+  "明示的な許可が必要",
+  "明确要求的许可"
+ ],
+ "Bibliothèque": [
+  "Library",
+  "Biblioteca",
+  "Библиотека",
+  "ライブラリ",
+  "资料库"
+ ],
+ "Bibliothèques NVIDIA vérifiées": [
+  "NVIDIA libraries verified",
+  "Bibliotecas NVIDIA verificadas",
+  "Библиотеки NVIDIA проверены",
+  "NVIDIA ライブラリを検証しました",
+  "NVIDIA 库已验证"
+ ],
+ "CPU": [
+  "CPU",
+  "CPU",
+  "CPU",
+  "CPU",
+  "CPU"
+ ],
+ "CPU {:.0} % · RAM libre {:.1} / {} Gio": [
+  "CPU {0}% · available RAM {1} / {2} GiB",
+  "CPU {0} % · RAM disponible {1} / {2} GiB",
+  "CPU {0} % · свободно ОЗУ {1} / {2} ГиБ",
+  "CPU {0}% · 空きメモリ {1} / {2} GiB",
+  "CPU {0}% · 可用内存 {1} / {2} GiB"
+ ],
+ "CUDA indisponible · poursuite de la transcription sur CPU": [
+  "Unavailable CUDA · Continuing transcription on CPU",
+  "CUDA inaccesible · Continuación de la transcripción en CPU",
+  "CUDA недоступна · продолжение транскрипции на CPU",
+  "CUDA 未利用 · CPU への移行の継続",
+  "CUDA 不可用 · 继续在CPU上转换"
+ ],
+ "Calcul": [
+  "Compute",
+  "Cómputo",
+  "Вычисления",
+  "演算",
+  "计算"
+ ],
+ "Calcul préféré": [
+  "Preferred compute device",
+  "Dispositivo de cálculo preferido",
+  "Предпочтительное устройство",
+  "優先する演算デバイス",
+  "首选计算设备"
+ ],
+ "Calcul sur CPU": [
+  "CPU processing",
+  "Procesamiento en CPU",
+  "Обработка на CPU",
+  "CPU で処理",
+  "使用 CPU 处理"
+ ],
+ "Calcul sur CPU (CUDA indisponible).": [
+  "Processed on CPU (CUDA unavailable).",
+  "Procesado en CPU (CUDA no disponible).",
+  "Обработано на CPU (CUDA недоступна).",
+  "CPU で処理しました（CUDA は利用できません）。",
+  "已在 CPU 上处理（CUDA 不可用）。"
+ ],
+ "Calcul sur GPU NVIDIA (CUDA).": [
+  "Processed on the NVIDIA GPU (CUDA).",
+  "Procesado en la GPU NVIDIA (CUDA).",
+  "Обработано на GPU NVIDIA (CUDA).",
+  "NVIDIA GPU（CUDA）で処理しました。",
+  "已在 NVIDIA GPU（CUDA）上处理。"
+ ],
+ "Calcul sur processeur": [
+  "CPU processing",
+  "Procesamiento en CPU",
+  "Вычисления на CPU",
+  "CPU で処理",
+  "使用 CPU 处理"
+ ],
+ "Canal de commande indisponible": [
+  "Unavailable channel",
+  "Canal de orden inaccesible",
+  "Недоступный командный канал",
+  "未利用のコマンドチャンネル",
+  "未提供的命令频道"
+ ],
+ "Canal de réponse indisponible": [
+  "Unavailable response channel",
+  "Canal de respuesta inaccesible",
+  "Канал ответа недоступный",
+  "無回答チャンネル",
+  "无法回复的频道"
+ ],
+ "Canaux": [
+  "Channels",
+  "Canales",
+  "Каналы",
+  "チャンネル",
+  "声道"
+ ],
+ "Capture": [
+  "Recording",
+  "Grabación",
+  "Запись",
+  "録音中",
+  "录音中"
+ ],
+ "Capture ciblée indisponible sur le build {}. Windows build 20348 ou ultérieur requis.": [
+  "Goal capture not available on build {0} . Windows build 20348 or later required.",
+  "Capturas dirigidas no disponibles en el build {0} . Windows build 20348 o posterior requerido.",
+  "Объективное сфотографирование недоступно на build {0} . Windows build 20348 или выше требуется.",
+  "ターゲットキャプチャは、 build {0} で利用できません. Windows build 20348 またはそれ以降が必要です。",
+  "无法在 build {0} 上获取目标捕获 需要 Windows build 20348 或更高版本。"
+ ],
+ "Capture interrompue": [
+  "Recording interrupted",
+  "Grabación interrumpida",
+  "Запись прервана",
+  "録音が中断されました",
+  "录音已中断"
+ ],
+ "Ce passage est vide": [
+  "This passage is empty.",
+  "Este paso es vacío",
+  "Этот проход пуст.",
+  "この通路は空っぽ。",
+  "这个通道是空的。"
+ ],
+ "Cet ordinateur": [
+  "This computer",
+  "Este equipo",
+  "Этот компьютер",
+  "この PC",
+  "此电脑"
+ ],
+ "Chargement de cuBLAS impossible. Réinstallez le moteur NVIDIA.": [
+  "CUBLAS charging impossible. reinstall the NVIDIA engine.",
+  "Carga de cuBLAS imposible. Reinstalar el motor NVIDIA.",
+  "Загрузка на кублас невозможна. переустановите двигатель NVIDIA.",
+  "モーターを再インストールする NVIDIA エンジンを再インストールする",
+  "无法充电 cuBLAS. 重新安装 NVIDIA 发动机。"
+ ],
+ "Chargement de cuBLAS impossible. Réinstallez le moteur NVIDIA. {exc}": [
+  "Could not load cuBLAS. Reinstall the NVIDIA runtime. {0}",
+  "No se pudo cargar cuBLAS. Reinstala el entorno NVIDIA. {0}",
+  "Не удалось загрузить cuBLAS. Переустановите среду NVIDIA. {0}",
+  "cuBLAS を読み込めません。NVIDIA ランタイムを再インストールしてください。{0}",
+  "无法加载 cuBLAS。请重新安装 NVIDIA 运行库。{0}"
+ ],
+ "Chargement du modèle de transcription": [
+  "Loading transcription model",
+  "Cargando el modelo de transcripción",
+  "Загрузка модели распознавания",
+  "文字起こしモデルを読み込み中",
+  "正在加载转写模型"
+ ],
+ "Chargement du modèle sur CUDA": [
+  "Loading of the model on CUDA",
+  "Cargar el modelo en CUDA",
+  "Загрузка модели на CUDA",
+  "モデルをCUDAで充電する",
+  "模型在 CUDA 上充电"
+ ],
+ "Chemin de piste invalide": [
+  "Invalid Trail",
+  "El camino de la pista invalida",
+  "Инвалидный маршрут",
+  "無効な道のり",
+  "无效的路线"
+ ],
+ "Chevauchement ·": [
+  "and swimming;",
+  "Navegación ·",
+  "перевозки ·",
+  "航海 ·",
+  "航行 ·"
+ ],
+ "Chevauchement · {done}/{total} fenêtres": [
+  "Overlap detection · {0}/{1} windows",
+  "Detección de solapamiento · {0}/{1} ventanas",
+  "Поиск перекрытий · {0}/{1} окон",
+  "重複を検出中 · {0}/{1} ウィンドウ",
+  "正在检测重叠 · {0}/{1} 个窗口"
+ ],
+ "Choisissez d’abord un modèle de transcription.": [
+  "First, choose a transcription model.",
+  "En primer lugar, seleccione un modelo de transcripción.",
+  "Сначала выберите модель транскрипции.",
+  "まず、トランスクリプションモデルを選択してください。",
+  "首先,选择一个转换模型。"
+ ],
+ "Choisissez le dossier Faster-Whisper dans Paramètres.": [
+  "Select the Faster-Whisper folder in Settings.",
+  "Seleccione el archivo Faster-Whisper en Parámetros.",
+  "Выберите фасцикл Faster-Whisper в Показаниях.",
+  "Faster-Whisper フォルダーを選択します。",
+  "在设置中选择 Faster-Whisper 文件夹。"
+ ],
+ "Choisissez les deux modèles Sherpa dans Paramètres.": [
+  "Select the two Sherpa models in Parameters.",
+  "Seleccione los dos modelos Sherpa en Parámetros.",
+  "Выберите две модели Sherpa в параметрах.",
+  "設定の両方の Sherpa モデルを選択します。",
+  "在设置中选择两个 Sherpa 模型。"
+ ],
+ "Choisissez un autre fichier que la piste source.": [
+  "Choose a different file than the source track.",
+  "Seleccione otro archivo que la pista de fuente.",
+  "Выберите другой файл, кроме источника.",
+  "ソースパス以外のファイルを選択します。",
+  "选择另一个文件,而不是源轨道。"
+ ],
+ "Choisissez un modèle GGUF et une réunion transcrite.": [
+  "Choose a GGUF model and a transcribed meeting.",
+  "Seleccione un modelo GGUF y una reunión transcrita.",
+  "Выберите модель GGUF и транскриптную встречу.",
+  "GGUF モデルとトランスクリート ミーティングを選択します。",
+  "选择一个 GGUF 模型和一个翻译会议。"
+ ],
+ "Choisissez un modèle d’empreintes ONNX dans Paramètres.": [
+  "Select a ONNX fingerprint template in Settings.",
+  "Seleccione un modelo de huellas digitales ONNX en Parámetros.",
+  "Выберите образцы отпечатков пальцев ONNX в Размерах.",
+  "ONNX指紋モデルを選択します。",
+  "在设置中选择一个 ONNX 指纹模型。"
+ ],
+ "Choisissez une intervention isolée d'au moins 1,5 seconde": [
+  "Choose an isolated intervention of at least 1.5 seconds.",
+  "Seleccione una intervención aislada de al menos 1,5 segundos",
+  "Выберите изолированную интервенцию, длительную не менее 1,5 секунды.",
+  "少なくとも1秒半の孤立した介入を選択します。",
+  "选择至少 1.5 秒的单独干预"
+ ],
+ "Clair": [
+  "Light",
+  "Claro",
+  "Светлая",
+  "ライト",
+  "浅色"
+ ],
+ "Comparaison aux profils locaux": [
+  "Comparison of Local Profiles",
+  "Comparación con los perfiles locales",
+  "Сравнение с местными профилями",
+  "地元のプロフィールとの比較",
+  "与本地档案相比"
+ ],
+ "Compte rendu": [
+  "Meeting summary",
+  "Acta de la reunión",
+  "Итоги встречи",
+  "議事録",
+  "会议纪要"
+ ],
+ "Compte rendu enregistré.": [
+  "Summary saved.",
+  "Resumen guardado.",
+  "Сводка сохранена.",
+  "要約を保存しました。",
+  "摘要已保存。"
+ ],
+ "Compte rendu tronqué. Réduisez la taille des blocs.": [
+  "The summary was truncated. Reduce the block size.",
+  "El resumen está truncado. Reduce el tamaño de los bloques.",
+  "Сводка усечена. Уменьшите размер блоков.",
+  "要約が途中で切れました。ブロックサイズを小さくしてください。",
+  "摘要已截断。请减小分块大小。"
+ ],
+ "Compteur de téléchargement invalide": [
+  "Invalid Downloader",
+  "Computador de descarga invalido",
+  "Невалидный скачиватель загрузки",
+  "無効ダウンロード計算機",
+  "无效下载计算器"
+ ],
+ "Configurer le fournisseur": [
+  "Configure provider",
+  "Configurar proveedor",
+  "Настроить сервис",
+  "プロバイダーを設定",
+  "配置服务商"
+ ],
+ "Configurer les modèles": [
+  "Configure models",
+  "Configurar modelos",
+  "Настроить модели",
+  "モデルを設定",
+  "配置模型"
+ ],
+ "Configurez le fournisseur dans Paramètres.": [
+  "Configure the supplier in Parameters.",
+  "Configure el proveedor en Parámetros.",
+  "Настройка поставщика в параметрах.",
+  "プロバイダーを設定する。",
+  "将供应商设置为设置。"
+ ],
+ "Configurée": [
+  "Configured",
+  "Configurado",
+  "Конфигурировано",
+  "設定",
+  "配置"
+ ],
+ "Confirmer": [
+  "Confirm",
+  "Confirmar",
+  "Подтвердить",
+  "確認",
+  "确认"
+ ],
+ "Connecter GitHub": [
+  "Connect GitHub",
+  "Conectar GitHub",
+  "Подключить GitHub",
+  "GitHub に接続",
+  "连接 GitHub"
+ ],
+ "Connectez GitHub pour consulter les versions privées.": [
+  "Connect GitHub to check private releases.",
+  "Conecta tu cuenta de GitHub para consultar las versiones privadas.",
+  "Подключите GitHub, чтобы проверять версии в закрытом репозитории.",
+  "非公開リポジトリのリリースを確認するには GitHub に接続してください。",
+  "连接 GitHub 以检查私有仓库中的版本。"
+ ],
+ "Connexion en cours…": [
+  "Connecting…",
+  "Conectando…",
+  "Подключение…",
+  "接続中…",
+  "正在连接…"
+ ],
+ "Connexion interrompue avant la fin du bloc": [
+  "Connection interrupted before the block end",
+  "Conexión interrumpida antes del fin del bloque",
+  "Переключение до окончания блока",
+  "ブロック終了前に接続中断",
+  "连接在区块结束前中断"
+ ],
+ "Consolidation du compte rendu": [
+  "Combining summary sections",
+  "Consolidando las secciones del resumen",
+  "Объединение разделов сводки",
+  "要約を統合中",
+  "正在整合摘要"
+ ],
+ "Consolidation trop longue pour la fenêtre du modèle": [
+  "Too long consolidation for the model window",
+  "Consolidación demasiado larga para la ventana del modelo",
+  "Долгое консолидация для окна модели",
+  "モデルウィンドウに長すぎる固定",
+  "模型窗口的固定太长"
+ ],
+ "Consolidation · passe {round_number + 2}": [
+  "Consolidation · pass {0}",
+  "Consolidación · pasa {0}",
+  "Консолидация · прохождение {0}",
+  "統合・パス {0}",
+  "第{0}章 进去"
+ ],
+ "Conversion incomplète du microphone": [
+  "Incomplete conversion of the microphone",
+  "Conversión incompleta del micrófono",
+  "Неполная конверсия микрофона",
+  "マイクロフォンの不完全な変換",
+  "微型不完整的转换"
+ ],
+ "Conversion micro · {e:?}": [
+  "Micro Conversion · {0}",
+  "Conversión micro · {0}",
+  "Микроконверсия · {0}",
+  "マイクロ変換 · {0}",
+  "微型转换 · {0}"
+ ],
+ "Correction enregistrée": [
+  "Correction saved",
+  "Corrección guardada",
+  "Исправление сохранено",
+  "修正を保存しました",
+  "修改已保存"
+ ],
+ "Corriger le passage {id}": [
+  "Edit passage {0}",
+  "Corregir fragmento {0}",
+  "Исправить фрагмент {0}",
+  "発言 {0} を編集",
+  "编辑片段 {0}"
+ ],
+ "Création du profil vocal": [
+  "Creation of vocal profile",
+  "Creación del perfil vocal",
+  "Создание голосового профиля",
+  "音声プロファイルの作成",
+  "创建语音档案"
+ ],
+ "Créer le profil": [
+  "Create profile",
+  "Crear perfil",
+  "Создать профиль",
+  "プロファイルを作成",
+  "创建档案"
+ ],
+ "Créer un profil avec §{} · {}": [
+  "Create profile from §{0} · {1}",
+  "Crear perfil a partir de §{0} · {1}",
+  "Создать профиль по §{0} · {1}",
+  "§{0} からプロファイルを作成 · {1}",
+  "根据 §{0} 创建档案 · {1}"
+ ],
+ "Créer un profil vocal ?": [
+  "Create a voice profile?",
+  "¿Crear un perfil de voz?",
+  "Создать голосовой профиль?",
+  "音声プロファイルを作成しますか？",
+  "要创建声纹档案吗？"
+ ],
+ "Créez une réunion pour choisir vos sources audio.": [
+  "Create a meeting to choose your audio sources.",
+  "Crea una reunión para elegir las fuentes de audio.",
+  "Создайте встречу и выберите источники звука.",
+  "音源を選択するには会議を作成してください。",
+  "创建会议后即可选择音源。"
+ ],
+ "Dans GitHub, sélectionnez le dépôt kpiche et donnez au jeton un accès en lecture au contenu. Windows conserve le jeton sur cet ordinateur.": [
+  "On GitHub, select the kpiche repository and grant the token read access to its contents. Windows stores the token on this computer.",
+  "En GitHub, selecciona el repositorio kpiche y concede al token permiso de lectura de su contenido. Windows guarda el token en este equipo.",
+  "В GitHub выберите репозиторий kpiche и разрешите токену читать его содержимое. Windows сохранит токен на этом компьютере.",
+  "GitHub で kpiche リポジトリを選び、トークンにコンテンツの読み取り権限を付与してください。トークンはこの PC に保存されます。",
+  "在 GitHub 上选择 kpiche 仓库，并授予令牌读取仓库内容的权限。Windows 会将令牌保存在此电脑上。"
+ ],
+ "Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique Rikai/hôte avec votre clé comme mot de passe.": [
+  "In the Windows ID Manager, create a Rikai/Host generic ID with your key as a password.",
+  "En el Administrador de Identidores de Windows, crea un ID genérico Rikai/host con su clave como contraseña.",
+  "В Менеджер идентификаторов Windows создайте генеральный идентификатор Rikai/Host с ключом в качестве пароля.",
+  "Windows ID マネージャーでは、パスワードとしてキーを使用して Rikai/ホスト 一般 ID を作成します。",
+  "在 Windows ID 管理器中,创建一个 Rikai/Host 通用 ID 与您的密钥作为密码。"
+ ],
+ "Date": [
+  "Date",
+  "Fecha",
+  "Дата",
+  "日付",
+  "日期"
+ ],
+ "Date · AAAA-MM ou AAAA-MM-JJ": [
+  "Date · YYYY-MM or YYYY-MM-DD",
+  "Fecha · AAAA-MM o AAAA-MM-DD",
+  "Дата · ГГГГ-ММ или ГГГГ-ММ-ДД",
+  "日付 · YYYY-MM または YYYY-MM-DD",
+  "日期 · YYYY-MM 或 YYYY-MM-DD"
+ ],
+ "Description": [
+  "Description",
+  "Descripción",
+  "Описание",
+  "説明",
+  "描述"
+ ],
+ "Deux sources appartiennent à la même arborescence": [
+  "Two sources belong to the same tree.",
+  "Dos fuentes pertenecen a la misma arborescencia",
+  "Две источники принадлежат к одной и той же деревьям.",
+  "同じ木の二つの源",
+  "兩個來源屬於同一樹木"
+ ],
+ "Discontinuité QPC {at}, position {}": [
+  "Discontinuity QPC {0} , position {1}",
+  "Discontinuidad QPC {0} , posición {1}",
+  "Дисконтинуитет QPC {0} , позиция {1}",
+  "QPC {0} 停止性、ポジション {1}",
+  "QPC {0} 停滞,位置 {1}"
+ ],
+ "Distribution de modèle incomplète": [
+  "Uncomplete distribution of model",
+  "Distribución del modelo incompleto",
+  "Неполная модель распределения",
+  "不完全モデル配布",
+  "不完整的模型分布"
+ ],
+ "Distribution vérifiée introuvable pour {wheel.package}": [
+  "Untouched Distribution for {0}",
+  "Distribución verificada no encontrada por {0}",
+  "Проверяемая распределение не найдено для {0}",
+  "検証された配布は見つかりません {0}",
+  "已验证的分销 未找到 {0}"
+ ],
+ "Donnez un titre à la réunion.": [
+  "Give a title to the meeting.",
+  "Dale un título a la reunión.",
+  "Дайте название на встречу.",
+  "会議にタイトルを付けてください。",
+  "请给会议一个标题。"
+ ],
+ "Dossier Faster-Whisper": [
+  "Faster-Whisper folder",
+  "Carpeta de Faster-Whisper",
+  "Папка Faster-Whisper",
+  "Faster-Whisper フォルダー",
+  "Faster-Whisper 文件夹"
+ ],
+ "Dossier de destination absent": [
+  "Disappearance of Destination",
+  "Documento de destino ausente",
+  "Отсутствие досье назначения",
+  "欠席の目的地情報",
+  "缺席目的地文件"
+ ],
+ "Dossier des réunions": [
+  "Meetings folder",
+  "Carpeta de reuniones",
+  "Папка встреч",
+  "会議フォルダー",
+  "会议文件夹"
+ ],
+ "Dossier d’installation absent": [
+  "Announced installation file",
+  "Documento de instalación ausente",
+  "Документ по установке отсутствует",
+  "欠席のインストールファイル",
+  "缺席的安装文件"
+ ],
+ "Durée": [
+  "Duration",
+  "Duración",
+  "Длительность",
+  "長さ",
+  "时长"
+ ],
+ "Durée de passage invalide": [
+  "Invalid passage time",
+  "Duración de paso invalida",
+  "Длительность невыполненного перехода",
+  "無効通行期間",
+  "无效通行时间"
+ ],
+ "Décision": [
+  "Decision",
+  "Decisión",
+  "Решение",
+  "決断",
+  "决定"
+ ],
+ "Déconnecter GitHub": [
+  "Disconnect GitHub",
+  "Desconectar GitHub",
+  "Отключить GitHub",
+  "GitHub との接続を解除",
+  "断开 GitHub 连接"
+ ],
+ "Déjà installé": [
+  "Already installed",
+  "Ya instalado",
+  "Уже установлен",
+  "インストール済み",
+  "已安装"
+ ],
+ "Démarrer l’enregistrement": [
+  "Start recording",
+  "Iniciar grabación",
+  "Начать запись",
+  "録音を開始",
+  "开始录音"
+ ],
+ "Dépendances": [
+  "Dependencies",
+  "Dependencias",
+  "Компоненты",
+  "依存項目",
+  "依赖项"
+ ],
+ "Détection en cours…": [
+  "Detecting…",
+  "Detectando…",
+  "Поиск…",
+  "検出中…",
+  "正在检测…"
+ ],
+ "Empreinte invalide": [
+  "Invalid fingerprint",
+  "Huella no válida",
+  "Недействительный отпечаток",
+  "無効なフィンガープリント",
+  "指纹无效"
+ ],
+ "Empreintes ONNX": [
+  "ONNX voice embedding model",
+  "Modelo ONNX de huellas de voz",
+  "Модель голосовых векторов ONNX",
+  "ONNX 声紋モデル",
+  "ONNX 声纹模型"
+ ],
+ "Empreintes locales. Une suggestion reste distincte d'une identité confirmée.": [
+  "A suggestion remains distinct from a confirmed identity.",
+  "Una sugerencia permanece distinta de una identidad confirmada.",
+  "Местные отпечатки. Предложение остается отдельным от подтвержденной идентичности.",
+  "地元の指紋:提案は確認されたアイデンティティと異なります。",
+  "地点指纹:一个提示与确认的身份保持区别。"
+ ],
+ "En attente": [
+  "Waiting",
+  "En espera",
+  "Ожидание",
+  "待機中",
+  "等待中"
+ ],
+ "En cours": [
+  "In progress",
+  "En curso",
+  "Выполняется",
+  "進行中",
+  "进行中"
+ ],
+ "En pause": [
+  "Paused",
+  "En pausa",
+  "Приостановлено",
+  "一時停止中",
+  "已暂停"
+ ],
+ "Encodage": [
+  "Encoding",
+  "Codificación",
+  "Кодирование",
+  "エンコード",
+  "编码"
+ ],
+ "Enregistrement": [
+  "Recording",
+  "Grabación",
+  "Запись",
+  "録音",
+  "录音"
+ ],
+ "Enregistrer": [
+  "Save",
+  "Guardar",
+  "Сохранить",
+  "保存",
+  "保存"
+ ],
+ "Enregistrer la correction": [
+  "Save correction",
+  "Guardar corrección",
+  "Сохранить исправление",
+  "修正を保存",
+  "保存修改"
+ ],
+ "Enregistrer le fournisseur": [
+  "Save provider",
+  "Guardar proveedor",
+  "Сохранить сервис",
+  "プロバイダーを保存",
+  "保存服务商"
+ ],
+ "Enregistrer le passage §{id} en WAV": [
+  "Save passage §{0} as WAV",
+  "Guardar el fragmento §{0} como WAV",
+  "Сохранить фрагмент §{0} в WAV",
+  "発言 §{0} を WAV で保存",
+  "将片段 §{0} 保存为 WAV"
+ ],
+ "Enregistrer le vocabulaire": [
+  "Save vocabulary",
+  "Guardar vocabulario",
+  "Сохранить словарь",
+  "語彙を保存",
+  "保存词汇"
+ ],
+ "Enregistrer les informations": [
+  "Save details",
+  "Guardar información",
+  "Сохранить сведения",
+  "情報を保存",
+  "保存信息"
+ ],
+ "Enregistrer mon nom": [
+  "Save my name",
+  "Guardar mi nombre",
+  "Сохранить моё имя",
+  "名前を保存",
+  "保存我的名字"
+ ],
+ "Enregistrer une nouvelle version": [
+  "Save new version",
+  "Guardar nueva versión",
+  "Сохранить новую версию",
+  "新しい版を保存",
+  "保存新版本"
+ ],
+ "Envoi de la demande au moteur IA impossible · {e}": [
+  "Send the application to the engine IA impossible · {0}",
+  "Enviar la solicitud al motor IA imposible · {0}",
+  "Отправка заявки на двигатель IA невозможно · {0}",
+  "エンジンへの申請を送信するIA不可能 · {0}",
+  "发送请求到发动机IA不可能 · {0}"
+ ],
+ "Envoi externe non autorisé": [
+  "Non-autorized external shipping",
+  "Envío externo no autorizado",
+  "Несанкционированная внешняя отправка",
+  "許可されていない外部送信",
+  "未经授权的外部发送"
+ ],
+ "Envoyer": [
+  "Send",
+  "Enviar",
+  "Отправить",
+  "送信",
+  "发送"
+ ],
+ "Envoyer la transcription ?": [
+  "Send transcript?",
+  "¿Enviar la transcripción?",
+  "Отправить расшифровку?",
+  "文字起こしを送信しますか？",
+  "要发送转写文本吗？"
+ ],
+ "Envoyer le texte au fournisseur…": [
+  "Send text to provider…",
+  "Enviar el texto al proveedor…",
+  "Отправить текст во внешний сервис…",
+  "外部プロバイダーにテキストを送信…",
+  "将文本发送给服务商…"
+ ],
+ "Erreur du worker": [
+  "Processing engine error",
+  "Error del motor de procesamiento",
+  "Ошибка движка обработки",
+  "処理エンジンのエラー",
+  "处理引擎错误"
+ ],
+ "Espace de travail": [
+  "Workspace",
+  "Espacio de trabajo",
+  "Рабочая область",
+  "ワークスペース",
+  "工作区"
+ ],
+ "Exiger le calcul sur GPU": [
+  "Require GPU processing",
+  "Exigir procesamiento en GPU",
+  "Использовать только GPU",
+  "GPU での処理を必須にする",
+  "仅使用 GPU 处理"
+ ],
+ "Export enregistré.": [
+  "Export saved.",
+  "Exportación guardada.",
+  "Файл экспорта сохранён.",
+  "エクスポートを保存しました。",
+  "导出文件已保存。"
+ ],
+ "Export · résumé et transcription active": [
+  "Export · summary and current transcript",
+  "Exportar · resumen y transcripción actual",
+  "Экспорт · сводка и текущая расшифровка",
+  "書き出し · 要約と現在の文字起こし",
+  "导出 · 摘要和当前转写"
+ ],
+ "Export · résumé seul": [
+  "Export · summary only",
+  "Exportar · solo resumen",
+  "Экспорт · только сводка",
+  "書き出し · 要約のみ",
+  "导出 · 仅摘要"
+ ],
+ "Exporter .{fmt}": [
+  "Export .{0}",
+  "Exportar .{0}",
+  "Экспорт .{0}",
+  ".{0} 形式で書き出す",
+  "导出 .{0}"
+ ],
+ "Extraction de {wheel.package}": [
+  "Extracting {0}",
+  "Extrayendo {0}",
+  "Распаковка {0}",
+  "{0} を展開中",
+  "正在解压 {0}"
+ ],
+ "Extraction des faits · bloc {i}": [
+  "Extracting facts · block {0}",
+  "Extrayendo datos · bloque {0}",
+  "Извлечение фактов · блок {0}",
+  "事実を抽出中 · ブロック {0}",
+  "正在提取事实 · 第 {0} 块"
+ ],
+ "Extrait WAV": [
+  "WAV clip",
+  "Fragmento WAV",
+  "Фрагмент WAV",
+  "WAV クリップ",
+  "WAV 片段"
+ ],
+ "Extrait WAV enregistré.": [
+  "WAV clip saved.",
+  "Fragmento WAV guardado.",
+  "Фрагмент WAV сохранён.",
+  "WAV クリップを保存しました。",
+  "WAV 片段已保存。"
+ ],
+ "Extrait trop court": [
+  "Extrait too short",
+  "Extracto demasiado corto",
+  "Излишне короткий экстракт",
+  "短い抽出物",
+  "摘要 短"
+ ],
+ "Facultatif": [
+  "Optional",
+  "Opcional",
+  "Необязательно",
+  "任意",
+  "选填"
+ ],
+ "Fermer": [
+  "Close",
+  "Cerrar",
+  "Закрыть",
+  "閉じる",
+  "关闭"
+ ],
+ "Fermer le panneau": [
+  "Close panel",
+  "Cerrar panel",
+  "Закрыть панель",
+  "パネルを閉じる",
+  "关闭面板"
+ ],
+ "Fermeture des sources…": [
+  "Closing the sources.",
+  "Cierra las fuentes...",
+  "Закрытие источников...",
+  "ソースの閉鎖...",
+  "关闭源..."
+ ],
+ "Fermez l’ancienne application avant de migrer la bibliothèque.": [
+  "Close the old application before migrating the library.",
+  "Cerrar la aplicación anterior antes de migrar la biblioteca.",
+  "Закройте старую приложение, прежде чем перемещаться в библиотеку.",
+  "図書館を移行する前に旧アプリを閉じます。",
+  "在移行图书馆之前关闭旧应用程序。"
+ ],
+ "Fichiers audio supprimés.": [
+  "Deleted audio files.",
+  "Los archivos de audio eliminados.",
+  "Изъяты аудио файлы.",
+  "削除されたオーディオファイル",
+  "删除的音频文件。"
+ ],
+ "Fin de capture": [
+  "End of capture",
+  "Fin de captura",
+  "Конец поймания",
+  "捕獲の終わり",
+  "捕获结束"
+ ],
+ "Finalisation des pistes…": [
+  "Finalization of the tracks.",
+  "Finalizar las pistas...",
+  "Окончание трассов...",
+  "コースの完成...",
+  "路线的完成..."
+ ],
+ "Finalisation du mix": [
+  "Finalization of the mix",
+  "Finalizar el mix",
+  "Окончание микса",
+  "ミックスの完成",
+  "混合的完成"
+ ],
+ "Format de piste incompatible": [
+  "Incompatible Track Format",
+  "Formato de pista incompatible",
+  "Несовместимый формат трассы",
+  "不互換性のトラック形式",
+  "不兼容的路径格式"
+ ],
+ "Format de session inconnu": [
+  "Unknown session format",
+  "Formato de sesión desconocido",
+  "Неизвестный формат сеанса",
+  "未知のセッション形式",
+  "未知的会议格式"
+ ],
+ "Format des pistes": [
+  "Track format",
+  "Formato de las pistas",
+  "Формат дорожек",
+  "トラック形式",
+  "音轨格式"
+ ],
+ "Format micro natif · {} Hz · {} canaux · {} bits": [
+  "Native micro format · {0} Hz · {1} channels · {2} bits",
+  "formato micro nativo · {0} Hz · {1} canales · {2} bits",
+  "Родовой формат микро · {0} Гц · {1} каналов · {2} битов",
+  "マイクロ ナティブ フォーマット · {0} Hz · {1} チャンネル · {2} ビット",
+  "微型格式 · {0} Hz · {1} 频道 · {2} 位元"
+ ],
+ "Format microphone non pris en charge ({rate} Hz, {channels} canaux)": [
+  "Unsupported microphone format ( {0} Hz, {1} channels)",
+  "Formato de micrófono sin soporte ( {0} Hz, {1} canales)",
+  "Формат микрофона не поддерживается ( {0} Гц, {1} каналов)",
+  "サポートされていないマイクロフォン形式({0}Hz、{1}チャンネル)",
+  "未支持的麦克风格({0}Hz,{1}频道)"
+ ],
+ "Formats de pistes incompatibles": [
+  "Incompatible tracks",
+  "Formatos de pistas incompatibles",
+  "Несовместимый формат трассы",
+  "不互換性のあるパスワード",
+  "不兼容的路径格式"
+ ],
+ "Fournisseur distant facultatif": [
+  "Optional remote provider",
+  "Proveedor remoto opcional",
+  "Внешний сервис (необязательно)",
+  "外部プロバイダー（任意）",
+  "远程服务（可选）"
+ ],
+ "Français": [
+  "Français",
+  "Français",
+  "Français",
+  "Français",
+  "Français"
+ ],
+ "Fréquence": [
+  "Sample rate",
+  "Frecuencia de muestreo",
+  "Частота дискретизации",
+  "サンプルレート",
+  "采样率"
+ ],
+ "GPU": [
+  "GPU",
+  "GPU",
+  "GPU",
+  "GPU",
+  "GPU"
+ ],
+ "GPU NVIDIA détecté": [
+  "NVIDIA GPU detected",
+  "GPU NVIDIA detectada",
+  "Обнаружен GPU NVIDIA",
+  "NVIDIA GPU を検出",
+  "已检测到 NVIDIA GPU"
+ ],
+ "Gain {:+} dB": [
+  "Gain {0} dB",
+  "Ganancia {0} dB",
+  "Усиление {0} дБ",
+  "ゲイン {0} dB",
+  "增益 {0} dB"
+ ],
+ "GitHub a refusé l’accès au dépôt. Vérifiez les permissions du jeton.": [
+  "GitHub has refused access to the deposit. check the token permissions.",
+  "GitHub ha rechazado el acceso al depósito. verifique las autorizaciones del token.",
+  "GitHub отказался от доступа к депозиту. Проверьте разрешения на токен.",
+  "GitHub は、デポジットへのアクセスを拒否しました. コートの許可を確認してください。",
+  "GitHub 拒绝访问存款. 检查标签的许可证。"
+ ],
+ "GitHub ne permet pas de lire les versions de ce dépôt.": [
+  "GitHub does not allow you to read the versions of this deposit.",
+  "GitHub no permite leer las versiones de este depósito.",
+  "GitHub не позволяет читать версии этого депозита.",
+  "GitHub では、この投稿のバージョンを読み取ることはできません。",
+  "GitHub 不允许阅读此存款的版本。"
+ ],
+ "Générer le compte rendu à l’arrêt": [
+  "Generate summary when recording stops",
+  "Generar resumen al detener la grabación",
+  "Создавать сводку после остановки записи",
+  "録音停止時に要約を作成",
+  "停止录音后生成摘要"
+ ],
+ "Générer le résumé local": [
+  "Generate local summary",
+  "Generar resumen local",
+  "Создать локальную сводку",
+  "ローカルで要約を作成",
+  "生成本地摘要"
+ ],
+ "Géré par Windows": [
+  "Managed by Windows",
+  "Administrado por Windows",
+  "Под управлением Windows",
+  "Windows が管理",
+  "由 Windows 管理"
+ ],
+ "Haute qualité": [
+  "High quality",
+  "Alta calidad",
+  "Высокое качество",
+  "高品質",
+  "高质量"
+ ],
+ "Horodatage de périphérique incohérent. Capture interrompue.": [
+  "Incoherent peripheral time-dating. capture interrupted.",
+  "Horodatación de la periferia incoherente. captura interrumpida.",
+  "Неодноразовое время отбора. отключенное захватывание.",
+  "デバイスの時間化不一致 捕獲中断",
+  "不一致的设备时钟记录,捕获中断。"
+ ],
+ "Horodatage estimé, position {}": [
+  "The estimated time, position {0}",
+  "Horadado estimado, posición {0}",
+  "Оценка времени, позиция {0}",
+  "時刻表、ポジション {0}",
+  "估计时间,位置 {0}"
+ ],
+ "Identifiant de travail absent": [
+  "Identification of absence of work",
+  "Identificación de trabajo ausente",
+  "Идентификация отсутствующей работы",
+  "欠席の職種識別",
+  "缺席工作识别"
+ ],
+ "Identification activée": [
+  "Identification on",
+  "Identificación activada",
+  "Распознавание включено",
+  "識別オン",
+  "识别已开启"
+ ],
+ "Identification des intervenants": [
+  "Speaker identification",
+  "Identificación de hablantes",
+  "Распознавание участников",
+  "話者識別",
+  "发言人识别"
+ ],
+ "Identification désactivée": [
+  "Identification off",
+  "Identificación desactivada",
+  "Распознавание выключено",
+  "識別オフ",
+  "识别已关闭"
+ ],
+ "Identification · {done}/{total} fenêtres": [
+  "Identification · {0} / {1} windows",
+  "Identificación · {0} / {1} ventanas",
+  "Идентификация · {0} / {1} окна",
+  "アイデンティティ · {0} / {1} ウィンドウ",
+  "标识 · {0} / {1} 窗口"
+ ],
+ "Identifier les intervenants": [
+  "Identify speakers",
+  "Identificar hablantes",
+  "Определять участников",
+  "話者を識別",
+  "识别发言人"
+ ],
+ "Indiquez le nom du modèle distant": [
+  "Enter the name of the distant model.",
+  "Indica el nombre del modelo remoto",
+  "Введите название удаленной модели",
+  "遠隔モデルの名前を指定します。",
+  "指定远程模型的名称"
+ ],
+ "Indiquez le nom du profil.": [
+  "Enter the profile name.",
+  "Indica el nombre del perfil.",
+  "Введите имя профиля.",
+  "プロフィールの名前を入力します。",
+  "请输入个人资料的名称。"
+ ],
+ "Indiquez un nom.": [
+  "Enter a name.",
+  "Indica un nombre.",
+  "Введите свое имя.",
+  "名前を示す。",
+  "给一个名字。"
+ ],
+ "Informations de session": [
+  "Session details",
+  "Información de la sesión",
+  "Сведения о сеансе",
+  "セッション情報",
+  "会话信息"
+ ],
+ "Informez les participants avant d’enregistrer. Un navigateur sélectionné inclut ses onglets.": [
+  "Inform participants before recording. Selecting a browser includes its tabs.",
+  "Avisa a los participantes antes de grabar. Si eliges un navegador, se incluyen sus pestañas.",
+  "Предупредите участников перед записью. При выборе браузера записывается звук его вкладок.",
+  "録音前に参加者へお知らせください。ブラウザーを選ぶとタブの音声も含まれます。",
+  "录音前请告知与会者。选择浏览器时，其标签页的音频也会被录制。"
+ ],
+ "Initialisation du moteur de transcription": [
+  "Initialization of the transcription engine",
+  "Iniciación del motor de transcripción",
+  "Иницијализация транскрипторного двигателя",
+  "トランスクリプションエンジンの初期化",
+  "转换发动机的启动"
+ ],
+ "Installer et fermer": [
+  "Install and close",
+  "Instalar y cerrar",
+  "Установить и закрыть",
+  "インストールして終了",
+  "安装并关闭"
+ ],
+ "Installer le moteur NVIDIA": [
+  "Install NVIDIA runtime",
+  "Instalar el entorno de ejecución de NVIDIA",
+  "Установить среду NVIDIA",
+  "NVIDIA ランタイムをインストール",
+  "安装 NVIDIA 运行库"
+ ],
+ "Installer le moteur NVIDIA ?": [
+  "Install the NVIDIA runtime?",
+  "¿Instalar el entorno de ejecución de NVIDIA?",
+  "Установить среду NVIDIA?",
+  "NVIDIA ランタイムをインストールしますか？",
+  "要安装 NVIDIA 运行库吗？"
+ ],
+ "Interface": [
+  "Interface",
+  "Interfaz",
+  "Интерфейс",
+  "表示",
+  "界面"
+ ],
+ "Interrompu": [
+  "Interrupted",
+  "Interrumpido",
+  "Прервано",
+  "中断",
+  "已中断"
+ ],
+ "Interrompue": [
+  "Interrupted",
+  "Interrumpida",
+  "Прервано",
+  "中断",
+  "已中断"
+ ],
+ "Interruption du thread audio": [
+  "Interruption of the Audio Thread",
+  "Interrupción del thread audio",
+  "Прекращение аудио-трид",
+  "オーディオ トレードの停止",
+  "关闭音频 thread"
+ ],
+ "Intervenant": [
+  "Speaker",
+  "Hablante",
+  "Участник",
+  "話者",
+  "发言人"
+ ],
+ "Intervenant incertain": [
+  "Uncertain speaker",
+  "Hablante sin confirmar",
+  "Участник не определён",
+  "話者未確認",
+  "发言人待确认"
+ ],
+ "Intervenant {t.speaker + 1}": [
+  "Speaker {0}",
+  "Hablante {0}",
+  "Участник {0}",
+  "話者 {0}",
+  "发言人 {0}"
+ ],
+ "Intervenants": [
+  "Speakers",
+  "Hablantes",
+  "Участники",
+  "話者",
+  "发言人"
+ ],
+ "Intégrité de {wheel.package} en échec": [
+  "Integrity of {0} in failure",
+  "Integridad de {0} en fracaso",
+  "Интеграция {0} в неудаче",
+  "第{0}話 失敗",
+  "第{0}章 失败了"
+ ],
+ "La personne autorise-t-elle la conservation locale de cet extrait de voix et de son empreinte sous le nom « {name} » ?": [
+  "Does the person authorize the local preservation of this voice extract and its footprint under the name “{0}”?",
+  "¿La persona autoriza la conservación local de este extracto de voz y de su huella bajo el nombre «{0}»?",
+  "Допустит ли лицо местное сохранение этого голосового экстракта и его отпечатки под названием «{0}»?",
+  "投票所は、この投票所の投票所とその印の「{0}」という名称で保管することを許可していますか。",
+  "该人是否允许本地保留这份投票摘要和其印记,以“{0}”的名称?"
+ ],
+ "La piste audio est absente": [
+  "The audio track is absent.",
+  "La pista de audio está ausente",
+  "Аудиопункт отсутствует",
+  "オーディオ・トラックが欠席。",
+  "音频路线不存在"
+ ],
+ "La réunion, sa transcription et ses pistes seront supprimées.": [
+  "The meeting, its transcript and its audio tracks will be deleted.",
+  "Se eliminarán la reunión, su transcripción y sus pistas de audio.",
+  "Встреча, её расшифровка и аудиодорожки будут удалены.",
+  "会議、文字起こし、音声トラックを削除します。",
+  "将删除会议及其转写文本和音轨。"
+ ],
+ "La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?": [
+  "Translating this passage requires M2M100. Download the 496 MB model for offline translation?",
+  "Este fragmento requiere M2M100. ¿Descargar el modelo de 496 MB para traducir sin conexión?",
+  "Для перевода этого фрагмента нужна M2M100. Скачать модель размером 496 МБ для перевода без интернета?",
+  "この発言の翻訳には M2M100 が必要です。オフライン翻訳用のモデル（496 MB）をダウンロードしますか？",
+  "翻译这段话需要 M2M100。要下载 496 MB 的模型以便离线翻译吗？"
+ ],
+ "La traduction est vide": [
+  "The translation is empty.",
+  "La traducción está vacía",
+  "Перевод пуст",
+  "翻訳は空っぽ。",
+  "翻译是空的"
+ ],
+ "La transcription est vide": [
+  "The transcript is empty",
+  "La transcripción está vacía",
+  "Расшифровка пуста",
+  "文字起こしが空です",
+  "转写文本为空"
+ ],
+ "La version GitHub ne contient pas d’installeur vérifiable.": [
+  "The GitHub version does not contain verify installers.",
+  "La versión de GitHub no contiene installer verificable.",
+  "Версия GitHub не содержит проверяемого инсталлятора.",
+  "GitHub のバージョンには、確認可能なインストーラーが含まれていません。",
+  "GitHub 版本不包含可验证的安装器。"
+ ],
+ "La version proposée a changé. Vérifiez les mises à jour.": [
+  "The proposed version has changed. check the updates.",
+  "La versión propuesta ha cambiado. verifique las actualizaciones.",
+  "Изменена версия, проверяйте обновления.",
+  "更新プログラムが変更しましたので、更新プログラムをチェックしてください。",
+  "已改变了版本,请查看更新。"
+ ],
+ "Langue": [
+  "Language",
+  "Idioma",
+  "Язык",
+  "言語",
+  "语言"
+ ],
+ "Langue de l’interface": [
+  "Interface language",
+  "Idioma de la interfaz",
+  "Язык интерфейса",
+  "表示言語",
+  "界面语言"
+ ],
+ "Langue du système": [
+  "System language",
+  "Idioma del sistema",
+  "Язык системы",
+  "システムの言語",
+  "系统语言"
+ ],
+ "Langue ou passage invalide": [
+  "Invalid language or passage",
+  "Idioma o fragmento no válido",
+  "Недопустимый язык или фрагмент",
+  "言語または発言が無効です",
+  "语言或片段无效"
+ ],
+ "Le GPU alterne calcul et pauses entre les séquences. 100 % privilégie la vitesse.": [
+  "The GPU alternates calculations and pauses between the sequences. 100% privileges speed.",
+  "El GPU altera el cálculo y las pausas entre las secuencias. 100% prefiera la velocidad.",
+  "GPU меняет расчет и паузы между секциями. 100% предпочитает скорость.",
+  "GPUは計算とセクション間の休憩を変更します.100%速度を優先します。",
+  "GPU 会改变计算和序列间隔,100%优先于速度。"
+ ],
+ "Le Gestionnaire d’identifiants Windows est requis": [
+  "Windows ID Manager is required",
+  "Se requiere un administrador de identificadores de Windows",
+  "Идентифицированный менеджер Windows необходим",
+  "Windows ID マネージャーが必要",
+  "需要 Windows ID 管理器"
+ ],
+ "Le fournisseur a répondu HTTP {response.status}": [
+  "The provider responded to HTTP {0}",
+  "El proveedor respondió a HTTP {0}",
+  "Поставщик ответил HTTP {0}",
+  "プロバイダーが回答した HTTP {0}",
+  "供应商回复了 HTTP {0}"
+ ],
+ "Le modèle de segmentation doit accepter du PCM 16 kHz": [
+  "The segmentation model must accept PCM 16 kHz",
+  "El modelo de segmentación debe aceptar el PCM de 16 kHz",
+  "Модель сегментации должна принимать 16 кГц PCM",
+  "セグメントモデルは16kHzのPCMを受け入れる必要があります。",
+  "该分区模型必须接受 16 kHz PCM"
+ ],
+ "Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur.": [
+  "The transcription model will be downloaded from Hugging Face and stored on this computer.",
+  "El modelo de transcripción se descargará de Hugging Face y se guardará en este equipo.",
+  "Модель распознавания будет загружена с Hugging Face и сохранена на этом компьютере.",
+  "文字起こしモデルを Hugging Face からダウンロードし、この PC に保存します。",
+  "将从 Hugging Face 下载转写模型并保存在此电脑上。"
+ ],
+ "Le moteur IA a fermé son canal de réponse sans résultat.": [
+  "The IA engine closed its response channel without a result.",
+  "El motor IA cerró su canal de respuesta sin resultado.",
+  "Мотор IA закрыл свой канал ответа без результата.",
+  "IAエンジンは、結果なしに回答チャンネルを閉鎖しました。",
+  "发动机关闭了无结果的响应频道。"
+ ],
+ "Le moteur IA ne répond plus à l’étape « {stage} » ({} s). Relancez le traitement.": [
+  "The AI engine no longer responds to the step “{0}” ({1} s).",
+  "El motor de IA ya no responde a la etapa \"{0}\" ( {1} s).",
+  "Двигатель IA больше не отвечает шагу «{0}» ({1} с).",
+  "IAエンジンは、ステップ「{0}」({1}秒)に反応しない。",
+  "IA 发动机不再符合“{0}”({1} 秒)步骤。"
+ ],
+ "Le moteur IA n’a pas répondu au démarrage ({} s). Relancez le traitement.": [
+  "The IA engine did not respond to the start ({0} s).",
+  "El motor IA no respondió al inicio ( {0} s).",
+  "Двигатель IA не ответил на запуск ({0} с).",
+  "IAエンジンは起動に反応しなかった({0}秒)。",
+  "IA 发动机没有响应启动({0} 秒)。重新启动处理。"
+ ],
+ "Le moteur IA s’est fermé sans résultat ({status}).": [
+  "The IA engine closed without a result ({0}).",
+  "El motor IA se cerró sin resultado ({0}).",
+  "Двигатель IA закрылся без результата ({0}).",
+  "エンジンは無効に閉じ込められました({0})。",
+  "发动机无效关闭({0})。"
+ ],
+ "Le moteur n’a pas exécuté le test sur CUDA": [
+  "The engine did not perform the test on CUDA.",
+  "El motor no ha realizado el test en CUDA",
+  "Мотор не прошел тест на CUDA",
+  "エンジンが試験を実行しなかった。",
+  "发动机未能在CUDA上测试"
+ ],
+ "Le processus a changé depuis la détection. Actualisez les sources.": [
+  "The process has changed since the detection. update the sources.",
+  "El proceso ha cambiado desde la detección. actualizar las fuentes.",
+  "Процесс изменился с момента обнаружения. обновляйте источники.",
+  "検出後、プロセスが変わりました 情報源を更新します。",
+  "这个过程在检测后改变了,更新源。"
+ ],
+ "Le processus a redémarré. Sélectionnez-le à nouveau.": [
+  "The process has been restarted. select it again.",
+  "El proceso se ha reinicio. seleccione de nuevo.",
+  "Процесс перезапускается. Выберите его снова.",
+  "プロセスが再起動しました. 再び選択してください。",
+  "重新启动,请重新选择。"
+ ],
+ "Le périphérique choisi doit être une entrée": [
+  "The chosen device must be an entrance.",
+  "El dispositivo elegido debe ser una entrada",
+  "Выбранное устройство должно быть входом.",
+  "選択したデバイスは入り口でなければなりません。",
+  "选择的门必须是门口。"
+ ],
+ "Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?": [
+  "Local summaries use Qwen2.5. Download the 2.10 GB GGUF file to this computer?",
+  "Los resúmenes locales usan Qwen2.5. ¿Descargar el archivo GGUF de 2,10 GB en este equipo?",
+  "Для локальных сводок используется Qwen2.5. Скачать файл GGUF размером 2,10 ГБ на этот компьютер?",
+  "ローカル要約には Qwen2.5 を使用します。2.10 GB の GGUF ファイルをこの PC にダウンロードしますか？",
+  "本地摘要使用 Qwen2.5。要将 2.10 GB 的 GGUF 文件下载到此电脑吗？"
+ ],
+ "Le texte et les noms des intervenants seront envoyés à {url} pour générer le résumé.": [
+  "The text and names of the speakers will be sent to {0} to generate the summary.",
+  "El texto y los nombres de los interlocutores serán enviados a {0} para generar el resumen.",
+  "Текст и фамилии участников будут отправляться в {0} для получения резюме.",
+  "文書と講演者の名前は、概要を生成するために{0}に送信されます。",
+  "文本和演讲者的姓名将发送到{0}以便创建总结。"
+ ],
+ "Le téléchargement NVIDIA requiert Windows et une confirmation.": [
+  "The NVIDIA download requires Windows and a confirmation.",
+  "La descarga de NVIDIA requiere Windows y una confirmación.",
+  "Загрузка NVIDIA требует Windows и подтверждения.",
+  "NVIDIAのダウンロードには、Windowsと確認が必要です。",
+  "NVIDIA下载需要Windows和确认。"
+ ],
+ "Le worker IA ne s’est pas fermé après la réponse": [
+  "The IA worker did not close after the answer",
+  "El trabajador no se cerró después de la respuesta",
+  "Работник не закрылся после ответа",
+  "職員は答えを出した後、閉じられなかった。",
+  "答案后,工人没有关闭。"
+ ],
+ "Le worker a échoué après l’envoi du résultat": [
+  "The worker failed after sending the result",
+  "El trabajador fracasó después de enviar el resultado",
+  "Работник провалился после отправки результата",
+  "結果を送った後、労働者が失敗した。",
+  "工作者在发送结果后失败"
+ ],
+ "Lecture audio impossible (MCI {code})": [
+  "Audio Recording Impossible (MCI {0})",
+  "La grabación de audio imposible (MCI {0})",
+  "Невозможное аудиозапись (MCI {0})",
+  "音声録音不可能(MCI {0})",
+  "无法播放的音频(MCI {0})"
+ ],
+ "Lecture de la liste des fichiers du modèle": [
+  "Reading model file list",
+  "Leyendo la lista de archivos del modelo",
+  "Получение списка файлов модели",
+  "モデルのファイル一覧を取得中",
+  "正在读取模型文件列表"
+ ],
+ "Les pistes audio de cette réunion seront supprimées.": [
+  "This meeting’s audio tracks will be deleted.",
+  "Se eliminarán las pistas de audio de esta reunión.",
+  "Аудиодорожки этой встречи будут удалены.",
+  "この会議の音声トラックを削除します。",
+  "将删除此会议的音轨。"
+ ],
+ "Les pistes de cet enregistrement seront supprimées.": [
+  "This recording’s tracks will be deleted.",
+  "Se eliminarán las pistas de esta grabación.",
+  "Дорожки этой записи будут удалены.",
+  "この録音のトラックを削除します。",
+  "将删除本次录音的音轨。"
+ ],
+ "Limite de consolidation du compte rendu atteinte": [
+  "Limit of consolidation of the account",
+  "Límite de consolidación de la cuenta afectada",
+  "Ограничение консолидации счетов",
+  "報告書の統合制限",
+  "收集所需账单的限制"
+ ],
+ "Limitez le vocabulaire personnel à 480 caractères.": [
+  "Limit your personal vocabulary to 480 characters.",
+  "Limite el vocabulario personal a 480 caracteres.",
+  "Ограничьте личный словарь на 480 символов.",
+  "個人の辞書を480文字に制限します。",
+  "将个人词汇限制为480个字符。"
+ ],
+ "Lire la version {id}": [
+  "View version {0}",
+  "Ver versión {0}",
+  "Посмотреть версию {0}",
+  "バージョン {0} を表示",
+  "查看版本 {0}"
+ ],
+ "L’empreinte de l’installeur ne correspond pas à GitHub.": [
+  "The installation fingerprint does not match GitHub.",
+  "La huella de instalar no corresponde a GitHub.",
+  "Отпечатки установки не соответствуют GitHub.",
+  "インストラクターの指紋はGitHubと一致しない。",
+  "安装器指纹不符合 GitHub。"
+ ],
+ "L’extrait autorisé, son empreinte et les suggestions associées seront supprimés.": [
+  "The authorized extract, its footprint and the associated suggestions will be deleted.",
+  "El extracto autorizado, su huella y las sugerencias asociadas serán eliminadas.",
+  "Допустимый экстракт, его отпечатки и сопутствующие предложения будут удалены.",
+  "許可された抽出物、印刷物および関連する提案は削除されます。",
+  "许可的提取物、印刷和相关提议将被删除。"
+ ],
+ "L’installeur a changé depuis le téléchargement.": [
+  "The installator has changed since the download.",
+  "El installer ha cambiado desde la descarga.",
+  "Инсталлятор изменился с момента загрузки.",
+  "ダウンロード以来、インストラクターが変わりました。",
+  "安装器自下载以来一直在变化。"
+ ],
+ "M2M100 · 100 langues · 496 Mo": [
+  "M2M100 · 100 languages · 496 MB",
+  "M2M100 · 100 idiomas · 496 MB",
+  "M2M100 · 100 языков · 496 МБ",
+  "M2M100 · 100 言語 · 496 MB",
+  "M2M100 · 100 种语言 · 496 MB"
+ ],
+ "Mes réunions": [
+  "My meetings",
+  "Mis reuniones",
+  "Мои встречи",
+  "マイ会議",
+  "我的会议"
+ ],
+ "Mesure NVIDIA indisponible": [
+  "NVIDIA metrics unavailable",
+  "Métricas de NVIDIA no disponibles",
+  "Показатели NVIDIA недоступны",
+  "NVIDIA の測定値を取得できません",
+  "无法获取 NVIDIA 指标"
+ ],
+ "Mettre en pause": [
+  "Pause",
+  "Pausar",
+  "Приостановить",
+  "一時停止",
+  "暂停"
+ ],
+ "Mettre en pause le passage §{id}": [
+  "Pause passage §{0}",
+  "Pausar fragmento §{0}",
+  "Приостановить фрагмент §{0}",
+  "発言 §{0} を一時停止",
+  "暂停片段 §{0}"
+ ],
+ "Mettre à jour": [
+  "Update",
+  "Actualizar",
+  "Обновить",
+  "アップデート",
+  "更新"
+ ],
+ "Microphone": [
+  "Microphone",
+  "Micrófono",
+  "Микрофон",
+  "マイク",
+  "麦克风"
+ ],
+ "Microphone indisponible, reconnexion à la même entrée : {e}": [
+  "Unavailable microphone, re-connection at the same entrance: {0}",
+  "Microfonos no disponibles, reconectado a la misma entrada: {0}",
+  "Недоступный микрофон, повторное подключение к одному и тому же входу: {0}",
+  "マイクロフォンが利用できず、同じ入り口で再接続: {0}",
+  "未使用的麦克风,同一端口重新连接: {0}"
+ ],
+ "Migration de la bibliothèque vers Rikai": [
+  "Migration from the library to Rikai",
+  "Migración de la biblioteca a Rikai",
+  "Миграция из библиотеки в Рику",
+  "図書館からリカへの移住",
+  "从图书馆迁移到里卡"
+ ],
+ "Mise en relation avec le catalogue public": [
+  "Connecting to the model catalog",
+  "Conectando con el catálogo de modelos",
+  "Подключение к каталогу моделей",
+  "モデルカタログに接続中",
+  "正在连接模型目录"
+ ],
+ "Mise à jour disponible": [
+  "Update available",
+  "Actualización disponible",
+  "Доступно обновление",
+  "アップデートがあります",
+  "有可用更新"
+ ],
+ "Mise à jour prête": [
+  "Update ready to install",
+  "Actualización lista para instalar",
+  "Обновление готово к установке",
+  "アップデートをインストールできます",
+  "更新已就绪"
+ ],
+ "Mise à jour prête.": [
+  "Update is ready.",
+  "La actualización está listo.",
+  "Актуализация готова.",
+  "更新準備完了。",
+  "更新已准备好。"
+ ],
+ "Mises à jour": [
+  "Updates",
+  "Actualizaciones",
+  "Обновления",
+  "更新",
+  "更新"
+ ],
+ "Mises à jour privées": [
+  "Private updates",
+  "Actualizaciones privadas",
+  "Обновления из закрытого репозитория",
+  "非公開リポジトリからの更新",
+  "私有仓库更新"
+ ],
+ "Modifier le résumé": [
+  "Edit summary",
+  "Editar resumen",
+  "Изменить сводку",
+  "要約を編集",
+  "编辑摘要"
+ ],
+ "Modifier les informations": [
+  "Edit details",
+  "Editar información",
+  "Изменить сведения",
+  "情報を編集",
+  "编辑信息"
+ ],
+ "Modèle": [
+  "Model",
+  "Modelo",
+  "Модель",
+  "モデル",
+  "模型"
+ ],
+ "Modèle de transcription": [
+  "Transcription model",
+  "Modelo de transcripción",
+  "Модель распознавания речи",
+  "文字起こしモデル",
+  "转写模型"
+ ],
+ "Modèle ou fichier local introuvable": [
+  "Untold local file or model",
+  "Modelo o archivo local no encontrado",
+  "Модель или локальный файл не найден",
+  "見つからない地元のモデルまたはファイル",
+  "模型或未找到的本地文件"
+ ],
+ "Modèle vérifié": [
+  "Model verified",
+  "Modelo verificado",
+  "Модель проверена",
+  "モデルを検証しました",
+  "模型已验证"
+ ],
+ "Modèle vérifié et sélectionné.": [
+  "Model verified and selected.",
+  "Modelo verificado y seleccionado.",
+  "Модель проверена и выбрана.",
+  "モデルを検証して選択しました。",
+  "模型已验证并选中。"
+ ],
+ "Modèles": [
+  "Models",
+  "Modelos",
+  "Модели",
+  "モデル",
+  "模型"
+ ],
+ "Modèles de diarisation incompatibles": [
+  "Incompatible Diarisation Models",
+  "Modelos de diarisado incompatibles",
+  "Несовместимые модели диаризации",
+  "不一致のダイアリズムモデル",
+  "不兼容的催化模型"
+ ],
+ "Modèles déjà téléchargés": [
+  "Import a local model",
+  "Importar un modelo local",
+  "Импорт локальной модели",
+  "ローカルモデルを読み込む",
+  "导入本地模型"
+ ],
+ "Modèles locaux": [
+  "Local models",
+  "Modelos locales",
+  "Локальные модели",
+  "ローカルモデル",
+  "本地模型"
+ ],
+ "Moi": [
+  "Me",
+  "Yo",
+  "Я",
+  "自分",
+  "我"
+ ],
+ "Mono": [
+  "Mono",
+  "Mono",
+  "МОНО",
+  "モノ",
+  "莫诺"
+ ],
+ "Moteur NVIDIA": [
+  "NVIDIA runtime",
+  "Entorno de ejecución de NVIDIA",
+  "Среда выполнения NVIDIA",
+  "NVIDIA ランタイム",
+  "NVIDIA 运行库"
+ ],
+ "Moteur NVIDIA prêt. Vérifiez CUDA avec le modèle choisi.": [
+  "NVIDIA runtime ready. Test CUDA with the selected model.",
+  "El entorno NVIDIA está listo. Prueba CUDA con el modelo seleccionado.",
+  "Среда NVIDIA готова. Проверьте CUDA с выбранной моделью.",
+  "NVIDIA ランタイムの準備ができました。選択したモデルで CUDA をテストしてください。",
+  "NVIDIA 运行库已就绪。请使用所选模型测试 CUDA。"
+ ],
+ "Moteur de transcription": [
+  "Transcription engine",
+  "Motor de transcripción",
+  "Движок распознавания",
+  "文字起こしエンジン",
+  "转写引擎"
+ ],
+ "Mémoire insuffisante pour ce modèle. Augmentez le plafond de RAM ou choisissez un modèle plus petit.": [
+  "Increase memory for this model. increase the RAM threshold or choose a smaller model.",
+  "Memoria insuficiente para este modelo. Aumentar el techo de RAM o elegir un modelo más pequeño.",
+  "Недостаточная память для этого шаблона. Увеличайте потолок RAM или выберите меньший шаблон.",
+  "このモデルに不十分なメモリ:RAMの天井を高めるか、より小さなモデルを選択します。",
+  "对于此模型,记忆不足 增加 RAM 天花板或选择较小的模型。"
+ ],
+ "Mémoire vidéo insuffisante. Libérez de la VRAM ou choisissez un modèle plus petit.": [
+  "Video memory insufficient. Free the VRAM or choose a smaller model.",
+  "Memoria de vídeo insuficiente. liberar de la VRAM o elegir un modelo más pequeño.",
+  "Недостаточная видеопамять. освободите VRAM или выберите меньшую модель.",
+  "ビデオメモリが不十分で、VRAMからリリースするか、より小さなモデルを選択します。",
+  "视频内存不足 放出 VRAM 或选择较小的模型。"
+ ],
+ "Méthode inconnue": [
+  "Unknown Method",
+  "Método desconocido",
+  "Неизвестный метод",
+  "未知の方法",
+  "未知的方法"
+ ],
+ "NVIDIA CUDA": [
+  "NVIDIA CUDA",
+  "NVIDIA CUDA",
+  "NVIDIA CUDA",
+  "NVIDIA CUDA",
+  "NVIDIA CUDA"
+ ],
+ "Niveau de parole insuffisant": [
+  "Insufficient level of speech",
+  "Nivel de palabra insuficiente",
+  "Недостаточный уровень речи",
+  "不十分なスピーチレベル",
+  "不足的语言水平"
+ ],
+ "Niveaux des sources": [
+  "Source levels",
+  "Niveles de las fuentes",
+  "Уровни источников",
+  "入力レベル",
+  "音源电平"
+ ],
+ "Nom de la piste microphone": [
+  "Microphone track name",
+  "Nombre de la pista del micrófono",
+  "Название дорожки микрофона",
+  "マイクトラック名",
+  "麦克风音轨名称"
+ ],
+ "Nom de l’intervenant ou du profil autorisé": [
+  "Speaker or authorized profile name",
+  "Nombre del hablante o del perfil autorizado",
+  "Имя участника или разрешённого профиля",
+  "話者または許可済みプロファイルの名前",
+  "发言人或已授权档案名称"
+ ],
+ "Nom de piste invalide": [
+  "Invalid Track Name",
+  "Nombre de pista invalida",
+  "Название Невалидный маршрут",
+  "名称 無効 コース",
+  "不合格的路径名称"
+ ],
+ "Nom du modèle distant": [
+  "Remote model name",
+  "Nombre del modelo remoto",
+  "Название удалённой модели",
+  "リモートモデル名",
+  "远程模型名称"
+ ],
+ "Noms et expressions, séparés par des virgules": [
+  "Names and expressions, separated by commas",
+  "Nombres y expresiones separados por comas",
+  "Имена и выражения через запятую",
+  "名前や表現をカンマ区切りで入力",
+  "输入名称和短语，以逗号分隔"
+ ],
+ "Non": [
+  "No",
+  "No",
+  "Нет",
+  "いいえ",
+  "否"
+ ],
+ "Non précisé": [
+  "Not specified",
+  "Sin especificar",
+  "Не указано",
+  "指定なし",
+  "未注明"
+ ],
+ "Nouveau nom du profil": [
+  "New profile name",
+  "Nuevo nombre del perfil",
+  "Новое имя профиля",
+  "新しいプロファイル名",
+  "新档案名称"
+ ],
+ "Nouvelle réunion": [
+  "New meeting",
+  "Nueva reunión",
+  "Новая встреча",
+  "新しい会議",
+  "新建会议"
+ ],
+ "Objet": [
+  "Purpose",
+  "Objetivo",
+  "Цель",
+  "目的",
+  "目的"
+ ],
+ "Oui": [
+  "Yes",
+  "Sí",
+  "Да",
+  "はい",
+  "是"
+ ],
+ "Ouverture des sources…": [
+  "Opening of sources.",
+  "Abierto de fuentes...",
+  "Открытие источников...",
+  "オープンソース...",
+  "开源的..."
+ ],
+ "Ouverture du moteur IA…": [
+  "Starting AI engine…",
+  "Iniciando el motor de IA…",
+  "Запуск движка ИИ…",
+  "AI エンジンを起動中…",
+  "正在启动 AI 引擎…"
+ ],
+ "Ouvrir la réunion": [
+  "Open meeting",
+  "Abrir reunión",
+  "Открыть встречу",
+  "会議を開く",
+  "打开会议"
+ ],
+ "Ouvrir la transcription v{v}": [
+  "Open the transcription v {0}",
+  "Abrir la transcripción v {0}",
+  "Открыть транскрипцию v {0}",
+  "トランスクリプション v {0} 開く",
+  "开启翻译 v {0}"
+ ],
+ "Ouvrir {}": [
+  "Open {0}",
+  "Abrir {0}",
+  "Открыть {0}",
+  "{0} を開く",
+  "打开 {0}"
+ ],
+ "PCM 16 bits": [
+  "PCM 16 bits",
+  "PCM de 16 bits",
+  "ПКМ 16 бит",
+  "PCM 16ビット",
+  "PCM 16 位元"
+ ],
+ "Paquet micro incomplet": [
+  "The incomplete micro pack",
+  "Pacote micro incompleto",
+  "Неполный микропакет",
+  "マイクロパッケージ不完全",
+  "不完整的微型包"
+ ],
+ "Paramètres": [
+  "Settings",
+  "Ajustes",
+  "Настройки",
+  "設定",
+  "设置"
+ ],
+ "Parcourir les passages": [
+  "Scroll through passages",
+  "Recorrer los fragmentos",
+  "Прокрутить фрагменты",
+  "発言をスクロール",
+  "滚动浏览片段"
+ ],
+ "Parlez ou lancez un son. Visez des crêtes entre −18 et −6 dBFS.": [
+  "Speak or play some audio. Aim for peaks between −18 and −6 dBFS.",
+  "Habla o reproduce audio. Procura que los picos estén entre −18 y −6 dBFS.",
+  "Говорите или включите звук. Целевой уровень пиков — от −18 до −6 dBFS.",
+  "声を出すか音声を再生し、ピークを −18 ～ −6 dBFS に合わせてください。",
+  "请说话或播放音频，使峰值保持在 −18 至 −6 dBFS 之间。"
+ ],
+ "Passage en dehors de la piste": [
+  "Passing outside the track",
+  "Paso fuera de la pista",
+  "Переход за пределы трассы",
+  "道のりから抜け出し",
+  "走出路线之外的路线"
+ ],
+ "Passage introuvable": [
+  "Untold Passage",
+  "Paso no encontrado",
+  "Не найденный проход",
+  "未発見通路",
+  "未找到的通道"
+ ],
+ "Pause": [
+  "Pause",
+  "Pausar",
+  "Пауза",
+  "一時停止",
+  "暂停"
+ ],
+ "Pistes récupérées": [
+  "Recovered tracks",
+  "Pistas recuperadas",
+  "Восстановленные трассы",
+  "復元されたコース",
+  "恢复的路径"
+ ],
+ "Plafond de RAM": [
+  "RAM limit",
+  "Límite de RAM",
+  "Лимит ОЗУ",
+  "メモリ上限",
+  "内存上限"
+ ],
+ "Plage de téléchargement trop longue": [
+  "The Long Downloading Area",
+  "Plazo de descarga demasiado largo",
+  "Пляж загрузки слишком длинный",
+  "長いダウンロードスペース",
+  "太长的下载空间"
+ ],
+ "Plage du téléchargement incohérente": [
+  "Uncoherence of the uncoherence",
+  "Playa de descarga incoherente",
+  "Несовместимый маршрут загрузки",
+  "不一致のダウンロード",
+  "不一致的下载区"
+ ],
+ "Plus tard": [
+  "Later",
+  "Más tarde",
+  "Позже",
+  "あとで",
+  "稍后"
+ ],
+ "Point clé": [
+  "Key Point",
+  "Punto clave",
+  "Ключевая точка",
+  "キーポイント",
+  "关键点"
+ ],
+ "Position du passage {id}": [
+  "Position in passage {0}",
+  "Posición en el fragmento {0}",
+  "Позиция во фрагменте {0}",
+  "発言 {0} の再生位置",
+  "片段 {0} 的播放位置"
+ ],
+ "Preuve de synthèse absente ou inconnue": [
+  "Existent or unknown synthesis",
+  "Proba de síntesis ausente o desconocida",
+  "Доказательство отсутствия или неизвестного синтеза",
+  "未知または未知の合成証明書",
+  "缺席或未知的合成证据"
+ ],
+ "Processeur inconnu": [
+  "Unknown Processor",
+  "Procesador desconocido",
+  "Неизвестный процессор",
+  "未知のプロセッサ",
+  "未知处理器"
+ ],
+ "Profil Windows introuvable": [
+  "Windows Profiles Unknown",
+  "El perfil de Windows no encontrado",
+  "Профиль Windows не найден",
+  "Windows プロフィールが見つかりません",
+  "未找到的 Windows 个人资料"
+ ],
+ "Profil conseillé": [
+  "Recommended preset",
+  "Perfil recomendado",
+  "Рекомендуемый профиль",
+  "推奨プリセット",
+  "推荐预设"
+ ],
+ "Progression de téléchargement incomplète": [
+  "Incontinuous Downloads",
+  "Progresión de descarga incompleta",
+  "Прогрессирование неполного загрузки",
+  "不完全ダウンロードの進歩",
+  "不完整的下载进展"
+ ],
+ "Projet": [
+  "Project",
+  "Proyecto",
+  "Проект",
+  "プロジェクト",
+  "项目"
+ ],
+ "Projet ou tag": [
+  "Project or tag",
+  "Proyecto o etiqueta",
+  "Проект или тег",
+  "プロジェクトまたはタグ",
+  "项目或标签"
+ ],
+ "Proposer les voix connues": [
+  "Suggest known speakers",
+  "Sugerir hablantes conocidos",
+  "Предлагать знакомых участников",
+  "登録済みの話者を提案",
+  "推荐已知发言人"
+ ],
+ "Précision Turbo": [
+  "Turbo precision",
+  "Precisión Turbo",
+  "Точный Turbo",
+  "高精度 Turbo",
+  "高精度 Turbo"
+ ],
+ "Précision micro non prise en charge ({bits} bits)": [
+  "Micro Unsupported Precision ({0} bits)",
+  "Precisión micro sin soporte ( {0} bits)",
+  "Неподдерживаемая точность микро ({0} битов)",
+  "マイクロ無サポート精度({0}ビット)",
+  "微型不受支持的精度({0}位)"
+ ],
+ "Préparation du moteur de synthèse": [
+  "Preparing summary model",
+  "Preparando el modelo de resumen",
+  "Подготовка модели для сводок",
+  "要約モデルを準備中",
+  "正在准备摘要模型"
+ ],
+ "Prêt à enregistrer": [
+  "Ready to record",
+  "Listo para grabar",
+  "Всё готово к записи",
+  "録音の準備ができました",
+  "已准备好录音"
+ ],
+ "Prête": [
+  "Prepared",
+  "Preparación",
+  "Готов",
+  "準備",
+  "准备好"
+ ],
+ "Question ouverte": [
+  "The Open Question",
+  "Pregunta abierta",
+  "Открытый вопрос",
+  "オープン質問",
+  "开放问题"
+ ],
+ "Qwen2.5 · 3B · GGUF · 2,10 Go": [
+  "Qwen2.5 · 3B · GGUF · 2.10 GB",
+  "Qwen2.5 · 3B · GGUF · 2,10 GB",
+  "Qwen2.5 · 3B · GGUF · 2,10 ГБ",
+  "Qwen2.5 · 3B · GGUF · 2.10 GB",
+  "Qwen2.5 · 3B · GGUF · 2.10 GB"
+ ],
+ "Rapide": [
+  "Fast",
+  "Rápido",
+  "Быстрый",
+  "高速",
+  "快速"
+ ],
+ "Rechercher": [
+  "Search",
+  "Buscar",
+  "Найти",
+  "検索",
+  "搜索"
+ ],
+ "Rechercher une langue": [
+  "Search languages",
+  "Buscar un idioma",
+  "Найти язык",
+  "言語を検索",
+  "搜索语言"
+ ],
+ "Redémarrer Rikai": [
+  "Restart Rikai",
+  "Reiniciar Rikai",
+  "Перезапустить Rikai",
+  "Rikai を再起動",
+  "重启 Rikai"
+ ],
+ "Refuser": [
+  "Decline",
+  "Rechazar",
+  "Отклонить",
+  "拒否",
+  "拒绝"
+ ],
+ "Renommer": [
+  "Rename",
+  "Cambiar nombre",
+  "Переименовать",
+  "名前を変更",
+  "重命名"
+ ],
+ "Renommer {name}": [
+  "Rename {0}",
+  "Cambiar el nombre de {0}",
+  "Переименовать {0}",
+  "{0} の名前を変更",
+  "重命名 {0}"
+ ],
+ "Renommer {raw} pour cette réunion": [
+  "Rename {0} for this meeting",
+  "Cambiar el nombre de {0} en esta reunión",
+  "Переименовать {0} для этой встречи",
+  "この会議での {0} の名前を変更",
+  "更改本次会议中 {0} 的名称"
+ ],
+ "Reprendre": [
+  "Resume",
+  "Reanudar",
+  "Продолжить",
+  "再開",
+  "继续"
+ ],
+ "Reprise acoustique possible": [
+  "Possible microphone bleed",
+  "Posible filtración de audio",
+  "Возможное попадание звука в микрофон",
+  "音の回り込みの可能性",
+  "可能存在串音"
+ ],
+ "Requête reçue par le moteur IA": [
+  "AI engine received the request",
+  "El motor de IA ha recibido la solicitud",
+  "Движок ИИ получил запрос",
+  "AI エンジンがリクエストを受信しました",
+  "AI 引擎已收到请求"
+ ],
+ "Ressources de transcription": [
+  "Transcription resources",
+  "Recursos de transcripción",
+  "Ресурсы для распознавания речи",
+  "文字起こしリソース",
+  "转写资源"
+ ],
+ "Restaurer": [
+  "Restore",
+  "Restaurar",
+  "Восстановить размер",
+  "元のサイズに戻す",
+  "还原"
+ ],
+ "Rikai est à jour.": [
+  "Rikai is up to date.",
+  "Rikai está al día.",
+  "Установлена последняя версия Rikai.",
+  "Rikai は最新です。",
+  "Rikai 已是最新版本。"
+ ],
+ "Rikai {} → {}": [
+  "Rikai {0} → {1}",
+  "Rikai {0} → {1}",
+  "Рикаи {0} → {1}",
+  "リカイ {0} → {1}",
+  "Rikai {0} → {1}"
+ ],
+ "Récupération annulée": [
+  "Recovery cancelled",
+  "Recuperación cancelada",
+  "Отменено восстановление",
+  "キャンセル回収",
+  "取消回收"
+ ],
+ "Récupération des fragments audio": [
+  "Recovery of audio fragments",
+  "Recuperación de fragmentos de audio",
+  "восстановление аудио фрагментов",
+  "オーディオフラグメントの復元",
+  "恢复音频片段"
+ ],
+ "Récupérer les pistes lisibles": [
+  "Recover the readable tracks",
+  "Recuperar las pistas leibles",
+  "Возвращение читаемых трассов",
+  "読みやすいパスポートの回復",
+  "恢复可读的路径"
+ ],
+ "Rédaction du compte rendu": [
+  "Writing meeting summary",
+  "Redactando el resumen de la reunión",
+  "Подготовка итогов встречи",
+  "議事録を作成中",
+  "正在撰写会议纪要"
+ ],
+ "Réduire": [
+  "Minimize",
+  "Minimizar",
+  "Свернуть",
+  "最小化",
+  "最小化"
+ ],
+ "Réponse IPC incompatible": [
+  "IPC incompatible response",
+  "Respuesta IPC incompatible",
+  "Несовместимый IPC ответ",
+  "IPC不一致",
+  "IPC 不兼容"
+ ],
+ "Réponse du fournisseur trop volumineuse": [
+  "The supplier's response is too large.",
+  "Respuesta del proveedor demasiado grande",
+  "Ответ поставщика слишком большой",
+  "サプライヤーの回答が大きすぎる",
+  "供应商的回应太大了"
+ ],
+ "Réponse inattendue pour le téléchargement": [
+  "Unexpected response to the download",
+  "Respuesta inesperada para la descarga",
+  "Неожиданный ответ на загрузку",
+  "ダウンロードの予期せぬ回答",
+  "下载 未预期的回复"
+ ],
+ "Résumé": [
+  "Summary",
+  "Resumen",
+  "Сводка",
+  "要約",
+  "摘要"
+ ],
+ "Résumé GGUF": [
+  "Summary GGUF file",
+  "Archivo GGUF de resumen",
+  "Файл GGUF для сводок",
+  "要約用 GGUF ファイル",
+  "摘要 GGUF 文件"
+ ],
+ "Résumé local": [
+  "Local summary",
+  "Resumen local",
+  "Локальная сводка",
+  "ローカル要約",
+  "本地摘要"
+ ],
+ "Réunion": [
+  "Meeting",
+  "Reunión",
+  "Встреча",
+  "会議",
+  "会议"
+ ],
+ "Réunion absente": [
+  "The absent meeting",
+  "Reunión ausente",
+  "Отсутствие встречи",
+  "欠席会議",
+  "缺席会议"
+ ],
+ "Réunions récentes": [
+  "Recent meetings",
+  "Reuniones recientes",
+  "Недавние встречи",
+  "最近の会議",
+  "最近的会议"
+ ],
+ "Révision du modèle invalide": [
+  "Revision of the Invalid Model",
+  "Revisión del modelo invalido",
+  "Пересмотр инвалидной модели",
+  "障害モデルの改正",
+  "缺陷模型修订"
+ ],
+ "Rééchantillonnage du microphone · {e:?}": [
+  "Re-sampleing of the microphone · {0}",
+  "Reemplazo del micrófono · {0}",
+  "Просмотр микрофона · {0}",
+  "マイクロフォンの再サンプル · {0}",
+  "微型微型 · {0}"
+ ],
+ "Saturation · 0 dBFS": [
+  "Clipping · 0 dBFS",
+  "Saturación · 0 dBFS",
+  "Перегрузка · 0 dBFS",
+  "クリッピング · 0 dBFS",
+  "削波 · 0 dBFS"
+ ],
+ "Segmentation ONNX": [
+  "ONNX segmentation model",
+  "Modelo de segmentación ONNX",
+  "Модель сегментации ONNX",
+  "ONNX セグメンテーションモデル",
+  "ONNX 分割模型"
+ ],
+ "Session": [
+  "Session",
+  "Sesión",
+  "Сеанс",
+  "セッション",
+  "会话"
+ ],
+ "Silence": [
+  "Silence",
+  "silencio",
+  "молчание",
+  "沈黙",
+  "沉默"
+ ],
+ "Sombre": [
+  "Dark",
+  "Oscuro",
+  "Тёмная",
+  "ダーク",
+  "深色"
+ ],
+ "Source « {} »": [
+  "Source “{0}”",
+  "Fuente « {0} »",
+  "Источник «{0}»",
+  "出典「{0}」",
+  "来源“{0}”"
+ ],
+ "Sources audio": [
+  "Audio sources",
+  "Fuentes de audio",
+  "Источники звука",
+  "音源",
+  "音源"
+ ],
+ "Sources sélectionnées": [
+  "Selected sources",
+  "Fuentes seleccionadas",
+  "Выбранные источники",
+  "選択した音源",
+  "所选音源"
+ ],
+ "Suivi": [
+  "Follow-up",
+  "Seguimiento",
+  "Дальнейшие шаги",
+  "フォローアップ",
+  "后续跟进"
+ ],
+ "Supprimer": [
+  "Delete",
+  "Eliminar",
+  "Удалить",
+  "削除",
+  "删除"
+ ],
+ "Supprimer ce profil vocal ?": [
+  "Delete this voice profile?",
+  "¿Eliminar este perfil de voz?",
+  "Удалить этот голосовой профиль?",
+  "この音声プロファイルを削除しますか？",
+  "要删除此声纹档案吗？"
+ ],
+ "Supprimer la réunion": [
+  "Delete meeting",
+  "Eliminar reunión",
+  "Удалить встречу",
+  "会議を削除",
+  "删除会议"
+ ],
+ "Supprimer les fichiers audio": [
+  "Delete audio files",
+  "Eliminar archivos de audio",
+  "Удалить аудиофайлы",
+  "音声ファイルを削除",
+  "删除音频文件"
+ ],
+ "Supprimer {name}": [
+  "Delete {0}",
+  "Eliminar {0}",
+  "Удалить {0}",
+  "{0} を削除",
+  "删除 {0}"
+ ],
+ "Synthèse manquante": [
+  "Lack of synthesis",
+  "síntesis faltante",
+  "Недостаточный синтез",
+  "欠けている合成",
+  "缺少的合成"
+ ],
+ "Sélectionner un modèle local": [
+  "Select a local model",
+  "Seleccionar un modelo local",
+  "Выбор местного модели",
+  "地元モデルを選択",
+  "选择一个地方模型"
+ ],
+ "Sélectionnez au moins une source": [
+  "Select at least one source.",
+  "Seleccione al menos una fuente",
+  "Выберите хотя бы один источник.",
+  "少なくとも1つの源を選択します。",
+  "选择至少一个来源"
+ ],
+ "Sélectionnez un modèle GGUF et un modèle Faster-Whisper pour le résumé automatique.": [
+  "Select a GGUF model and a Faster-Whisper model for the automatic summary.",
+  "Seleccione un modelo GGUF y un modelo Faster-Whisper para el resumen automático.",
+  "Выберите модель GGUF и модель Faster-Whisper для автоматического резюме.",
+  "GGUF モデルと Faster-Whisper モデルを選択して、自動概要を選択します。",
+  "选择一个 GGUF 模型和一个 Faster-Whisper 模型,以便自动总结。"
+ ],
+ "Sélectionnez un seul microphone": [
+  "Choose one microphone.",
+  "Seleccione un único micrófono",
+  "Выберите один микрофон",
+  "1つのマイクを選択",
+  "选择一个麦克风"
+ ],
+ "Sélectionnez une application ou un microphone à tester.": [
+  "Select an application or a microphone to test.",
+  "Seleccione una aplicación o un micrófono para probar.",
+  "Выберите приложение или микрофон для тестирования.",
+  "試すアプリまたはマイクを選択します。",
+  "请选择一个应用程序或一个要测试的麦克风。"
+ ],
+ "Sélectionnez une application ou un microphone.": [
+  "Select an application or a microphone.",
+  "Seleccione una aplicación o un micrófon.",
+  "Выберите приложение или микрофон.",
+  "アプリまたはマイクを選択します。",
+  "选择一个应用程序或麦克风。"
+ ],
+ "Tags séparés par des virgules": [
+  "Comma-separated tags",
+  "Etiquetas separadas por comas",
+  "Теги через запятую",
+  "タグをカンマ区切りで入力",
+  "标签以逗号分隔"
+ ],
+ "Taille de l’installeur incorrecte.": [
+  "The size of the installator is incorrect.",
+  "El tamaño de la instalación incorrecta.",
+  "Неправильный размер установки.",
+  "インストラクターのサイズが不適切です。",
+  "安装器的尺寸不正确。"
+ ],
+ "Taille de téléchargement dépassée": [
+  "Excessive Downloads",
+  "Tamaño de descarga excedido",
+  "Пребывающий размер загрузки",
+  "ダウンロードサイズの過剰",
+  "超越下载量"
+ ],
+ "Taille du téléchargement invalide": [
+  "Invalid download size",
+  "Tamaño de descarga invalida",
+  "Размер недействительного загрузки",
+  "無効ダウンロードのサイズ",
+  "无效下载量"
+ ],
+ "Taille inattendue pour {entry.rfilename}.": [
+  "Unpredictable size for {0} .",
+  "Un tamaño inesperado para {0}.",
+  "Неожиданный размер для {0}.",
+  "予想外のサイズは{0}です。",
+  "第{0}章 不见了"
+ ],
+ "Taille limite du fichier WAV atteinte": [
+  "Limit size of the WAV file reached",
+  "El tamaño límite del archivo WAV alcanzado",
+  "Ограниченный размер файла WAV",
+  "WAVファイルのサイズ制限",
+  "WAV 文件大小限制"
+ ],
+ "Temps de calcul GPU": [
+  "GPU compute time",
+  "Tiempo de cálculo de GPU",
+  "Доля времени GPU",
+  "GPU の演算時間",
+  "GPU 计算时间"
+ ],
+ "Temps de parole insuffisant": [
+  "Not enough speech",
+  "No hay suficiente voz",
+  "Недостаточно речи",
+  "発話が不足しています",
+  "语音不足"
+ ],
+ "Temps écoulé {elapsed}": [
+  "Elapsed {0}",
+  "Tiempo transcurrido {0}",
+  "Прошло {0}",
+  "経過時間 {0}",
+  "已用时间 {0}"
+ ],
+ "Temps écoulé {elapsed} · dernière réponse il y a {idle} s": [
+  "Elapsed {0} · last response {1} s ago",
+  "Tiempo transcurrido {0} · última respuesta hace {1} s",
+  "Прошло {0} · последний ответ {1} с назад",
+  "経過時間 {0} · 最後の応答は {1} 秒前",
+  "已用时间 {0} · 上次响应在 {1} 秒前"
+ ],
+ "Terminer le test": [
+  "Finish test",
+  "Finalizar prueba",
+  "Завершить проверку",
+  "テストを終了",
+  "结束测试"
+ ],
+ "Terminée": [
+  "Finished",
+  "Terminado",
+  "Завершился",
+  "終了",
+  "结束"
+ ],
+ "Test CUDA en échec · vérifiez le pilote NVIDIA et le moteur installé": [
+  "Test CUDA failed · check the NVIDIA driver and the engine installed",
+  "Test CUDA en fracaso · verifique el piloto NVIDIA y el motor instalado",
+  "Тест CUDA в неудаче · проверьте NVIDIA драйвер и установленный двигатель",
+  "失敗したCUDAテスト · NVIDIA パイロットとエンジンがインストールされていることを確認する",
+  "CUDA 测试失败 · 检查 NVIDIA 驱动程序和安装发动机"
+ ],
+ "Test de l’encodeur et du décodeur sur CUDA": [
+  "Testing the encoder and decoder on CUDA",
+  "Test de codificador y decodificador en CUDA",
+  "Тест на кодировку и декодер на CUDA",
+  "コードとデコードのテスト CUDA",
+  "在 CUDA 上测试编码器和编码器"
+ ],
+ "Test de silence en échec": [
+  "Test of Silence in Failure",
+  "Test de silencio en fracaso",
+  "Тест на молчание в неудаче",
+  "沈黙の試験が失敗",
+  "失败的沉默测试"
+ ],
+ "Test des niveaux": [
+  "Level check",
+  "Prueba de niveles",
+  "Проверка уровней",
+  "レベルチェック",
+  "电平测试"
+ ],
+ "Test réussi sur CUDA · encodeur et décodeur en {}.": [
+  "Successful test on CUDA · encoder and decoder in {0}.",
+  "Testado con éxito en CUDA · codificador y decodificador en {0}.",
+  "Успешный тест на CUDA · кодировщик и декодер в {0} .",
+  "成功したテスト CUDA · 暗号化器と暗号化器 {0} .",
+  "成功测试 CUDA · 编码器和编码器在 {0} 。"
+ ],
+ "Tester les niveaux": [
+  "Test levels",
+  "Probar niveles",
+  "Проверить уровни",
+  "レベルをテスト",
+  "测试电平"
+ ],
+ "Threads CPU": [
+  "CPU threads",
+  "Hilos de CPU",
+  "Потоки CPU",
+  "CPU スレッド",
+  "CPU 线程"
+ ],
+ "Thème": [
+  "Theme",
+  "Tema",
+  "Тема",
+  "テーマ",
+  "主题"
+ ],
+ "Titre": [
+  "Title",
+  "Título",
+  "Название",
+  "タイトル",
+  "标题"
+ ],
+ "Titre de la réunion": [
+  "Meeting title",
+  "Título de la reunión",
+  "Название встречи",
+  "会議のタイトル",
+  "会议标题"
+ ],
+ "Titre, paroles ou intervenant": [
+  "Title, transcript or speaker",
+  "Título, transcripción o hablante",
+  "Название, текст или участник",
+  "タイトル、発言、話者",
+  "标题、发言内容或发言人"
+ ],
+ "Traduction du passage": [
+  "Translating passage",
+  "Traduciendo el fragmento",
+  "Перевод фрагмента",
+  "発言を翻訳中",
+  "正在翻译片段"
+ ],
+ "Traduction locale": [
+  "Local translation",
+  "Traducción local",
+  "Локальный перевод",
+  "ローカル翻訳",
+  "本地翻译"
+ ],
+ "Traduire le passage": [
+  "Translate passage",
+  "Traducir fragmento",
+  "Перевести фрагмент",
+  "この発言を翻訳",
+  "翻译此片段"
+ ],
+ "Traitement": [
+  "Processing",
+  "Procesamiento",
+  "Обработка",
+  "処理",
+  "处理"
+ ],
+ "Traitement annulé": [
+  "Processing cancelled",
+  "Procesamiento cancelado",
+  "Обработка отменена",
+  "処理をキャンセルしました",
+  "处理已取消"
+ ],
+ "Traitement en cours": [
+  "Processing",
+  "Procesando",
+  "Обработка",
+  "処理中",
+  "正在处理"
+ ],
+ "Traitement interrompu": [
+  "Processing interrupted",
+  "Procesamiento interrumpido",
+  "Обработка прервана",
+  "処理が中断されました",
+  "处理中断"
+ ],
+ "Traitement interrompu · {}": [
+  "Processing interrupted · {0}",
+  "Procesamiento interrumpido · {0}",
+  "Обработка прервана · {0}",
+  "処理が中断されました · {0}",
+  "处理中断 · {0}"
+ ],
+ "Transcription": [
+  "Transcript",
+  "Transcripción",
+  "Расшифровка",
+  "文字起こし",
+  "转写"
+ ],
+ "Transcription terminée · {} segment{}.": [
+  "Transcription complete · {0} segment{1}.",
+  "Transcripción finalizada · {0} segmento{1}.",
+  "Распознано фрагментов: {0}{1}.",
+  "文字起こしが完了しました（{0} 件）。{1}",
+  "转写完成，共 {0} 个片段。{1}"
+ ],
+ "Transcription terminée. Aucune parole détectée sur les pistes.": [
+  "Transcription complete. No speech detected on the tracks.",
+  "Transcripción finalizada. No se detectó voz en las pistas.",
+  "Распознавание завершено. Речь на дорожках не обнаружена.",
+  "文字起こしが完了しました。トラックに音声は検出されませんでした。",
+  "转写完成，音轨中未检测到语音。"
+ ],
+ "Transcription vide": [
+  "The empty transcription",
+  "Transcripción vacía",
+  "ТРАНСКРИПЦИЯ ВАЖНА",
+  "空のトランスクリプション",
+  "虚假翻译"
+ ],
+ "Transcription · piste {index}/{len(tracks)}": [
+  "Transcription · track {0} / {1}",
+  "Transcripción · pista {0} / {1}",
+  "Транскрипция · трасса {0} / {1}",
+  "トランスクリプト · トラック {0} / {1}",
+  "翻译 · 轨道 {0} / {1}"
+ ],
+ "Transcrire les pistes": [
+  "Transcribe tracks",
+  "Transcribir pistas",
+  "Распознать речь на дорожках",
+  "トラックを文字起こし",
+  "转写音轨"
+ ],
+ "Transcrite": [
+  "Transcribed",
+  "Transcrita",
+  "Распознано",
+  "文字起こし済み",
+  "已转写"
+ ],
+ "Téléchargement GitHub incomplet.": [
+  "GitHub is incomplete.",
+  "Descarga GitHub incompleto.",
+  "Загрузка GitHub неполная.",
+  "GitHubのダウンロードは不完全です。",
+  "GitHub 不完整的下载。"
+ ],
+ "Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé.": [
+  "Download 641 MB from NVIDIA’s official PyPI packages. Allow 2.5 GiB of free space. An NVIDIA driver is required.",
+  "Se descargarán 641 MB de los paquetes oficiales de NVIDIA en PyPI. Se necesitan 2,5 GiB libres y un controlador NVIDIA instalado.",
+  "Будет загружен 641 МБ из официальных пакетов NVIDIA на PyPI. Требуются 2,5 ГиБ свободного места и драйвер NVIDIA.",
+  "PyPI の NVIDIA 公式パッケージから 641 MB をダウンロードします。2.5 GiB の空き容量と NVIDIA ドライバーが必要です。",
+  "将从 PyPI 下载 641 MB 的 NVIDIA 官方软件包。请预留 2.5 GiB 空间，并先安装 NVIDIA 驱动。"
+ ],
+ "Téléchargement de la mise à jour": [
+  "Downloading update",
+  "Descargando actualización",
+  "Загрузка обновления",
+  "アップデートをダウンロード中",
+  "正在下载更新"
+ ],
+ "Téléchargement de {entry.rfilename}": [
+  "Downloading {0}",
+  "Descargando {0}",
+  "Загрузка {0}",
+  "{0} をダウンロード中",
+  "正在下载 {0}"
+ ],
+ "Téléchargement de {wheel.package}": [
+  "Downloading {0}",
+  "Descargando {0}",
+  "Загрузка {0}",
+  "{0} をダウンロード中",
+  "正在下载 {0}"
+ ],
+ "Téléchargement du modèle": [
+  "Model download",
+  "Descarga del modelo",
+  "Загрузка модели",
+  "モデルのダウンロード",
+  "模型下载"
+ ],
+ "Télécharger": [
+  "Download",
+  "Descargar",
+  "Скачать",
+  "ダウンロード",
+  "下载"
+ ],
+ "Téléchargé": [
+  "Downloaded",
+  "Descargado",
+  "Скачано",
+  "ダウンロード済み",
+  "已下载"
+ ],
+ "URL HTTPS du fournisseur": [
+  "Provider HTTPS URL",
+  "URL HTTPS del proveedor",
+  "HTTPS-адрес сервиса",
+  "プロバイダーの HTTPS URL",
+  "服务商 HTTPS 地址"
+ ],
+ "URL HTTPS sans identifiants requise.": [
+  "HTTPS URLs without IDs required.",
+  "URL HTTPS sin identificadores requeridos.",
+  "URL HTTPS без идентификаторов.",
+  "HTTPS URL は、必要なID なしです。",
+  "HTTPS URL 无需识别器。"
+ ],
+ "Un flux audio est déjà actif.": [
+  "A audio stream is already active.",
+  "Un flujo de audio ya está activo.",
+  "Активный звуковой поток уже работает.",
+  "オーディオストリームはすでにアクティブです。",
+  "音频流已经活跃了。"
+ ],
+ "Un passage dépasse la fenêtre du modèle": [
+  "A passage goes beyond the model window.",
+  "Un paso se extiende por la ventana del modelo",
+  "Один проход проходит за окном модели",
+  "モデルの窓を超える通路",
+  "一个通道超越模型的窗口"
+ ],
+ "Un traitement est en cours": [
+  "Treatment is ongoing.",
+  "Un tratamiento está en curso",
+  "Лечение находится в процессе",
+  "治療が進んでいます。",
+  "正在进行的治疗"
+ ],
+ "Un travail est déjà actif": [
+  "Work is already active.",
+  "El trabajo ya está activo",
+  "Работа уже активна",
+  "すでに活躍している仕事。",
+  "工作已经活跃了"
+ ],
+ "Une URL HTTPS sans clé, identifiants ou paramètres est requise": [
+  "A HTTPS URL without key, identifiers or settings is required",
+  "Se requiere una URL HTTPS sin clave, identificadores o configuraciones",
+  "URL-адреса HTTPS без ключа, идентификаторов или параметров требуется",
+  "キー、アイデンティティ、または設定のない HTTPS URL が必要です。",
+  "需要一个没有密钥、识别或设置的 HTTPS URL"
+ ],
+ "Une autre instance utilise déjà la bibliothèque": [
+  "Another institution already uses the library.",
+  "Otra instancia ya utiliza la biblioteca",
+  "Другая библиотека уже использует библиотеку.",
+  "もう一つ、図書館を利用しています。",
+  "另一个机构已经使用图书馆。"
+ ],
+ "Une mise à jour est disponible.": [
+  "An update is available.",
+  "Hay una actualización disponible.",
+  "Доступно обновление.",
+  "アップデートがあります。",
+  "有可用更新。"
+ ],
+ "Une piste PCM mono 16 kHz 16 bits est requise": [
+  "A 16kHz 16bit PCM track is required",
+  "Se requiere una pista PCM de 16 kHz de 16 bits",
+  "Требуется 16 кГц 16 битов моно-ПЦМ",
+  "16kHz 16ビットのPCMモノパスが必要です。",
+  "需要 16kHz 16bit PCM 路径"
+ ],
+ "Une récupération existe déjà": [
+  "Recovery is already there.",
+  "La recuperación ya existe.",
+  "Восстановление уже существует.",
+  "回復はすでに存在する。",
+  "恢复已经存在。"
+ ],
+ "Une réunion est déjà active": [
+  "The meeting is already active.",
+  "Una reunión ya está activa.",
+  "Встреча уже активна.",
+  "会議はすでに活躍している。",
+  "会议已经活跃了。"
+ ],
+ "Utiliser ce modèle": [
+  "Use this model",
+  "Usar este modelo",
+  "Использовать эту модель",
+  "このモデルを使用",
+  "使用此模型"
+ ],
+ "Version IPC incompatible": [
+  "Uncompatible IPC version",
+  "Versión IPC incompatible",
+  "Несовместимая версия IPC",
+  "IPC バージョン不一致",
+  "IPC 不兼容版本"
+ ],
+ "Version de mise à jour invalide.": [
+  "Invalid version of update.",
+  "Versión de actualización invalida.",
+  "Невыполненная версия обновления.",
+  "無効な更新版です。",
+  "更新版不合格。"
+ ],
+ "Vocabulaire français": [
+  "French vocabulary",
+  "Vocabulario francés",
+  "Французская лексика",
+  "フランス語の語彙",
+  "法语词汇"
+ ],
+ "Voix": [
+  "Voices",
+  "Voces",
+  "Голоса",
+  "音声プロファイル",
+  "声音档案"
+ ],
+ "Voix distante": [
+  "Remote speaker",
+  "Voz remota",
+  "Удалённый участник",
+  "相手の声",
+  "远端发言人"
+ ],
+ "Volume": [
+  "Volume",
+  "Volumen",
+  "Громкость",
+  "音量",
+  "音量"
+ ],
+ "Vérification CUDA": [
+  "Review of CUDA",
+  "Verificación CUDA",
+  "Проверка CUDA",
+  "CUDA検査",
+  "CUDA 检查"
+ ],
+ "Vérification de {entry.rfilename}": [
+  "Verifying {0}",
+  "Verificando {0}",
+  "Проверка {0}",
+  "{0} を検証中",
+  "正在验证 {0}"
+ ],
+ "Vérification de {entry.rfilename} en échec. Relancez le téléchargement.": [
+  "Check {0} failed. restart the download.",
+  "Verificación de {0} en fracaso. reiniciar la descarga.",
+  "Проверка {0} в неудаче. перезагрузить.",
+  "{0} チェックインが失敗しました ダウンロードを再起動します。",
+  "查看{0}失败 重新下载。"
+ ],
+ "Vérification des bibliothèques NVIDIA": [
+  "Review of the NVIDIA Library",
+  "Revisión de bibliotecas NVIDIA",
+  "Проверка библиотеки NVIDIA",
+  "NVIDIA図書館の検索結果",
+  "NVIDIA 图书馆检查"
+ ],
+ "Vérification des échos entre les pistes": [
+  "Verification of the echo between the trails",
+  "Verificación de los ecos entre las pistas",
+  "Проверка эхо между трассами",
+  "トラック間のエコチェック",
+  "路径之间的分数检查"
+ ],
+ "Vérifier CUDA avec ce modèle": [
+  "Test CUDA with this model",
+  "Probar CUDA con este modelo",
+  "Проверить CUDA с этой моделью",
+  "このモデルで CUDA をテスト",
+  "使用此模型测试 CUDA"
+ ],
+ "Vérifier au démarrage": [
+  "Check at startup",
+  "Buscar actualizaciones al iniciar",
+  "Проверять при запуске",
+  "起動時に確認",
+  "启动时检查"
+ ],
+ "Vérifier maintenant": [
+  "Check now",
+  "Comprobar ahora",
+  "Проверить сейчас",
+  "今すぐ確認",
+  "立即检查"
+ ],
+ "Windows n’a pas pu appliquer la limite de mémoire du worker": [
+  "Windows could not apply the worker's memory limit",
+  "Windows no ha podido aplicar el límite de memoria del trabajador",
+  "Windows не смогла применить ограничение памяти работника",
+  "Windows は労働者のメモリ制限を適用できなかった",
+  "Windows 无法使用工人的内存限制"
+ ],
+ "Worker IA absent. Installez le composant IA ou synchronisez ai-worker avec uv.": [
+  "AI engine missing. Reinstall Rikai to restore it.",
+  "Falta el motor de IA. Reinstala Rikai para restaurarlo.",
+  "Движок ИИ отсутствует. Переустановите Rikai.",
+  "AI エンジンがありません。Rikai を再インストールしてください。",
+  "缺少 AI 引擎。请重新安装 Rikai。"
+ ],
+ "Worker indisponible": [
+  "Processing engine unavailable",
+  "Motor de procesamiento no disponible",
+  "Движок обработки недоступен",
+  "処理エンジンが利用できません",
+  "处理引擎不可用"
+ ],
+ "conseillé": [
+  "recommended",
+  "recomendado",
+  "рекомендуется",
+  "推奨",
+  "推荐"
+ ],
+ "correction manuelle": [
+  "Manual correction",
+  "Corrección manual",
+  "Ручная коррекция",
+  "手動修正",
+  "手动纠正"
+ ],
+ "cuBLAS n’a pas fourni sa version ({result})": [
+  "COBLAS has not provided its version ( {0} )",
+  "cuBLAS no ha proporcionado su versión ( {0} )",
+  "КБЛАС не предоставил свою версию ( {0} )",
+  "バージョン({0}版)を提供していません。",
+  "此分類上一篇: 未發表版({0} )"
+ ],
+ "{:.1} / {:.1} Mio": [
+  "{0} / {1} MiB",
+  "{0} / {1} MiB",
+  "{0} / {1} МиБ",
+  "{0} / {1} MiB",
+  "{0} / {1} MiB"
+ ],
+ "{count} piste(s) lisible(s) sur {total}. Les originaux sont conservés.": [
+  "{0} track(s) readable(s) on {1} . The original are preserved.",
+  "{0} pista(s) leible(s) de {1} . Los originales se conservan.",
+  "{0} прочитанная трасса (с) на {1} . оригиналы сохраняются.",
+  "{0} 読みやすい トラック(s) から {1} . オリジナルは保存されています。",
+  "{0} 可阅读的路径(s) 在 {1} . 原件保留。"
+ ],
+ "{cpu} · {ram} Gio de RAM disponibles": [
+  "{0} · {1} GiB RAM available",
+  "{0} · {1} GiB de RAM disponible",
+  "{0} · доступно {1} ГиБ ОЗУ",
+  "{0} · 空きメモリ {1} GiB",
+  "{0} · 可用内存 {1} GiB"
+ ],
+ "{db:.1} dBFS": [
+  "{0} dBFS",
+  "{0} dBFS",
+  "{0} dBFS",
+  "{0} dBFS バージョン",
+  "{0} dBFS"
+ ],
+ "{gain:+} dB": [
+  "{0} dB",
+  "{0} dB",
+  "{0} дБ",
+  "{0} dB",
+  "{0} dB"
+ ],
+ "{name} · charge {busy} % · VRAM libre {free:.1} / {total:.1} Gio": [
+  "{0} · load {1}% · available VRAM {2} / {3} GiB",
+  "{0} · carga {1} % · VRAM disponible {2} / {3} GiB",
+  "{0} · загрузка {1} % · свободно видеопамяти {2} / {3} ГиБ",
+  "{0} · 使用率 {1}% · 空き VRAM {2} / {3} GiB",
+  "{0} · 使用率 {1}% · 可用显存 {2} / {3} GiB"
+ ],
+ "{name} · gain {step:+} dB": [
+  "{0} · gain {1} dB",
+  "{0} · ganancia {1} dB",
+  "{0} · выигрыш {1} dB",
+  "{0} · 得点 {1} dB",
+  "{0} · 收益 {1} dB"
+ ],
+ "{name} · {count} passages": [
+  "{0} · {1} passages",
+  "{0} · {1} pasajes",
+  "{0} · {1} прохождений",
+  "{0} · {1} パスワード",
+  "{0} · {1} 段落"
+ ],
+ "{n} Gio": [
+  "{0} GiB",
+  "{0} GiB",
+  "{0} ГиБ",
+  "{0} GiB",
+  "{0} GiB"
+ ],
+ "{raw} · proposition {name} · similarité {score:.2}": [
+  "{0} · suggested {1} · similarity {2}",
+  "{0} · propuesta {1} · similitud {2}",
+  "{0} · предложено {1} · сходство {2}",
+  "{0} · 候補 {1} · 類似度 {2}",
+  "{0} · 建议 {1} · 相似度 {2}"
+ ],
+ "{} le passage §{id}": [
+  "{0} the passage § {1}",
+  "{0} el paso § {1}",
+  "{0} переход § {1}",
+  "{0} 段落 § {1}",
+  "{0} 通道 § {1}"
+ ],
+ "À configurer": [
+  "Needs setup",
+  "Pendiente de configurar",
+  "Требует настройки",
+  "要設定",
+  "待配置"
+ ],
+ "À faire": [
+  "to do",
+  "A hacer",
+  "Сделать",
+  "やるべきこと",
+  "要做"
+ ],
+ "À la demande": [
+  "On demand",
+  "A petición",
+  "По запросу",
+  "オンデマンド",
+  "按需"
+ ],
+ "Échantillon vocal insuffisant": [
+  "Insufficient vocal sample",
+  "Ejemplo vocal insuficiente",
+  "Недостаточный голосовой выбор",
+  "不十分な音声",
+  "不够的语音样本"
+ ],
+ "Échec": [
+  "failure",
+  "fracaso",
+  "Неудача",
+  "失敗",
+  "失败"
+ ],
+ "Écouter": [
+  "Play",
+  "Reproducir",
+  "Воспроизвести",
+  "再生",
+  "播放"
+ ],
+ "Écouter le passage §{id}": [
+  "Play passage §{0}",
+  "Reproducir fragmento §{0}",
+  "Воспроизвести фрагмент §{0}",
+  "発言 §{0} を再生",
+  "播放片段 §{0}"
+ ],
+ "Équilibré": [
+  "Balanced",
+  "Equilibrado",
+  "Сбалансированный",
+  "バランス",
+  "均衡"
+ ],
+ "Étape manquante": [
+  "The missing stage",
+  "Fase faltante",
+  "Недостаточный этап",
+  "欠けている段階",
+  "缺席阶段"
+ ],
+ "État": [
+  "Status",
+  "Estado",
+  "Состояние",
+  "状態",
+  "状态"
+ ],
+ "État de lecture indisponible (MCI {err})": [
+  "Unavailable Reading Status (MCI {0})",
+  "estado de lectura no disponible (MCI {0})",
+  "Статус недоступного чтения (MCI {0})",
+  "読書不利用状態(MCI {0})",
+  "不可阅读状态(MCI {0})"
+ ],
+ "Événement IPC inconnu": [
+  "Unknown IPC events",
+  "Evento IPC desconocido",
+  "Неизвестный IPC",
+  "未知のIPCイベント",
+  "IPC 未知事件"
+ ],
+ "● REC": [
+  "● REC",
+  "● REC",
+  "● ЗАПИСЬ",
+  "● 録音",
+  "● 录音"
+ ]
+}

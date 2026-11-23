@@ -1,4 +1,4 @@
-# MeetingNotes — architecture et audit préalable
+# Rikai — architecture et audit préalable
 
 ## Sources examinées
 

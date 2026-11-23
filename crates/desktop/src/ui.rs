@@ -1,4 +1,4 @@
-use crate::page::Page;
+use crate::{i18n::tr, page::Page};
 #[path = "appearance.rs"]
 mod appearance;
 use anyhow::{Context as _, Result, ensure};
@@ -27,9 +27,9 @@ use std::{
 
 pub fn run() -> Result<()> {
     let build = audio_capture::check_windows()?;
-    let root =
-        PathBuf::from(std::env::var_os("LOCALAPPDATA").context("Profil Windows introuvable")?)
-            .join("MeetingNotes");
+    let profile =
+        PathBuf::from(std::env::var_os("LOCALAPPDATA").context("Profil Windows introuvable")?);
+    let root = crate::data_root::locate(&profile)?;
     fs::create_dir_all(root.join("audio"))?;
     let lock = fs::OpenOptions::new()
         .create(true)
@@ -68,17 +68,18 @@ pub fn run() -> Result<()> {
     gpui_platform::application()
         .with_quit_mode(QuitMode::LastWindowClosed)
         .run(move |cx| {
-            let _ = cx
-                .text_system()
-                .add_fonts(vec![std::borrow::Cow::Borrowed(include_bytes!(
-                    "../../../assets/inter/Inter.ttf"
-                ))]);
+            let _ = cx.text_system().add_fonts(vec![
+                std::borrow::Cow::Borrowed(include_bytes!("../../../assets/inter/Inter.ttf")),
+                std::borrow::Cow::Borrowed(include_bytes!(
+                    "../../../assets/scripts-ui/RikaiScriptUI.otf"
+                )),
+            ]);
             cx.bind_keys(default_bindings().as_keybindings(Some(DEFAULT_INPUT_CONTEXT)));
             let bounds = Bounds::centered(None, size(px(1120.), px(740.)), cx);
             let opt = WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
                 titlebar: Some(TitlebarOptions {
-                    title: Some("MeetingNotes".into()),
+                    title: Some("Rikai".into()),
                     appears_transparent: true,
                     ..Default::default()
                 }),
@@ -104,18 +105,22 @@ pub fn run() -> Result<()> {
                 });
                 desk
             })
-            .expect("Ouverture de la fenêtre MeetingNotes");
+            .expect("Ouverture de la fenêtre Rikai");
             cx.activate(true);
         });
     drop(lock);
     Ok(())
 }
+#[path = "services.rs"]
+mod services;
 #[path = "system_load.rs"]
 mod system_load;
 enum Event {
     Load(system_load::Load),
     GpuTest(Result<Value>),
-    Hardware(String),
+    Hardware(String, Value, bool),
+    Translated(i64, String, String, Result<Value>),
+    Update(&'static str, Result<Value>),
     Recovered(i64, Result<(usize, usize)>),
     Installed(Result<Value>),
     Enrolled(i64, String, Result<Value>),
@@ -152,6 +157,21 @@ struct PlayingSegment {
 }
 
 struct Desk {
+    section: usize,
+    installed: Value,
+    nvidia_ready: bool,
+    language_search: Field,
+    language_picker: Option<i64>,
+    pending_translation: Option<(i64, String)>,
+    translations: HashMap<i64, Vec<(String, String)>>,
+    pending_summary: bool,
+    update_info: Option<Value>,
+    update_status: String,
+    update_checking: bool,
+    update_ready: bool,
+    update_downloading: bool,
+    release_focus: FocusHandle,
+    release_was_open: bool,
     confirmation: Option<Confirmation>,
     hardware: String,
     recommended: String,
@@ -208,7 +228,7 @@ struct Desk {
     dialogues: ListState,
     playing: Option<PlayingSegment>,
     scroll_grab: Option<Pixels>,
-    tab_geometry: [std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>; 3],
+    tab_geometry: [std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>; 4],
     discard: bool,
     library: Vec<Meeting>,
     segments: Vec<Segment>,
@@ -221,12 +241,40 @@ struct Desk {
 impl Desk {
     fn new(root: PathBuf, db: Library, cx: &mut Context<Self>) -> Self {
         let (tx, rx) = mpsc::channel();
-        let settings = db
+        let mut settings: Value = db
             .pref("settings")
             .ok()
             .flatten()
             .and_then(|s| serde_json::from_str(&s).ok())
             .unwrap_or_else(|| json!({"language":"fr","device":"cpu","self_name":"Moi"}));
+        if let Some(parent) = root.parent() {
+            let legacy = parent.join("MeetingNotes");
+            let mut changed = false;
+            for key in [
+                "whisper",
+                "gguf",
+                "embedding",
+                "segmentation",
+                "translation",
+            ] {
+                if let Some(rel) = settings[key]
+                    .as_str()
+                    .and_then(|v| std::path::Path::new(v).strip_prefix(&legacy).ok())
+                {
+                    let path = root.join(rel);
+                    if path.exists() {
+                        settings[key] = json!(path);
+                        changed = true;
+                    }
+                }
+            }
+            if changed {
+                if let Err(err) = db.set_pref("settings", &settings.to_string()) {
+                    tracing::warn!(%err,"Migration des chemins");
+                }
+            }
+        }
+        crate::i18n::select(settings["locale"].as_str());
         cx.set_global(Palette::new(settings["light"] == true));
         let mut sys = sysinfo::System::new();
         sys.refresh_memory();
@@ -240,22 +288,43 @@ impl Desk {
         let hardware = format!("{cpu} · {ram} Gio de RAM disponibles");
         let recommended = if ram < 6 { "Rapide" } else { "Équilibré" }.to_string();
         let tx_hw = tx.clone();
+        let cache = root.join("modeles");
         thread::spawn(move || {
             let res = super::worker::run(
                 0,
                 "capabilities",
-                json!({}),
+                json!({"cache":cache}),
                 Arc::new(AtomicBool::new(false)),
                 |_| {},
             );
-            let gpu = match res {
+            let gpu = match &res {
                 Ok(v) if v["cuda"].as_u64().unwrap_or(0) > 0 => "GPU NVIDIA détecté",
                 Ok(_) => "Calcul sur processeur",
                 Err(_) => "Worker indisponible",
             };
-            let _ = tx_hw.send(Event::Hardware(gpu.into()));
+            let caps = res.unwrap_or_default();
+            let _ = tx_hw.send(Event::Hardware(
+                gpu.into(),
+                caps["installed"].clone(),
+                caps["runtime"]["cublas_major"] == 12,
+            ));
         });
         let mut s = Self {
+            section: 0,
+            installed: json!({}),
+            nvidia_ready: false,
+            language_search: field(cx),
+            language_picker: None,
+            pending_translation: None,
+            translations: HashMap::new(),
+            pending_summary: false,
+            update_info: None,
+            update_status: String::new(),
+            update_checking: false,
+            update_ready: false,
+            update_downloading: false,
+            release_focus: cx.focus_handle(),
+            release_was_open: false,
             confirmation: None,
             hardware,
             monitor: system_load::monitor(tx.clone()),
@@ -332,6 +401,9 @@ impl Desk {
                 f.update(cx, |f, cx| f.emplace(v, cx));
             }
         }
+        cx.observe(&s.language_search, |_, _, cx| cx.notify())
+            .detach();
+        s.update_request("check_update");
         cx.observe(&s.vocabulary, |_, _, cx| cx.notify()).detach();
         if let Err(e) = s.refresh("") {
             s.message = e.to_string();
@@ -451,6 +523,8 @@ impl Desk {
         self.id = id;
         self.suggestions = self.db.suggestions(id)?;
         self.segments = self.db.segments(id)?;
+        self.translations = self.db.translations(id)?;
+        self.language_picker = None;
         self.dialogues
             .reset_with_uniform_height(self.segments.len() + 1, px(99.));
         self.summary = self.db.summary(id)?.unwrap_or_default();
@@ -491,6 +565,10 @@ impl Desk {
                 self.message = format!("{e:#}");
             }
             cx.notify();
+        }
+        if self.update_status == "applying" {
+            cx.quit();
+            return;
         }
         if self.busy() || self.preview.is_some() {
             cx.notify();
@@ -535,7 +613,20 @@ impl Desk {
                     }
                 }
             }
-            Event::Hardware(s) => {
+            Event::Translated(id, original, lang, r) => {
+                self.cancel = None;
+                let value = r?;
+                let text = value["text"].as_str().context("La traduction est vide")?;
+                self.db.store_translation(id, &original, &lang, text)?;
+                self.translations = self.db.translations(self.id)?;
+                if let Some(i) = self.segments.iter().position(|s| s.id == id) {
+                    self.dialogues.remeasure_items(i..i + 1);
+                }
+            }
+            Event::Update(op, res) => self.finish_update(op, res)?,
+            Event::Hardware(s, installed, ready) => {
+                self.installed = installed;
+                self.nvidia_ready = ready;
                 if s == "GPU NVIDIA détecté" {
                     self.recommended = "Précision Turbo".into();
                 }
@@ -566,14 +657,46 @@ impl Desk {
             Event::Installed(r) => {
                 self.cancel = None;
                 tracing::info!(reussite = r.is_ok(), "Fin du téléchargement du modèle");
-                let v = r?;
+                let v = match r {
+                    Ok(v) => v,
+                    Err(e) => {
+                        self.pending_translation = None;
+                        self.pending_summary = false;
+                        return Err(e);
+                    }
+                };
                 if v["runtime"].is_string() {
+                    self.nvidia_ready = true;
                     self.settings["device"] = json!("cuda");
                     self.settings["strict_cuda"] = json!(true);
                     self.save_settings()?;
                     self.message =
                         "Moteur NVIDIA prêt. Vérifiez CUDA avec le modèle choisi.".into();
                     return Ok(());
+                }
+                if let Some(kind) = v["kind"].as_str() {
+                    let (key, preset) = if kind == "summary" {
+                        ("gguf", "Résumé local")
+                    } else {
+                        ("translation", "Traduction locale")
+                    };
+                    self.settings[key] = v["path"].clone();
+                    self.installed[preset] = v.clone();
+                    self.save_settings()?;
+                    if let Some((id, lang)) = self.pending_translation.take() {
+                        self.page = Page::Detail;
+                        self.start_translation(id, lang)?;
+                    } else if std::mem::take(&mut self.pending_summary) {
+                        self.page = Page::Detail;
+                        self.process(true)?;
+                    }
+                    return Ok(());
+                }
+                if let Some(preset) = Page::MODEL_PRESETS
+                    .iter()
+                    .find(|preset| Self::repo_for(preset) == v["repo"].as_str().unwrap_or(""))
+                {
+                    self.installed[*preset] = v.clone();
                 }
                 self.settings["whisper"] = v["folder"].clone();
                 self.settings["whisper_revision"] = v["revision"].clone();
@@ -948,6 +1071,7 @@ impl Desk {
         Ok(())
     }
     fn go(&mut self, page: Page) -> Result<()> {
+        self.language_picker = None;
         if self.busy() {
             return Ok(());
         }
@@ -991,6 +1115,13 @@ impl Desk {
         Ok(())
     }
     fn answer_download(&mut self, approved: bool) -> Result<()> {
+        if !approved
+            && (self.pending_translation.take().is_some()
+                || std::mem::take(&mut self.pending_summary))
+        {
+            self.page = Page::Detail;
+            return Ok(());
+        }
         let Some(preset) = self.page.answer_download(approved) else {
             return Ok(());
         };
@@ -1022,7 +1153,7 @@ impl Desk {
     ) -> Result<()> {
         let dlg = rfd::AsyncFileDialog::new()
             .set_parent(w)
-            .set_title("Sélectionner un modèle local");
+            .set_title(tr("Sélectionner un modèle local"));
         cx.spawn(async move |desk, cx| {
             let path = if folder {
                 dlg.pick_folder().await
@@ -1170,6 +1301,7 @@ enum Preference {
     Theme,
     Device,
     Language,
+    Locale,
 }
 impl Drop for Desk {
     fn drop(&mut self) {

@@ -20,7 +20,7 @@ def invoke(method, params, expected):
         {"version": 1, "id": 1, "method": method, "params": params},
         command=command,
         on_progress=progress,
-        timeout=600 if method == "install_cuda" else 120,
+        timeout=600 if method in ("install_cuda","install") else 120,
     )
     if answer["event"] != expected or code != (0 if expected == "result" else 1):
         raise RuntimeError(f"Échec du worker embarqué : {answer}")
@@ -54,3 +54,10 @@ if sys.platform == "win32":
             if method == "capabilities":
                 versions = response["result"]["runtime"]
                 assert versions["cublas_major"] == 12, versions
+
+    with tempfile.TemporaryDirectory() as cache:
+        _, result=invoke("install",{"preset":"Traduction locale","consent":True,"cache":cache},"result")
+        model=result["result"]["path"]
+        _, result=invoke("translate",{"text":"Bonjour, merci beaucoup pour votre aide.","folder":model,"source":"","target":"en"},"result")
+        assert result["result"]["source"]=="fr" and "thank" in result["result"]["text"].lower(),result
+        print("M2M100 Windows : traduction française vers l’anglais vérifiée.")

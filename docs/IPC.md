@@ -1,6 +1,6 @@
 # IPC v1
 
-Rust ouvre directement le worker installé dans `worker/meetingnotes-worker.exe`, ou le Python de `ai-worker/.venv` en développement. Un processus exécute un travail. stdin et stdout sont des tubes privés UTF-8, délimités par des sauts de ligne. Le worker duplique stdout pour le protocole et dirige les écritures natives vers stderr. Rust vérifie version, identifiant, type d'événement et code de sortie. Aucun port réseau n'est ouvert.
+Rust ouvre directement le worker installé dans `worker/rikai-worker.exe`, ou le Python de `ai-worker/.venv` en développement. Un processus exécute un travail. stdin et stdout sont des tubes privés UTF-8, délimités par des sauts de ligne. Le worker duplique stdout pour le protocole et dirige les écritures natives vers stderr. Rust vérifie version, identifiant, type d'événement et code de sortie. Aucun port réseau n'est ouvert.
 
 Exemple sans modèle :
 

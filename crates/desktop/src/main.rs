@@ -1,5 +1,9 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
 #[cfg(any(windows, test))]
+mod data_root;
+#[cfg(any(windows, test))]
+mod i18n;
+#[cfg(any(windows, test))]
 mod page;
 #[cfg(windows)]
 mod playback;
@@ -11,7 +15,7 @@ mod worker;
 fn main() {
     if let Err(e) = ui::run() {
         rfd::MessageDialog::new()
-            .set_title("MeetingNotes")
+            .set_title("Rikai")
             .set_description(format!("{e:#}"))
             .set_level(rfd::MessageLevel::Error)
             .show();
@@ -19,6 +23,6 @@ fn main() {
 }
 #[cfg(not(windows))]
 fn main() {
-    eprintln!("MeetingNotes nécessite Windows x64, build 20348 ou ultérieur.");
+    eprintln!("Rikai nécessite Windows x64, build 20348 ou ultérieur.");
     std::process::exit(1);
 }

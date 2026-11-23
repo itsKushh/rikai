@@ -92,7 +92,7 @@ impl Desk {
             .focusable()
             .tab_stop(true)
             .role(Role::Slider)
-            .aria_label(b.name())
+            .aria_label(tr(b.name()))
             .aria_value(b.value(self))
             .rounded(px(5.))
             .focus_visible(move |d| d.bg(rgb(p.surface)).border_1().border_color(rgb(p.muted)))
@@ -170,10 +170,11 @@ impl Desk {
         col()
             .gap(px(1.))
             .child(
-                row()
-                    .justify_between()
-                    .child(b.name())
-                    .child(div().text_color(rgb(p.muted)).child(b.value(self))),
+                row().justify_between().child(tr(b.name())).child(
+                    div()
+                        .text_color(rgb(p.muted))
+                        .child(crate::i18n::message(&b.value(self))),
+                ),
             )
             .child(track)
     }
@@ -182,9 +183,11 @@ impl Desk {
         let p = *cx.global::<Palette>();
         let mut panel = col().gap_2().child(label("Ressources de transcription"));
         if self.load.threads > 0 {
-            panel = panel.child(div().text_color(rgb(p.muted)).child(format!(
-                "CPU {:.0} % · RAM libre {:.1} / {} Gio",
-                self.load.cpu, self.load.free_gib, self.load.total_gib
+            panel = panel.child(div().text_color(rgb(p.muted)).child(crate::i18n::message(
+                &format!(
+                    "CPU {:.0} % · RAM libre {:.1} / {} Gio",
+                    self.load.cpu, self.load.free_gib, self.load.total_gib
+                ),
             )));
         }
         panel = panel
@@ -199,9 +202,13 @@ impl Desk {
             let help =
                 "Le GPU alterne calcul et pauses entre les séquences. 100 % privilégie la vitesse.";
             panel = panel
-                .child(div().text_color(rgb(p.muted)).child(gpu))
+                .child(
+                    div()
+                        .text_color(rgb(p.muted))
+                        .child(crate::i18n::message(&gpu)),
+                )
                 .child(self.budget(Budget::Gpu, cx))
-                .child(div().text_color(rgb(p.muted)).child(help));
+                .child(div().text_color(rgb(p.muted)).child(tr(help)));
         }
         panel
     }

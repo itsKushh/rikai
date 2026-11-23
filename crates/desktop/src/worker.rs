@@ -18,7 +18,7 @@ fn command() -> Result<Command> {
     let installed = std::env::current_exe()?
         .parent()
         .context("Dossier d’installation absent")?
-        .join("worker/meetingnotes-worker.exe");
+        .join("worker/rikai-worker.exe");
     if installed.is_file() {
         return Ok(Command::new(installed));
     }

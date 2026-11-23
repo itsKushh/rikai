@@ -42,9 +42,42 @@ jobs:
         timeout-minutes: 20
         shell: pwsh
         run: ./scripts/build-windows.ps1 -Stage Installer
+      - name: Vérifier l’installation utilisateur et la version du binaire
+        shell: pwsh
+        run: ./scripts/test-install.ps1
       - uses: actions/upload-artifact@v4
         with:
-          name: MeetingNotes-Windows-x64
-          path: dist/MeetingNotes-Setup-x64.exe
+          name: Rikai-Windows-x64
+          path: dist/Rikai-Setup-x64.exe
           if-no-files-found: error
 
+  release:
+    needs: package
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    concurrency:
+      group: rikai-private-release
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rikai-Windows-x64
+          path: dist
+      - name: Publier la version privée
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(python -c "import tomllib; print(tomllib.load(open('Cargo.toml','rb'))['workspace']['package']['version'])")
+          tag="v$version"
+          notes="releases/$tag.md"
+          test -s "$notes"
+          if gh release view "$tag" --json isDraft --jq '.isDraft' > "$RUNNER_TEMP/rikai-release-state"; then
+            if [[ $(cat "$RUNNER_TEMP/rikai-release-state") == false ]]; then exit 0; fi
+            gh release upload "$tag" dist/Rikai-Setup-x64.exe --clobber
+            gh release edit "$tag" --notes-file "$notes" --draft=false
+          else
+            gh release create "$tag" dist/Rikai-Setup-x64.exe --target "$GITHUB_SHA" --title "Rikai $version" --notes-file "$notes"
+          fi

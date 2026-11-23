@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "audio-capture"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "hound",
@@ -3335,31 +3335,12 @@ dependencies = [
 
 [[package]]
 name = "meeting-storage"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "anyhow",
  "rusqlite",
  "serde",
  "serde_json",
-]
-
-[[package]]
-name = "meetingnotes"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "audio-capture",
- "embed-resource",
- "gpui-ce",
- "gpui_ce_elements",
- "gpui_ce_platform",
- "meeting-storage",
- "rfd",
- "serde_json",
- "sysinfo 0.38.4",
- "tracing",
- "tracing-subscriber",
- "windows 0.62.2",
 ]
 
 [[package]]
@@ -4942,6 +4923,26 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47b34b781b31e5d73e9fbc8689c70551fd1ade9a19e3e28cfec8580a79290cc4"
 dependencies = [
  "bytemuck",
+]
+
+[[package]]
+name = "rikai"
+version = "0.2.0"
+dependencies = [
+ "anyhow",
+ "audio-capture",
+ "embed-resource",
+ "gpui-ce",
+ "gpui_ce_elements",
+ "gpui_ce_platform",
+ "meeting-storage",
+ "regex",
+ "rfd",
+ "serde_json",
+ "sysinfo 0.38.4",
+ "tracing",
+ "tracing-subscriber",
+ "windows 0.62.2",
 ]
 
 [[package]]
