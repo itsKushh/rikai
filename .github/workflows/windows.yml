@@ -18,9 +18,30 @@ jobs:
       - uses: ilammy/msvc-dev-cmd@v1
         with:
           arch: x64
-      - name: Construire, tester et assembler
+      - name: Installer les dépendances Python
+        timeout-minutes: 30
         shell: pwsh
-        run: ./scripts/build-windows.ps1
+        run: ./scripts/build-windows.ps1 -Stage Dependencies
+      - name: Tester le worker Python et le protocole IPC
+        timeout-minutes: 5
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Stage PythonTests
+      - name: Compiler et tester le workspace Rust en release
+        timeout-minutes: 60
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Stage RustTests
+      - name: Construire les exécutables Windows
+        timeout-minutes: 30
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Stage Binaries
+      - name: Assembler et vérifier le worker autonome
+        timeout-minutes: 20
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Stage Worker
+      - name: Créer l’installeur Inno Setup
+        timeout-minutes: 20
+        shell: pwsh
+        run: ./scripts/build-windows.ps1 -Stage Installer
       - uses: actions/upload-artifact@v4
         with:
           name: MeetingNotes-Windows-x64

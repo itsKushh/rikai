@@ -160,13 +160,17 @@ def align(segment, track, mine, turns, offset):
 
 
 def transcribe(p, progress):
-    from faster_whisper import WhisperModel
-
     root = local_path(p["directory"], directory=True)
     settings = p["settings"]
     model = local_path(settings["whisper"], directory=True)
     manifest = json.loads((root / "sources.json").read_text(encoding="utf-8"))
     tracks = manifest["tracks"]
+
+    import onnxruntime
+
+    onnxruntime.disable_telemetry_events()
+    from faster_whisper import WhisperModel
+
     turns = []
     if settings.get("diarization") and any(
         t["input"]["source"]["kind"] == "Application" for t in tracks

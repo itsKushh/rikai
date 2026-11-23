@@ -114,8 +114,20 @@ pub fn run(
     if result.is_err() {
         let _ = child.kill();
     }
-    let status = child.wait()?;
     drop(stdin);
+    // Après une réponse terminale, aucune inférence ne devrait encore tourner.
+    let deadline = Instant::now() + Duration::from_secs(10);
+    let status = loop {
+        if let Some(status) = child.try_wait()? {
+            break status;
+        }
+        if Instant::now() >= deadline {
+            child.kill()?;
+            child.wait()?;
+            bail!("Le worker IA ne s’est pas fermé après la réponse");
+        }
+        thread::sleep(Duration::from_millis(20));
+    };
     let _ = reader.join();
     let value = result?;
     ensure!(

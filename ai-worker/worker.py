@@ -17,15 +17,21 @@ sys.stdout.reconfigure(encoding="utf-8")
 protocol = os.fdopen(os.dup(sys.stdout.fileno()), "w", encoding="utf-8", buffering=1)
 os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
 out_lock = threading.Lock()
+terminal_sent = threading.Event()
 
 
 def emit(job, event, **values):
     with out_lock:
+        if terminal_sent.is_set():
+            return False
         print(
             json.dumps(dict(version=1, id=job, event=event, **values), allow_nan=False),
             file=protocol,
             flush=True,
         )
+        if event in ("result", "error"):
+            terminal_sent.set()
+        return True
 
 
 def selftest(params, progress):
@@ -48,6 +54,7 @@ def selftest(params, progress):
 
 def main():
     job = None
+    reader = None
     try:
         req = json.loads(sys.stdin.readline())
         job = req["id"]
@@ -64,16 +71,22 @@ def main():
                         "cancel",
                         "shutdown",
                     ):
-                        emit(job, "error", code="annule", message="Traitement annulé")
-                        os._exit(2)
+                        if emit(
+                            job, "error", code="annule", message="Traitement annulé"
+                        ):
+                            os._exit(2)
+                        return
                 except ValueError:
                     continue
             # Fin du canal de contrôle : le parent a quitté. Ne pas poursuivre une inférence orpheline.
-            os._exit(2)
+            with out_lock:
+                if not terminal_sent.is_set():
+                    os._exit(2)
 
         # os.read/readline en arrière-plan ne doit pas bloquer la fermeture de l'interpréteur.
         if req["method"] in ("transcribe", "summarize", "enroll", "install"):
-            threading.Thread(target=controls, daemon=True).start()
+            reader = threading.Thread(target=controls, daemon=True)
+            reader.start()
         engines = {
             "selftest": selftest,
             "install": install,
@@ -86,10 +99,6 @@ def main():
         }
         if req["method"] not in engines:
             raise ValueError("Méthode inconnue")
-        if req["method"] == "transcribe":
-            import onnxruntime
-
-            onnxruntime.disable_telemetry_events()
         result = engines[req["method"]](
             req.get("params", {}), lambda stage: emit(job, "progress", stage=stage)
         )
@@ -98,6 +107,11 @@ def main():
     except Exception as exc:
         emit(job, "error", code=type(exc).__name__, message=str(exc))
         return 1
+    finally:
+        # Le parent ferme stdin après la réponse. Laisser le lecteur sortir avant
+        # la fermeture du runtime natif, même si la requête s'est terminée en erreur.
+        if reader is not None:
+            reader.join(timeout=1)
 
 
 if __name__ == "__main__":
