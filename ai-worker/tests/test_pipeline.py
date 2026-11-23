@@ -143,6 +143,22 @@ class Timing(unittest.TestCase):
         )
         self.assertEqual((line["code"], code), ("annule", 2))
 
+    def test_cancel_in_same_write_as_large_request(self):
+        engine = (
+            "import os, threading, worker\n"
+            "worker.transcribe = lambda p, cb: threading.Event().wait()\n"
+            "os._exit(worker.main())"
+        )
+        request = dict(version=1, id=7, method="transcribe", params={"data": "é" * 70000})
+        commands = [request, {"id": 7, "method": "cancel"}]
+        payload = "".join(json.dumps(c, ensure_ascii=False) + "\r\n" for c in commands)
+        child = subprocess.run(
+            [sys.executable, "-c", engine], cwd=ROOT, input=payload.encode("utf-8"),
+            stdout=subprocess.PIPE, timeout=15,
+        )
+        self.assertEqual(child.returncode, 2)
+        self.assertEqual(json.loads(child.stdout.splitlines()[-1])["code"], "annule")
+
     def test_silent_worker_has_a_response_deadline(self):
         command = [sys.executable, "-c", "import sys; sys.stdin.read()"]
         with self.assertRaisesRegex(AssertionError, "ping : aucune réponse IPC"):
