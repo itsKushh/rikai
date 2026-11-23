@@ -17,7 +17,11 @@ pub(super) fn strip(
         .rounded(px(15.))
         .bg(rgb(p.base))
         .border_1()
-        .border_color(rgb(p.edge))
+        .border_color(linear_gradient(
+            180.,
+            linear_color_stop(black().opacity(0.68), 0.),
+            linear_color_stop(rgb(p.muted).opacity(0.19), 1.),
+        ))
         .shadow(p.pressed())
         .child(div().absolute().inset_0().when(width > px(0.), |layer| {
             layer.child(
@@ -31,7 +35,7 @@ pub(super) fn strip(
                     .rounded(px(12.))
                     .bg(rgb(p.selected))
                     .shadow(p.bevel())
-                    .transitions(|t| t.left(millis(155)).w(millis(155))),
+                    .transitions(|t| t.left(motion(180)).w(motion(180))),
             )
         }))
         .on_children_prepainted(move |bounds, w, _| {
@@ -113,11 +117,12 @@ impl Desk {
 
     fn toolbar(&self, compact: bool, maximized: bool, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
-        let locked = self.busy() || self.drawer_open();
+        let locked = self.busy();
         let mut bar = div()
             .flex()
             .items_center()
-            .h(px(44.))
+            .h(px(54.))
+            .py(px(6.))
             .flex_shrink_0()
             .gap(px(10.))
             .pl(px(16.))
@@ -126,11 +131,13 @@ impl Desk {
                     .h_full()
                     .flex()
                     .items_center()
-                    .window_control_area(WindowControlArea::Drag)
+                    .when(!self.drawer_open(), |s| {
+                        s.window_control_area(WindowControlArea::Drag)
+                    })
                     .pr_2()
-                    .child(glyph(WAVE, 22., p.muted)),
+                    .child(brand()),
             )
-            .child(div().w(px(1.)).h(px(20.)).bg(rgb(p.edge)));
+            .child(div().w(px(1.)).h(px(15.)).bg(rgb(p.edge).opacity(0.53)));
         let page = self.workspace_page();
         let mut nav = strip(
             p,
@@ -164,7 +171,7 @@ impl Desk {
             } else {
                 nav = nav.child(button(
                     name,
-                    if active { Button::Tab } else { Button::Quiet },
+                    if active { Button::Tab } else { Button::IdleTab },
                     Some(icon),
                     compact && !active,
                     cx,
@@ -172,12 +179,11 @@ impl Desk {
                 ));
             }
         }
-        bar = bar.child(nav).child(
-            div()
-                .flex_1()
-                .h_full()
-                .window_control_area(WindowControlArea::Drag),
-        );
+        bar = bar
+            .child(nav)
+            .child(div().flex_1().h_full().when(!self.drawer_open(), |s| {
+                s.window_control_area(WindowControlArea::Drag)
+            }));
         if !locked {
             bar = bar
                 .child(button(
@@ -199,13 +205,13 @@ impl Desk {
         }
         let mut controls = div().flex().h_full().items_center();
         for (name, icon, area) in [
-            ("Réduire", "M5 12h14", WindowControlArea::Min),
+            ("Réduire", WINDOW_MIN, WindowControlArea::Min),
             (
                 if maximized { "Restaurer" } else { "Agrandir" },
                 if maximized {
-                    "M7 7V4h13v13h-3M4 8h12v12H4z"
+                    WINDOW_RESTORE
                 } else {
-                    "M5 5h14v14H5z"
+                    WINDOW_MAX
                 },
                 WindowControlArea::Max,
             ),
@@ -223,10 +229,16 @@ impl Desk {
                     .flex()
                     .items_center()
                     .justify_center()
-                    .window_control_area(area)
-                    .hover(move |s| s.bg(rgb(p.control)))
-                    .focus_visible(move |s| s.bg(rgb(p.selected)))
-                    .child(glyph(icon, 14., p.muted))
+                    .when(!self.drawer_open(), |s| s.window_control_area(area))
+                    .opacity(0.60)
+                    .hover(|s| s.opacity(1.))
+                    .focus_visible(|s| s.opacity(1.))
+                    .transitions(|t| t.opacity(motion(115)))
+                    .child(glyph(
+                        icon,
+                        if icon == WINDOW_MAX { 12. } else { 14. },
+                        p.text,
+                    ))
                     .on_click(cx.listener(move |s, _, w, cx| match area {
                         WindowControlArea::Min => w.minimize_window(),
                         WindowControlArea::Max => w.zoom_window(),
@@ -300,7 +312,7 @@ impl Desk {
             let style = if self.inspector == tab {
                 Button::Tab
             } else {
-                Button::Quiet
+                Button::IdleTab
             };
             tabs = if passive {
                 tabs.child(div().flex_1().text_center().py_1().child(title))
@@ -440,7 +452,7 @@ impl Desk {
             .child(scroll("inspector-body", content))
     }
 
-    fn settings_drawer(&self, cx: &Context<Self>) -> Div {
+    fn settings_drawer(&self, visibility: f32, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let (title, fields) = if let Some(prompt) = &self.confirmation {
             (
@@ -460,7 +472,15 @@ impl Desk {
                 ),
             )
         } else {
-            self.page_body(self.page, true, cx)
+            self.page_body(
+                if self.drawer_open() {
+                    self.page
+                } else {
+                    Page::Settings
+                },
+                true,
+                cx,
+            )
         };
         let close = button(
             "Fermer le panneau",
@@ -473,6 +493,13 @@ impl Desk {
                 Ok(())
             },
         );
+        let close = close
+            .size(px(28.))
+            .min_w(px(28.))
+            .min_h(px(28.))
+            .p_0()
+            .aspect_ratio(1.)
+            .flex_shrink_0();
         let body = col()
             .gap(px(16.))
             .p_4()
@@ -532,19 +559,18 @@ impl Desk {
                     .absolute()
                     .inset_0()
                     .occlude()
-                    .bg(rgba(0x000000ab))
-                    .backdrop_blur(px(4.))
+                    .bg(black().opacity(visibility * 0.67))
+                    .backdrop_blur(px(4. * visibility))
                     .on_click(cx.listener(|s, _, _, cx| {
                         s.dismiss_drawer();
                         cx.notify();
                     })),
             )
             .child(
-                sheet.with_animation("sheet-reveal", reveal(cx, 155), |el, t| {
-                    el.relative()
-                        .left(px(16. * (1. - t)))
-                        .opacity(0.75 + 0.25 * t)
-                }),
+                sheet
+                    .relative()
+                    .left(px(24. * (1. - visibility)))
+                    .opacity(visibility),
             )
     }
 }
@@ -565,6 +591,17 @@ impl Render for Desk {
         let p = *cx.global::<Palette>();
         let narrow = window.viewport_size().width < px(810.);
         let drawer = self.drawer_open();
+        let goal = if drawer { 1.0 } else { 0.0 };
+        let transition =
+            window.use_keyed_transition("drawer-visibility", cx, motion(290), |_, _| 0.0_f32);
+        if *transition.read_goal(cx) != goal {
+            transition.update(cx, |v, _| *v = goal);
+        }
+        let visibility = if cx.reduce_motion() {
+            goal
+        } else {
+            *transition.evaluate(window, cx)
+        };
         if drawer && !self.drawer_was_open {
             self.drawer_focus.focus(window, cx);
         }
@@ -636,6 +673,7 @@ impl Render for Desk {
         };
         div()
             .size_full()
+            .relative()
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
                 if ev.keystroke.key != "tab"
                     || ev.keystroke.modifiers.control
@@ -685,8 +723,10 @@ impl Render for Desk {
                     .when(!drawer && !self.message.is_empty(), |s| {
                         s.child(notice(&self.message, p).mb_2())
                     })
-                    .child(div().flex_1().min_h_0().child(layout))
-                    .when(drawer, |s| s.child(self.settings_drawer(cx))),
+                    .child(div().flex_1().min_h_0().child(layout)),
             )
+            .when(drawer || visibility > 0.001, |s| {
+                s.child(self.settings_drawer(visibility, cx))
+            })
     }
 }

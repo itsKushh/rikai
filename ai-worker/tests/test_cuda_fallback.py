@@ -99,3 +99,11 @@ class CudaFallback(unittest.TestCase):
                     self.run_transcription(factory, device)
                 self.assertIs(raised.exception, error)
                 factory.assert_called_once()
+
+    def test_strict_gpu_never_reports_cpu_success(self):
+        params = {"directory": str(self.root), "settings": {"whisper": str(self.root), "device": "cuda", "strict_cuda": True}}
+        with patch("faster_whisper.WhisperModel", side_effect=RuntimeError("Library cublas64_12.dll is not found")) as load:
+            with self.assertRaisesRegex(RuntimeError, "cublas64_12"):
+                processing.transcribe(params, lambda *args, **kwargs: None)
+            self.assertEqual(load.call_count, 1)
+            self.assertEqual(load.call_args.kwargs["device"], "cuda")

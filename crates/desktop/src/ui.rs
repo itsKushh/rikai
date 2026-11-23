@@ -110,7 +110,11 @@ pub fn run() -> Result<()> {
     drop(lock);
     Ok(())
 }
+#[path = "system_load.rs"]
+mod system_load;
 enum Event {
+    Load(system_load::Load),
+    GpuTest(Result<Value>),
     Hardware(String),
     Recovered(i64, Result<(usize, usize)>),
     Installed(Result<Value>),
@@ -151,6 +155,11 @@ struct Desk {
     confirmation: Option<Confirmation>,
     hardware: String,
     recommended: String,
+    monitor: mpsc::SyncSender<()>,
+    last_measure: Option<Instant>,
+    load: system_load::Load,
+    budget_drag: Option<(view::budgets::Budget, Bounds<Pixels>)>,
+    vocabulary: Field,
     root: PathBuf,
     db: Library,
     page: Page,
@@ -249,6 +258,11 @@ impl Desk {
         let mut s = Self {
             confirmation: None,
             hardware,
+            monitor: system_load::monitor(tx.clone()),
+            last_measure: None,
+            load: Default::default(),
+            budget_drag: None,
+            vocabulary: field(cx),
             recommended,
             root,
             db,
@@ -309,6 +323,7 @@ impl Desk {
             stage: String::new(),
         };
         for (f, k) in [
+            (&s.vocabulary, "vocabulary"),
             (&s.self_name, "self_name"),
             (&s.endpoint, "endpoint"),
             (&s.remote_model, "remote_model"),
@@ -317,6 +332,7 @@ impl Desk {
                 f.update(cx, |f, cx| f.emplace(v, cx));
             }
         }
+        cx.observe(&s.vocabulary, |_, _, cx| cx.notify()).detach();
         if let Err(e) = s.refresh("") {
             s.message = e.to_string();
         }
@@ -446,6 +462,15 @@ impl Desk {
         self.db.set_pref("settings", &self.settings.to_string())
     }
     fn tick(&mut self, cx: &mut Context<Self>) {
+        if self.page == Page::Settings
+            && self
+                .last_measure
+                .is_none_or(|t| t.elapsed() >= Duration::from_secs(3))
+            && self.monitor.try_send(()).is_ok()
+        {
+            self.last_measure = Some(Instant::now());
+        }
+
         if let Some(p) = &mut self.playing
             && !p.paused
         {
@@ -510,7 +535,25 @@ impl Desk {
                     }
                 }
             }
-            Event::Hardware(s) => self.hardware.push_str(&format!(" · {s}")),
+            Event::Hardware(s) => {
+                if s == "GPU NVIDIA détecté" {
+                    self.recommended = "Précision Turbo".into();
+                }
+                self.hardware.push_str(&format!(" · {s}"));
+            }
+            Event::Load(v) => {
+                self.load = v;
+            }
+            Event::GpuTest(r) => {
+                self.cancel = None;
+                let v = r.context(
+                    "Test CUDA en échec · vérifiez le pilote NVIDIA et le moteur installé",
+                )?;
+                self.message = format!(
+                    "Test réussi sur CUDA · encodeur et décodeur en {}.",
+                    v["compute_type"].as_str().unwrap_or("float16")
+                );
+            }
             Event::Recovered(id, result) => {
                 self.cancel = None;
                 let (count, total) = result?;
@@ -524,6 +567,14 @@ impl Desk {
                 self.cancel = None;
                 tracing::info!(reussite = r.is_ok(), "Fin du téléchargement du modèle");
                 let v = r?;
+                if v["runtime"].is_string() {
+                    self.settings["device"] = json!("cuda");
+                    self.settings["strict_cuda"] = json!(true);
+                    self.save_settings()?;
+                    self.message =
+                        "Moteur NVIDIA prêt. Vérifiez CUDA avec le modèle choisi.".into();
+                    return Ok(());
+                }
                 self.settings["whisper"] = v["folder"].clone();
                 self.settings["whisper_revision"] = v["revision"].clone();
                 self.settings["whisper_repo"] = v["repo"].clone();
@@ -647,6 +698,9 @@ impl Desk {
                         if self.segments.len() > 1 { "s" } else { "" }
                     )
                 };
+                if !summary && settings["transcription_device"] == "cuda" {
+                    self.message.push_str(" Calcul sur GPU NVIDIA (CUDA).");
+                }
                 if !summary
                     && settings["device"] == "cuda"
                     && settings["transcription_device"] == "cpu"
@@ -918,6 +972,24 @@ impl Desk {
         }
         Ok(())
     }
+    fn check_cuda(&mut self) -> Result<()> {
+        ensure!(!self.busy(), "Un traitement est en cours");
+        ensure!(
+            self.settings["whisper"].is_string(),
+            "Choisissez d’abord un modèle de transcription."
+        );
+        let ctl = self.begin_work();
+        let tx = self.tx.clone();
+        let params = json!({"settings": self.settings});
+        self.stage = "Vérification CUDA".into();
+        thread::spawn(move || {
+            let result = super::worker::run(0, "test_cuda", params, ctl, |s| {
+                let _ = tx.send(Event::Stage(s));
+            });
+            let _ = tx.send(Event::GpuTest(result));
+        });
+        Ok(())
+    }
     fn answer_download(&mut self, approved: bool) -> Result<()> {
         let Some(preset) = self.page.answer_download(approved) else {
             return Ok(());
@@ -929,7 +1001,12 @@ impl Desk {
         let params = json!({"consent":true,"cache":self.root.join("modeles"),"preset":preset});
         let tx = self.tx.clone();
         std::thread::spawn(move || {
-            let r = super::worker::run(0, "install", params, ctl, |s| {
+            let method = if preset == "NVIDIA CUDA" {
+                "install_cuda"
+            } else {
+                "install"
+            };
+            let r = super::worker::run(0, method, params, ctl, |s| {
                 let _ = tx.send(Event::Stage(s));
             });
             let _ = tx.send(Event::Installed(r));

@@ -3,10 +3,15 @@
 import hashlib
 import os
 import re
-import time
+from transfers import download_large
 from pathlib import Path
 
-PRESETS = {"Rapide": "base", "Équilibré": "small", "Haute qualité": "medium"}
+PRESETS = {
+    "Rapide": "Systran/faster-whisper-base",
+    "Équilibré": "Systran/faster-whisper-small",
+    "Haute qualité": "Systran/faster-whisper-medium",
+    "Précision Turbo": "mobiuslabsgmbh/faster-whisper-large-v3-turbo",
+}
 
 
 def matches_hub_file(path, entry):
@@ -26,12 +31,10 @@ def install(p, progress):
     from huggingface_hub import HfApi, hf_hub_url
     from huggingface_hub.utils import get_session
 
-    size = PRESETS[p["preset"]]
-    repo = "Systran/faster-whisper-" + size
+    repo = PRESETS[p["preset"]]
+    size = repo.split("/")[1].removeprefix("faster-whisper-")
     progress("Lecture de la liste des fichiers du modèle")
-    metadata = HfApi().model_info(
-        repo, files_metadata=True, token=False, timeout=20
-    )
+    metadata = HfApi().model_info(repo, files_metadata=True, token=False, timeout=20)
     if not re.fullmatch(r"[0-9a-f]{40}", metadata.sha or ""):
         raise ValueError("Révision du modèle invalide")
     needed = ["config.json", "model.bin", "tokenizer.json"]
@@ -61,34 +64,37 @@ def install(p, progress):
             progress(stage, received=done, total=total)
             url = hf_hub_url(repo, entry.rfilename, revision=metadata.sha)
             part = folder / (entry.rfilename + ".part")
-            received = 0
-            last_update = 0.0
-            try:
+            if entry.size >= 64 * 1024**2:
+                download_large(
+                    get_session(),
+                    url,
+                    part,
+                    entry.size,
+                    lambda n: progress(stage, received=done + n, total=total),
+                )
+            else:
                 with get_session().get(url, stream=True, timeout=(15, 60)) as response:
                     response.raise_for_status()
                     with part.open("wb") as handle:
                         for chunk in response.iter_content(128 * 1024):
-                            received += len(chunk)
-                            if received > entry.size:
-                                raise ValueError(f"Taille inattendue pour {entry.rfilename}.")
                             handle.write(chunk)
-                            now = time.monotonic()
-                            if now - last_update >= 0.15 or received == entry.size:
-                                progress(stage, received=done + received, total=total)
-                                last_update = now
-                progress(
-                    f"Vérification de {entry.rfilename}",
-                    received=done + received,
-                    total=total,
-                )
-                if not matches_hub_file(part, entry):
-                    raise ValueError(
-                        f"Vérification de {entry.rfilename} en échec. Relancez le téléchargement."
-                    )
-                os.replace(part, folder / entry.rfilename)
-                done += entry.size
-            finally:
+                            if handle.tell() > entry.size:
+                                raise ValueError(
+                                    f"Taille inattendue pour {entry.rfilename}."
+                                )
+                            progress(stage, received=done + handle.tell(), total=total)
+            progress(
+                f"Vérification de {entry.rfilename}",
+                received=done + entry.size,
+                total=total,
+            )
+            if not matches_hub_file(part, entry):
                 part.unlink(missing_ok=True)
+                raise ValueError(
+                    f"Vérification de {entry.rfilename} en échec. Relancez le téléchargement."
+                )
+            os.replace(part, folder / entry.rfilename)
+            done += entry.size
         progress("Modèle vérifié", received=done, total=total)
     return {"folder": str(folder), "repo": repo, "revision": metadata.sha}
 
@@ -98,7 +104,10 @@ def capabilities(p, progress):
     import platform
     import sys
 
+    from nvidia_runtime import runtime_versions
+
     return {
+        "runtime": runtime_versions(),
         "python": sys.version.split()[0],
         "cpu": platform.machine(),
         "cuda": ctranslate2.get_cuda_device_count(),

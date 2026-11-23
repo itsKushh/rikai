@@ -3,12 +3,16 @@
 from itertools import groupby
 from functools import lru_cache
 from dataclasses import replace
+from difflib import SequenceMatcher
 import re
 from pathlib import Path
 from bisect import bisect_left, bisect_right
 import json
 import time
 import wave
+
+from resources import apply_limits, paced_segments, gpu_timeslice
+from nvidia_runtime import activate as activate_cuda
 
 
 def local_path(value, *, directory=False):
@@ -185,16 +189,71 @@ EAST_ASIAN_SCRIPT = re.compile(r"[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af\uf900-
 def french_retry_tokens(tokenizer):
     tokens = range(tokenizer.get_vocab_size())
     spellings = tokenizer.decode_batch([[token] for token in tokens])
-    return [-1] + [i for i, text in enumerate(spellings) if EAST_ASIAN_SCRIPT.search(text)]
+    return [-1] + [
+        i for i, text in enumerate(spellings) if EAST_ASIAN_SCRIPT.search(text)
+    ]
 
 
-def decode_block(engine, data, language, report):
+# Variantes sans diacritiques dont la graphie française est non ambiguë.
+FRENCH_ACCENTS = {
+    "frerot": "frérot",
+    "frerots": "frérots",
+    "pecho": "pécho",
+    "chanme": "chanmé",
+}
+
+
+def french_spelling(part):
+    def restore(match):
+        original = match[0]
+        spelling = FRENCH_ACCENTS.get(original.lower())
+        if not spelling:
+            return original
+        if original.isupper():
+            return spelling.upper()
+        return spelling.capitalize() if original[0].isupper() else spelling
+
+    text = re.sub(r"[^\W\d_]+", restore, part.text)
+    if text == part.text:
+        return part
+    words = (
+        [replace(w, word=re.sub(r"[^\W\d_]+", restore, w.word)) for w in part.words]
+        if part.words
+        else part.words
+    )
+    return replace(part, text=text, words=words)
+
+
+def lexical_words(value):
+    return " ".join(re.findall(r"[^\W_]+", value.casefold()))
+
+
+def nearby_terms(words, glossary):
+    """Favoriser les graphies proches du premier décodage sur les mots hésitants."""
+    terms = [term.strip() for term in glossary.split(",") if term.strip()]
+    rankings = {}
+    for word in words:
+        heard = lexical_words(word.word)
+        if len(heard) < 3 or word.probability >= 0.86:
+            continue
+        for term in terms:
+            key = lexical_words(term)
+            if abs(len(heard) - len(key)) > 3 or heard == key:
+                continue
+            score = SequenceMatcher(None, heard, key).ratio()
+            if score >= (0.50 if word.probability < 0.55 else 0.74):
+                rankings[term] = max(rankings.get(term, 0.0), score)
+    return ", ".join(sorted(rankings, key=rankings.get, reverse=True)[:6])
+
+
+def decode_block(engine, data, language, report, *, duty=100, glossary=""):
     options = dict(language=language, word_timestamps=True, vad_filter=True)
-    found, _ = engine.transcribe(data, **options)
+    with gpu_timeslice(duty):
+        found, _ = engine.transcribe(data, **options)
     # Publier le bloc seulement après la fin de la lecture du générateur.
     decoded = []
     last_update = 0.0
-    for part in found:
+    for part in paced_segments(found, duty):
         decoded.append(part)
         now = time.monotonic()
         if now - last_update >= 1:
@@ -202,22 +261,47 @@ def decode_block(engine, data, language, report):
             last_update = now
     if language == "fr":
         for i, part in enumerate(decoded):
-            if EAST_ASIAN_SCRIPT.search(part.text):
-                decoded[i] = reread_french_passage(engine, data, part)
+            unexpected_script = EAST_ASIAN_SCRIPT.search(part.text)
+            words = part.words or []
+            hints = nearby_terms(words, glossary) if glossary else ""
+            if not hints and glossary and any(w.probability < 0.55 for w in words):
+                hints = glossary
+            if unexpected_script or hints:
+                with gpu_timeslice(duty):
+                    decoded[i] = reread_french_passage(
+                        engine, data, part, hints, bool(unexpected_script)
+                    )
+            decoded[i] = french_spelling(decoded[i])
     return decoded
 
 
-def reread_french_passage(engine, data, part):
+def reread_french_passage(engine, data, part, glossary="", unexpected_script=True):
     # Garder les autres passages et leur attribution. Les marges donnent au
     # décodeur le début et la fin des phonèmes proches d’une frontière.
     first = max(0, int((part.start - 0.15) * 16000))
     last = min(len(data), int((part.end + 0.15) * 16000))
     if first >= last:
         return part
+    if glossary and not unexpected_script:
+        # Les termes personnalisés peuvent être très longs en jetons (sigles, emoji).
+        # Réserver la fenêtre de contexte aux mots réellement prononcés.
+        tokenizer = engine.hf_tokenizer
+        ids = tokenizer.encode(glossary, add_special_tokens=False).ids
+        if len(ids) > 96:
+            glossary = tokenizer.decode(ids[:96]).rsplit(",", 1)[0]
     found, _ = engine.transcribe(
-        data[first:last], language="fr", word_timestamps=True, vad_filter=False,
-        beam_size=8, temperature=0.0, condition_on_previous_text=False,
-        suppress_tokens=french_retry_tokens(engine.hf_tokenizer),
+        data[first:last],
+        language="fr",
+        word_timestamps=True,
+        vad_filter=False,
+        beam_size=8,
+        temperature=0.0,
+        condition_on_previous_text=False,
+        hotwords=None if unexpected_script else glossary or None,
+        max_new_tokens=min(160, max(16, len(part.tokens) * 2 + 4)),
+        suppress_tokens=french_retry_tokens(engine.hf_tokenizer)
+        if unexpected_script
+        else [-1],
     )
     origin = first / 16000
     words = []
@@ -225,18 +309,91 @@ def reread_french_passage(engine, data, part):
         for word in candidate.words or []:
             middle = origin + (word.start + word.end) / 2
             if part.start <= middle <= part.end:
-                words.append(replace(word, start=max(part.start, origin + word.start),
-                                     end=min(part.end, origin + word.end)))
+                words.append(
+                    replace(
+                        word,
+                        start=max(part.start, origin + word.start),
+                        end=min(part.end, origin + word.end),
+                    )
+                )
     text = "".join(w.word for w in words).strip()
-    if (not text or EAST_ASIAN_SCRIPT.search(text)
-            or sum(w.probability for w in words) / len(words) < 0.45):
+    if (
+        not text
+        or EAST_ASIAN_SCRIPT.search(text)
+        or sum(w.probability for w in words) / len(words) < 0.45
+    ):
         return part
+    if not unexpected_script:
+        # Une liste de mots peut aussi induire des ajouts. Exiger un terme effectivement
+        # entendu, ainsi qu’un gain de confiance sur des séquences de longueur comparable.
+        old = part.words or []
+        if abs(len(old) - len(words)) > 2:
+            return part
+        hints = {
+            lexical_words(term.strip()) for term in glossary.split(",") if term.strip()
+        }
+        original = [lexical_words(w.word) for w in old]
+        candidate = [lexical_words(w.word) for w in words]
+        edits = SequenceMatcher(None, original, candidate, autojunk=False).get_opcodes()
+        for tag, a, b, c, d in edits:
+            if tag == "equal":
+                continue
+            if tag != "replace":
+                return part
+            context = " " + " ".join(candidate[max(0, c - 2) : d + 2]) + " "
+            if not any(" " + term + " " in context for term in hints):
+                return part
+            before = sum(w.probability for w in old[a:b]) / (b - a)
+            after = sum(w.probability for w in words[c:d]) / (d - c)
+            if after < before + 0.035:
+                return part
     return replace(part, words=words, text=text)
+
+
+FRENCH_TERMS = "frérot, wesh, meuf, keuf, chelou, relou, ouf, seum, teuf, kiffer, pécho, vénère, taf, daron, daronne, reuf, taffer, chanmé"
+
+
+def french_glossary(settings):
+    if settings.get("language") != "fr" or not settings.get("familiar", True):
+        return ""
+    terms = (FRENCH_TERMS + "," + str(settings.get("vocabulary", ""))).split(",")
+    return ", ".join(dict.fromkeys(t.strip()[:48] for t in terms if t.strip()))[:768]
+
+
+def gpu_probe(p, progress):
+    settings = p["settings"]
+    threads = apply_limits(settings)
+    model = local_path(settings.get("whisper", ""), directory=True)
+    progress("Chargement du modèle sur CUDA", phase="load")
+    activate_cuda()
+    from faster_whisper import WhisperModel
+    import numpy as np
+
+    engine = WhisperModel(
+        str(model),
+        device="cuda",
+        compute_type="float16",
+        cpu_threads=threads,
+        local_files_only=True,
+    )
+    progress("Test de l’encodeur et du décodeur sur CUDA")
+    segments, _ = engine.transcribe(
+        np.zeros(16000, dtype=np.float32),
+        language="fr",
+        vad_filter=False,
+        temperature=0.0,
+        beam_size=1,
+    )
+    list(segments)
+    if engine.model.device != "cuda":
+        raise RuntimeError("Le moteur n’a pas exécuté le test sur CUDA")
+    return {"device": "cuda", "compute_type": engine.model.compute_type}
 
 
 def transcribe(p, progress):
     root = local_path(p["directory"], directory=True)
     settings = p["settings"]
+    threads = apply_limits(settings)
     model = local_path(settings["whisper"], directory=True)
     manifest = json.loads((root / "sources.json").read_text(encoding="utf-8"))
     tracks = manifest["tracks"]
@@ -262,8 +419,11 @@ def transcribe(p, progress):
             else "Chargement du modèle de transcription"
         )
         progress(stage, phase="load")
+        if device == "cuda":
+            activate_cuda()
         return WhisperModel(
             str(model),
+            **({"cpu_threads": threads} if threads else {}),
             device=device,
             compute_type="int8" if device == "cpu" else "float16",
             local_files_only=True,
@@ -274,10 +434,11 @@ def transcribe(p, progress):
             engine = load_model(device)
             break
         except (RuntimeError, ValueError, OSError) as exc:
-            if device != "cuda" or not cuda_unavailable(exc):
+            if device != "cuda" or settings.get("strict_cuda") or not cuda_unavailable(exc):
                 raise
     language = settings.get("language") or None
     segments = []
+    glossary = french_glossary(settings)
     timeline = TurnIndex(turns)
     for index, t in enumerate(tracks, 1):
         file = t["file"]
@@ -300,10 +461,12 @@ def transcribe(p, progress):
             while True:
                 report(0)
                 try:
-                    decoded = decode_block(engine, data, language, report)
+                    decoded = decode_block(engine, data, language, report,
+                                           duty=settings.get("gpu_duty", 100) if device == "cuda" else 100,
+                                           glossary=glossary)
                     break
                 except (RuntimeError, ValueError, OSError) as exc:
-                    if device != "cuda" or not cuda_unavailable(exc):
+                    if device != "cuda" or settings.get("strict_cuda") or not cuda_unavailable(exc):
                         raise
                 del engine
                 device = "cpu"

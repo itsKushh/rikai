@@ -3349,6 +3349,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "audio-capture",
+ "embed-resource",
  "gpui-ce",
  "gpui_ce_elements",
  "gpui_ce_platform",

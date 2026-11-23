@@ -12,7 +12,8 @@ if __name__ == "__main__":
 
 from models import capabilities, install
 from voices import enroll
-from processing import summarize, transcribe
+from processing import gpu_probe, summarize, transcribe
+from nvidia_runtime import install_runtime
 
 os.environ["HF_HUB_DISABLE_TELEMETRY"] = "1"
 
@@ -113,7 +114,7 @@ def main():
         commands = command_lines()
         req = json.loads(next(commands))
         job = req["id"]
-        if req["method"] != "install":
+        if req["method"] not in ("install", "install_cuda"):
             os.environ["HF_HUB_OFFLINE"] = "1"
         if req["version"] != 1:
             raise ValueError("Version IPC incompatible")
@@ -139,11 +140,13 @@ def main():
                     os._exit(2)
 
         # os.read/readline en arrière-plan ne doit pas bloquer la fermeture de l'interpréteur.
-        if req["method"] in ("transcribe", "summarize", "enroll", "install"):
+        if req["method"] in ("transcribe", "summarize", "enroll", "install", "install_cuda", "test_cuda"):
             reader = threading.Thread(target=controls, daemon=True)
             reader.start()
         engines = {
             "selftest": selftest,
+            "install_cuda": install_runtime,
+            "test_cuda": gpu_probe,
             "install": install,
             "capabilities": capabilities,
             "enroll": enroll,
@@ -163,7 +166,12 @@ def main():
         emit(job, "result", result=result)
         return 0
     except Exception as exc:
-        emit(job, "error", code=type(exc).__name__, message=str(exc))
+        message = str(exc)
+        if isinstance(exc, MemoryError) or "bad_alloc" in message.lower():
+            message = "Mémoire insuffisante pour ce modèle. Augmentez le plafond de RAM ou choisissez un modèle plus petit."
+        elif "out of memory" in message.lower() and "cuda" in message.lower():
+            message = "Mémoire vidéo insuffisante. Libérez de la VRAM ou choisissez un modèle plus petit."
+        emit(job, "error", code=type(exc).__name__, message=message)
         return 1
     finally:
         # Le parent ferme stdin après la réponse. Laisser le lecteur sortir avant

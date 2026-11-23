@@ -1,6 +1,8 @@
 use super::appearance::*;
 use super::*;
 use gpui::Div;
+#[path = "budgets.rs"]
+pub(super) mod budgets;
 #[path = "dialogue.rs"]
 mod dialogue;
 
@@ -11,6 +13,7 @@ enum Button {
     Quiet,
     Selected,
     Tab,
+    IdleTab,
 }
 
 fn action(
@@ -58,10 +61,11 @@ fn window_button(
         Button::Primary => (p.primary, p.on_primary),
         Button::Secondary => (p.control, p.text),
         Button::Selected => (p.selected, p.text),
-        Button::Tab => (p.selected, p.text),
+        Button::Tab | Button::IdleTab => (p.selected, p.text),
         Button::Quiet => (p.base, p.muted),
     };
-    let quiet = matches!(style, Button::Quiet | Button::Tab);
+    let tab = matches!(style, Button::Tab | Button::IdleTab);
+    let quiet = matches!(style, Button::Quiet) || tab;
     let hint = label.clone();
     let hover_bg = match style {
         Button::Primary => {
@@ -79,7 +83,7 @@ fn window_button(
             }
         }
         Button::Quiet => p.control,
-        Button::Tab => p.selected,
+        Button::Tab | Button::IdleTab => p.selected,
     };
     div()
         .id(SharedString::from(label.clone()))
@@ -101,7 +105,7 @@ fn window_button(
         .relative()
         .top(px(0.))
         .bg(if quiet {
-            transparent_black()
+            rgb_to_hsla(rgb(hover_bg)).opacity(0.)
         } else {
             rgb_to_hsla(rgb(bg))
         })
@@ -109,16 +113,24 @@ fn window_button(
         .border_color(if quiet {
             transparent_black()
         } else {
-            rgb_to_hsla(rgb(p.edge))
+            rgb_to_hsla(rgb(p.edge)).opacity(0.25)
         })
         .when(!quiet, |s| s.shadow(p.bevel()))
         .text_color(rgb(fg))
-        .when(!matches!(style, Button::Tab), |d| {
-            d.hover(move |s| s.bg(rgb(hover_bg)))
+        .when(!tab, |d| d.hover(move |s| s.bg(rgb(hover_bg))))
+        .when(matches!(style, Button::IdleTab), |d| {
+            d.opacity(0.66).hover(|s| s.opacity(1.))
         })
         .focus_visible(move |s| s.border_color(rgb(p.text)))
-        .active(move |s| s.top(px(1.5)).shadow(p.pressed()))
-        .transitions(|t| t.bg(millis(95)).top(millis(85)).border_color(millis(95)))
+        .when(!tab, |d| {
+            d.active(move |s| s.top(px(0.60)).shadow(p.pressed()))
+        })
+        .transitions(|t| {
+            t.bg(motion(120))
+                .opacity(motion(120))
+                .top(motion(90))
+                .border_color(motion(100))
+        })
         .when(icon_only, |b| {
             b.tooltip(move |_, cx| cx.new(|_| ControlHint(hint.clone())).into())
         })
@@ -155,8 +167,18 @@ impl Render for ControlHint {
             })
     }
 }
+// Courbe de Bézier cubique, points de contrôle (1/3, 0.78) et (2/3, 1).
+// L’abscisse est linéaire, ce qui évite de résoudre la courbe à chaque image.
+fn glide(t: f32) -> f32 {
+    let u = 1. - t;
+    3. * u * u * t * 0.78 + 3. * u * t * t + t * t * t
+}
+fn motion(ms: u64) -> Motion {
+    millis(ms).with_easing(glide)
+}
+
 fn reveal(cx: &App, ms: u64) -> Animation {
-    Animation::new(millis(if cx.reduce_motion() { 1 } else { ms })).with_easing(ease_out_quint())
+    Animation::new(millis(if cx.reduce_motion() { 1 } else { ms })).with_easing(glide)
 }
 fn col() -> Div {
     div().min_w_0().flex().flex_col().gap(px(9.))
@@ -231,11 +253,8 @@ fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl Into
     text_input(id)
         .state(f.downgrade())
         .placeholder(hint)
-        .relative()
-        .top(px(0.))
-        .hover(move |s| s.bg(rgb(p.surface)))
-        .active(move |s| s.top(px(1.)).shadow(p.pressed()))
-        .transitions(|t| t.bg(millis(95)).top(millis(85)))
+        .focus(move |s| s.border_color(rgb(p.muted)))
+        .transitions(|t| t.border_color(motion(100)))
         .caret_blink_interval_500ms()
         .px(px(9.))
         .py(px(6.))
@@ -345,7 +364,7 @@ impl Desk {
                 let name = format!("{}{pid}", i.name);
                 let p = *cx.global::<Palette>();
                 let testing = self.preview.is_some();
-                let control = checkbox(name, selected, p)
+                let control = checkbox(name, selected, testing, p)
                     .id(("source", index))
                     .justify_between()
                     .px_2()
@@ -441,14 +460,15 @@ impl Desk {
                 let source = source.clone();
                 let bounded = !(audio_capture::MIN_GAIN_DB..=audio_capture::MAX_GAIN_DB)
                     .contains(&(gain + step));
-                let btn = action(text, false, cx, move |s, _| {
-                    s.set_gain(&source, s.gain_db(&source) + step)
-                })
+                let btn = if bounded {
+                    disabled_button(text, p)
+                } else {
+                    action(text, false, cx, move |s, _| {
+                        s.set_gain(&source, s.gain_db(&source) + step)
+                    })
+                }
                 .id((id, index))
-                .aria_label(format!("{name} · gain {step:+} dB"))
-                .aria_disabled(bounded)
-                .tab_stop(!bounded)
-                .when(bounded, |b| b.opacity(0.4));
+                .aria_label(format!("{name} · gain {step:+} dB"));
                 if step > 0 {
                     controls = controls.child(
                         div()
@@ -499,7 +519,7 @@ impl Desk {
                             if self.tab == i as u8 {
                                 Button::Tab
                             } else {
-                                Button::Quiet
+                                Button::IdleTab
                             },
                             None,
                             false,
@@ -844,6 +864,9 @@ impl Desk {
                             Preference::Device => json!(if index == 1 { "cuda" } else { "cpu" }),
                             Preference::Language => json!(if index == 1 { "" } else { "fr" }),
                         };
+                        if pref == Preference::Device && index == 1 {
+                            s.settings["strict_cuda"] = json!(true);
+                        }
                         if pref == Preference::Theme {
                             cx.set_global(Palette::new(index == 1));
                         }
@@ -885,12 +908,18 @@ impl Desk {
     fn settings_view(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let mut presets = col().gap(px(2.)).child(label("Modèle de transcription"));
-        for (preset, model) in Page::MODEL_PRESETS
-            .into_iter()
-            .zip(["base", "small", "medium"])
+        for (preset, model) in
+            Page::MODEL_PRESETS
+                .into_iter()
+                .zip(["base", "small", "medium", "large-v3-turbo"])
         {
             let recommended = preset == self.recommended;
-            let repo = format!("Systran/faster-whisper-{model}");
+            let owner = if preset == "Précision Turbo" {
+                "mobiuslabsgmbh"
+            } else {
+                "Systran"
+            };
+            let repo = format!("{owner}/faster-whisper-{model}");
             let selected = self.settings["whisper_repo"].as_str() == Some(repo.as_str());
             presets = presets.child(
                 button(preset, Button::Quiet, None, false, cx, move |s, _| {
@@ -989,6 +1018,53 @@ impl Desk {
                         .child(self.preference(Preference::Language, cx)),
                 ),
             )
+            .when(self.settings["device"] == "cuda", |d| {
+                d.child(
+                    col()
+                        .child(action("Installer le moteur NVIDIA", false, cx, |s, _| {
+                            s.page = Page::ConfirmDownload("NVIDIA CUDA");
+                            Ok(())
+                        }))
+                        .child(if self.settings["whisper"].is_string() {
+                            action("Vérifier CUDA avec ce modèle", false, cx, |s, _| {
+                                s.check_cuda()
+                            })
+                        } else {
+                            disabled_button("Vérifier CUDA avec ce modèle", p)
+                        })
+                        .child(toggle("Exiger le calcul sur GPU", "strict_cuda", self, cx)),
+                )
+            })
+            .child(self.resource_settings(cx))
+            .when(self.settings["language"] == "fr", |d| {
+                d.child(
+                    col()
+                        .child(label("Vocabulaire français"))
+                        .child(input(
+                            cx,
+                            &self.vocabulary,
+                            "vocab",
+                            "Noms et expressions, séparés par des virgules",
+                        ))
+                        .child(
+                            if self.vocabulary.read(cx).as_str().trim()
+                                == self.settings["vocabulary"].as_str().unwrap_or("")
+                            {
+                                disabled_button("Enregistrer le vocabulaire", p)
+                            } else {
+                                action("Enregistrer le vocabulaire", false, cx, |s, cx| {
+                                    let terms = s.vocabulary.read(cx).as_str().trim();
+                                    ensure!(
+                                        terms.chars().count() <= 480,
+                                        "Limitez le vocabulaire personnel à 480 caractères."
+                                    );
+                                    s.settings["vocabulary"] = json!(terms);
+                                    s.save_settings()
+                                })
+                            },
+                        ),
+                )
+            })
             .child(local)
             .child(audio)
             .child(provider)
@@ -1004,44 +1080,89 @@ impl Desk {
             )
     }
 }
-fn checkbox(text: String, on: bool, p: Palette) -> Stateful<Div> {
+fn disabled_button(text: &'static str, p: Palette) -> Stateful<Div> {
+    div()
+        .id(text)
+        .role(Role::Button)
+        .aria_disabled(true)
+        .cursor_not_allowed()
+        .flex()
+        .items_center()
+        .justify_center()
+        .min_h(px(28.))
+        .px(px(9.))
+        .rounded(px(11.))
+        .bg(rgb(p.control))
+        .text_color(rgb(p.muted))
+        .shadow(p.bevel())
+        .opacity(0.5)
+        .child(text)
+}
+#[derive(IntoElement)]
+struct CheckMark {
+    on: bool,
+    p: Palette,
+}
+impl RenderOnce for CheckMark {
+    fn render(self, w: &mut Window, cx: &mut App) -> impl IntoElement {
+        let goal = if self.on { 1.0_f32 } else { 0.0 };
+        let tr = w.use_keyed_transition("check-blend", cx, motion(150), |_, _| goal);
+        if *tr.read_goal(cx) != goal {
+            tr.update(cx, |v, _| *v = goal);
+        }
+        let t = if cx.reduce_motion() {
+            goal
+        } else {
+            *tr.evaluate(w, cx)
+        };
+        let p = self.p;
+        div()
+            .id("check-box")
+            .size(px(16.))
+            .flex_shrink_0()
+            .rounded(px(4.))
+            .bg(rgb(if self.on { p.primary } else { p.base }))
+            .shadow(p.bevel())
+            .transitions(|s| s.bg(motion(150)))
+            .flex()
+            .items_center()
+            .justify_center()
+            .child(
+                div()
+                    .flex()
+                    .opacity(t)
+                    .blur(px((1. - t) * 1.15))
+                    .child(glyph(CHECK, 10. + 3. * t, p.on_primary)),
+            )
+    }
+}
+fn checkbox(text: String, on: bool, disabled: bool, p: Palette) -> Stateful<Div> {
     div()
         .id(SharedString::from(text.clone()))
         .role(Role::CheckBox)
         .aria_label(text.clone())
         .aria_toggled(on.into())
-        .top(px(0.))
-        .relative()
-        .hover(move |s| s.bg(rgb(p.control)))
-        .active(move |s| s.top(px(1.)).shadow(p.pressed()))
-        .transitions(|t| t.bg(millis(95)).top(millis(85)))
-        .focusable()
-        .tab_stop(true)
+        .aria_disabled(disabled)
+        .tab_stop(!disabled)
         .flex()
         .items_center()
         .gap_2()
         .min_h(px(28.))
         .rounded(px(6.))
-        .cursor_pointer()
-        .focus_visible(move |d| d.bg(rgb(p.selected)))
-        .child(
-            div()
-                .size(px(16.))
-                .border_1()
-                .border_color(rgb(p.muted))
-                .rounded(px(4.))
-                .flex()
-                .items_center()
-                .justify_center()
-                .bg(rgb(if on { p.primary } else { p.base }))
-                .when(on, |d| d.child(glyph(CHECK, 13., p.on_primary))),
-        )
+        .when(disabled, |d| d.opacity(0.5).cursor_not_allowed())
+        .when(!disabled, |d| {
+            d.focusable()
+                .tab_stop(true)
+                .cursor_pointer()
+                .focus_visible(move |d| d.bg(rgb(p.selected)))
+        })
+        .child(CheckMark { on, p })
         .child(text)
 }
 
 fn toggle(text: &'static str, key: &'static str, s: &Desk, cx: &Context<Desk>) -> impl IntoElement {
     let on = s.settings[key] == true;
-    checkbox(text.to_owned(), on, *cx.global::<Palette>())
+    checkbox(text.to_owned(), on, false, *cx.global::<Palette>())
         .id(key)
         .on_click(cx.listener(move |s, _, _, cx| {
             s.settings[key] = json!(!on);
@@ -1180,7 +1301,7 @@ impl Desk {
             }
             (
                 if matches!(page, Page::Settings | Page::ConfirmDownload(_)) {
-                    "Installation du modèle"
+                    "Moteur de transcription"
                 } else {
                     "Traitement"
                 }
@@ -1263,9 +1384,9 @@ impl Desk {
                 }
                 Page::Settings => ("Paramètres".into(), self.settings_view(cx)),
                 Page::ConfirmDownload(preset) => (
-                    format!("Télécharger le modèle « {preset} » ?"),
+                    if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("Télécharger le modèle « {preset} » ?")},
                     col()
-                        .child("Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur.")
+                        .child(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."})
                         .child(row()
                             .child(action("Annuler", false, cx, |s, _| s.answer_download(false)))
                             .child(action("Télécharger", true, cx, |s, _| s.answer_download(true)))),

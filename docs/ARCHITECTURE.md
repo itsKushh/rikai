@@ -22,3 +22,10 @@ Les threads audio COM MTA normalisent en PCM 16 kHz mono via le convertisseur pa
 
 Processus enfant lancé directement, arguments séparés, stdin/stdout UTF-8, une enveloppe JSON par ligne. Aucun port ni service à authentifier. Le journal du processus utilise stderr. Un travail possède un identifiant, une méthode, des paramètres locaux et des événements de progression suivis d'un seul résultat ou d'une erreur. Le propriétaire peut annuler et arrêter le processus. L'écriture SQLite reste dans Rust. Les résultats d'une nouvelle exécution doivent être validés puis publiés en une transaction. Les chemins et les poids sont locaux, sans téléchargement implicite. Les fonctionnalités prévues et celles vérifiées sont distinguées dans le plan.
 
+
+
+### Dépendances de la version Windows
+
+Les pictogrammes utilisés par les contrôles sont sélectionnés dans Nucleo UI 1.9.0 fourni par le propriétaire du projet. Les deux images Rikai fournissent le logo de la barre de titre et les tailles de l’icône Windows. GPUI charge le groupe d’icônes 1 dans l’exécutable. Inno Setup et le raccourci utilisent le même fichier ICO.
+
+Le binaire Windows de CTranslate2 4.9.1 est construit avec CUDA 12.8, le chargement dynamique de cuBLAS et les convolutions CUDA internes. L’installation NVIDIA facultative vérifie les roues Windows de cuBLAS 12.8.5.5 et de sa dépendance NVRTC 12.8.93, puis extrait leurs DLL et licences dans le profil utilisateur. Le worker charge les DLL par chemin absolu avant le calcul. Le pilote reste fourni par NVIDIA. [Configuration de compilation CTranslate2](https://github.com/OpenNMT/CTranslate2/blob/v4.9.1/python/tools/prepare_build_environment_windows.sh) · [Distribution NVIDIA](https://pypi.org/project/nvidia-cublas-cu12/12.8.5.5/)

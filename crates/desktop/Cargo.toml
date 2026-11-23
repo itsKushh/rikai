@@ -20,3 +20,6 @@ tracing-subscriber = { version = "0.3", default-features = false, features = ["f
 [dev-dependencies]
 anyhow.workspace = true
 serde_json.workspace = true
+
+[build-dependencies]
+embed-resource = "=3.0.12"

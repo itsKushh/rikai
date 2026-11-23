@@ -98,32 +98,40 @@ impl Palette {
     }
 }
 
-// Petits pictogrammes monochromes dessinés sur la même grille de 24 unités.
-pub(super) const PLAY: &str = "M7 4.5 20 12 7 19.5Z";
-pub(super) const PAUSE: &str = "M7 5v14m9-14v14";
-pub(super) const SAVE: &str = "M12 3v12m-5-5 5 5 5-5M5 16v4h14v-4";
-pub(super) const WAVE: &str = "M3 10v4m4-8v12m5-16v20m5-17v14m4-10v6";
-pub(super) const MIC: &str =
-    "M9 6a3 3 0 0 1 6 0v6a3 3 0 0 1-6 0ZM5 12a7 7 0 0 0 14 0m-7 7v3m-4 0h8";
-pub(super) const DESK: &str = "M3 5h18v14H3zM3 10h18m-6 0v9";
-pub(super) const LIBRARY: &str = "M4 6h16M4 12h16M4 18h16";
-pub(super) const VOICES: &str =
-    "M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 8a7 7 0 0 1 14 0m0-15a4 4 0 0 1 0 7m2 2a6 6 0 0 1 4 6";
-pub(super) const SLIDERS: &str = "M5 3v7m0 5v6m7-18v12m0 4v2m7-18v2m0 4v12M2 10h6m1 5h6m1-9h6";
-pub(super) const PLUS: &str = "M12 5v14M5 12h14";
-pub(super) const CLOSE: &str = "m5 5 14 14M19 5 5 19";
-pub(super) const CHECK: &str = "m5 12 4 4 10-10";
-pub(super) const CHEVRON: &str = "m7 10 5 5 5-5";
-pub(super) const AUDIO: &str = "M3 10h4l5-5v14l-5-5H3zm13-2a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14";
-pub(super) const MODEL: &str = "M6 5h12v16l-6-4-6 4z";
-
-pub(super) fn glyph(path: &str, pixels: f32, color: u32) -> Svg {
-    let data = format!(
-        r#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="{path}" fill="none" stroke="black" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>"#
-    );
+pub(super) const PLAY: &str = include_str!("../../../assets/nucleo/media-play.svg");
+pub(super) const PAUSE: &str = include_str!("../../../assets/nucleo/media-pause.svg");
+pub(super) const SAVE: &str = include_str!("../../../assets/nucleo/download.svg");
+pub(super) const MIC: &str = include_str!("../../../assets/nucleo/microphone-2.svg");
+pub(super) const DESK: &str = include_str!("../../../assets/nucleo/layout-sidebar.svg");
+pub(super) const LIBRARY: &str = include_str!("../../../assets/nucleo/archive.svg");
+pub(super) const VOICES: &str = include_str!("../../../assets/nucleo/users.svg");
+pub(super) const SLIDERS: &str = include_str!("../../../assets/nucleo/sliders-3-vertical.svg");
+pub(super) const PLUS: &str = include_str!("../../../assets/nucleo/plus.svg");
+pub(super) const CLOSE: &str = include_str!("../../../assets/nucleo/xmark.svg");
+pub(super) const CHECK: &str = include_str!("../../../assets/nucleo/check.svg");
+pub(super) const CHEVRON: &str = include_str!("../../../assets/nucleo/chevron-down.svg");
+pub(super) const AUDIO: &str = include_str!("../../../assets/nucleo/volume-up.svg");
+pub(super) const MODEL: &str = include_str!("../../../assets/nucleo/bookmark.svg");
+pub(super) const WINDOW_MIN: &str = include_str!("../../../assets/nucleo/minus.svg");
+pub(super) const WINDOW_RESTORE: &str = include_str!("../../../assets/nucleo/duplicate.svg");
+pub(super) const WINDOW_MAX: &str = include_str!("../../../assets/nucleo/shape-square.svg");
+pub(super) fn glyph(data: &'static str, pixels: f32, color: u32) -> Svg {
     svg()
         .data(data.as_bytes())
         .size(px(pixels))
         .flex_shrink_0()
         .text_color(rgb(color))
+}
+pub(super) fn brand() -> Img {
+    static IMAGE: std::sync::OnceLock<std::sync::Arc<Image>> = std::sync::OnceLock::new();
+    img(IMAGE
+        .get_or_init(|| {
+            std::sync::Arc::new(Image::from_bytes(
+                ImageFormat::Png,
+                include_bytes!("../../../assets/rikai-mini-icon.png").to_vec(),
+            ))
+        })
+        .clone())
+    .size(px(24.))
+    .flex_shrink_0()
 }

@@ -10,7 +10,8 @@ pub(crate) enum Page {
 }
 
 impl Page {
-    pub(crate) const MODEL_PRESETS: [&'static str; 3] = ["Rapide", "Équilibré", "Haute qualité"];
+    pub(crate) const MODEL_PRESETS: [&'static str; 4] =
+        ["Rapide", "Équilibré", "Haute qualité", "Précision Turbo"];
 
     pub(crate) fn answer_download(&mut self, approved: bool) -> Option<&'static str> {
         let Self::ConfirmDownload(preset) = *self else {

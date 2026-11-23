@@ -28,6 +28,12 @@ cargo test --locked --workspace
 uv run --directory ai-worker --locked python -m unittest discover -s tests -v
 ```
 
+## Français parlé et moteur NVIDIA
+
+Le comparatif utilise Faster-Whisper en français sur CPU int8 et le même audio pour les deux modèles. Dix phrases synthétisées par Piper mêlent conversation familière, registre soutenu et phrases témoins. La mesure ignore la casse et la ponctuation. Un second essai porte sur dix prononciations humaines isolées des entrées du Wiktionnaire français, dont « wesh », « meuf », « frérot » et « greffière ». Les mots isolés sont évalués à l’orthographe exacte, accents compris. Aucun de ces deux essais ne mesure le temps de calcul d’une RTX 4070 Ti. [Prononciations du Wiktionnaire](https://fr.wiktionary.org/wiki/wesh)
+
+Le test Windows du worker empaqueté télécharge les distributions NVIDIA épinglées, vérifie leur empreinte, charge leurs DLL privées et interroge la version de cuBLAS. Le contrôle « Vérifier CUDA avec ce modèle » mesure séparément sur le poste installé la capacité à exécuter une inférence complète. Le plafond de RAM est testé dans un processus Windows isolé avec vérification du Job Object.
+
 ## Isolation par processus sur Windows — essai du 23 novembre 2026
 
 L’utilisateur a exécuté le kit de diagnostic sur son poste Windows et transmis les sept mesures de `windows_isolation.py`. Les trois lecteurs émettent volontairement pendant toute la mesure : le choix des sources agit sur les pistes enregistrées, tandis que la lecture ordinaire reste audible.
