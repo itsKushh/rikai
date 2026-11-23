@@ -129,7 +129,9 @@ class Updates(unittest.TestCase):
                         "applying",
                     )
                     cmd = launch.call_args.args[0]
-                    self.assertIn("/DIR=" + str(app), cmd)
+                    destinations = [arg[5:] for arg in cmd if arg.startswith("/DIR=")]
+                    self.assertEqual(len(destinations), 1)
+                    self.assertTrue(app.samefile(destinations[0]))
                     self.assertIn("/RIKAI_RESTART=" + str(int(restart)), cmd)
                 launch.reset_mock()
                 setup.write_bytes(b"altered")
