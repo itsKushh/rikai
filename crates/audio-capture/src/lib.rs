@@ -1,0 +1,219 @@
+//! Pistes mono sur une grille commune de 16 kHz.
+mod recovery;
+use anyhow::{Context, Result, ensure};
+use hound::{SampleFormat, WavReader, WavSpec, WavWriter};
+pub use recovery::recover_tracks;
+use serde::{Deserialize, Serialize};
+use std::{
+    fs::{File, OpenOptions},
+    io::BufWriter,
+    path::{Path, PathBuf},
+};
+
+#[cfg(windows)]
+mod native;
+#[cfg(windows)]
+pub use native::*;
+
+pub const RATE: u32 = 16_000;
+pub const TICKS: u64 = 10_000_000;
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(tag = "kind")]
+pub enum Source {
+    Application { pid: u32, born: u64, exe: PathBuf },
+    Microphone { endpoint: String },
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Input {
+    pub name: String,
+    pub source: Source,
+    pub peak: f32,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Track {
+    pub file: String,
+    pub input: Input,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Manifest {
+    pub version: u32,
+    pub rate: u32,
+    pub tracks: Vec<Track>,
+}
+
+#[derive(Clone)]
+pub struct Timeline {
+    start: u64,
+    pauses: Vec<(u64, Option<u64>)>,
+    stop: Option<u64>,
+}
+impl Timeline {
+    pub fn new(start: u64) -> Self {
+        Self {
+            start,
+            pauses: vec![],
+            stop: None,
+        }
+    }
+    pub fn pause(&mut self, at: u64) {
+        if !self.paused() {
+            self.pauses.push((at, None));
+        }
+    }
+    pub fn resume(&mut self, at: u64) {
+        if let Some((_, end @ None)) = self.pauses.last_mut() {
+            *end = Some(at);
+        }
+    }
+    pub fn stop(&mut self, at: u64) {
+        self.stop.get_or_insert(at);
+    }
+    pub fn paused(&self) -> bool {
+        self.pauses.last().is_some_and(|p| p.1.is_none())
+    }
+    pub fn frames(&self, at: u64) -> u64 {
+        let at = at.min(self.stop.unwrap_or(at));
+        let paused = self
+            .pauses
+            .iter()
+            .map(|&(p, q)| at.min(q.unwrap_or(at)).saturating_sub(p))
+            .sum::<u64>();
+        (at.saturating_sub(self.start).saturating_sub(paused) as u128 * RATE as u128
+            / TICKS as u128) as u64
+    }
+    fn recording(&self, at: u64) -> bool {
+        at >= self.start
+            && self.stop.is_none_or(|s| at < s)
+            && !self
+                .pauses
+                .iter()
+                .any(|&(p, q)| at >= p && q.is_none_or(|q| at < q))
+    }
+}
+fn spec() -> WavSpec {
+    WavSpec {
+        channels: 1,
+        sample_rate: RATE,
+        bits_per_sample: 16,
+        sample_format: SampleFormat::Int,
+    }
+}
+
+pub struct TrackWriter {
+    output: WavWriter<BufWriter<File>>,
+    frames: u64,
+    checkpoint: u64,
+}
+impl TrackWriter {
+    pub fn create(path: &Path) -> Result<Self> {
+        let file = OpenOptions::new().write(true).create_new(true).open(path)?;
+        Ok(Self {
+            output: WavWriter::new(BufWriter::new(file), spec())?,
+            frames: 0,
+            checkpoint: 0,
+        })
+    }
+    fn sample(&mut self, sample: i16) -> Result<()> {
+        ensure!(
+            self.frames < (u32::MAX as u64 - 64) / 2,
+            "Taille limite du fichier WAV atteinte"
+        );
+        self.output.write_sample(sample)?;
+        self.frames += 1;
+        Ok(())
+    }
+    fn silence_to(&mut self, at: u64) -> Result<()> {
+        while self.frames < at {
+            self.sample(0)?;
+        }
+        Ok(())
+    }
+    pub fn packet(&mut self, at: u64, bytes: &[u8], clock: &Timeline) -> Result<()> {
+        // Recaler au QPC à chaque paquet. Un écart positif représente du silence,
+        // un chevauchement correspond à des instants déjà écrits.
+        for (i, pair) in bytes.chunks_exact(2).enumerate() {
+            let tick = at + i as u64 * TICKS / RATE as u64;
+            if !clock.recording(tick) {
+                continue;
+            }
+            let frame = clock.frames(tick);
+            if frame < self.frames {
+                continue;
+            }
+            self.silence_to(frame)?;
+            self.sample(i16::from_le_bytes([pair[0], pair[1]]))?;
+        }
+        if self.frames - self.checkpoint >= RATE as u64 {
+            self.output.flush()?;
+            self.checkpoint = self.frames;
+        }
+        Ok(())
+    }
+    pub fn finish(mut self, frames: u64) -> Result<()> {
+        self.silence_to(frames)?;
+        self.output.finalize()?;
+        Ok(())
+    }
+}
+/// Mix applicatif, en mémoire constante. Le microphone n'entre jamais dans le mix.
+pub fn mix_apps(dir: &Path, tracks: &[Track]) -> Result<Option<PathBuf>> {
+    let mut readers = tracks
+        .iter()
+        .filter(|t| matches!(t.input.source, Source::Application { .. }))
+        .map(|t| WavReader::open(dir.join(&t.file)))
+        .collect::<Result<Vec<_>, _>>()?;
+    if readers.is_empty() {
+        return Ok(None);
+    }
+    ensure!(
+        readers.iter().all(|r| r.spec() == spec()),
+        "Formats de pistes incompatibles"
+    );
+    let n = readers.len() as i64;
+    let dest = dir.join("applications.wav");
+    let tmp = dir.join("applications.partial");
+    let mut sink = WavWriter::new(BufWriter::new(File::create_new(&tmp)?), spec())?;
+    let mut streams: Vec<_> = readers.iter_mut().map(|r| r.samples::<i16>()).collect();
+    loop {
+        let mut sum = 0i64;
+        let mut found = false;
+        for stream in &mut streams {
+            if let Some(v) = stream.next() {
+                found = true;
+                sum += i64::from(v?);
+            }
+        }
+        if !found {
+            break;
+        }
+        sink.write_sample((sum / n) as i16)?;
+    }
+    sink.finalize()?;
+    std::fs::rename(tmp, &dest).context("Finalisation du mix")?;
+    Ok(Some(dest))
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn gaps_and_pause_preserve_samples_and_order() -> Result<()> {
+        let path = std::env::temp_dir().join(format!("mn-test-{}.wav", std::process::id()));
+        let mut w = TrackWriter::create(&path)?;
+        let mut clock = Timeline::new(1000);
+        clock.pause(1000 + 3 * 625);
+        clock.resume(1000 + 5 * 625);
+        let data: Vec<_> = [1i16, 2, 3, 4, 5]
+            .into_iter()
+            .flat_map(i16::to_le_bytes)
+            .collect();
+        w.packet(1625, &data, &clock)?;
+        w.finish(5)?;
+        let samples = WavReader::open(&path)?
+            .samples::<i16>()
+            .collect::<Result<Vec<_>, _>>()?;
+        std::fs::remove_file(path)?;
+        assert_eq!(samples, [0, 1, 2, 5, 0]);
+        Ok(())
+    }
+}
