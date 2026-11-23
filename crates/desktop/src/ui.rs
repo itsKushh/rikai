@@ -1,3 +1,4 @@
+use crate::page::Page;
 use anyhow::{Context as _, Result, ensure};
 use audio_capture::{Control, Input, Manifest, Source, discover, record};
 use gpui::{prelude::*, *};
@@ -47,6 +48,17 @@ pub fn run() -> Result<()> {
         .with_ansi(false)
         .with_writer(std::sync::Mutex::new(log))
         .try_init();
+    let previous_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        if let Some(location) = info.location() {
+            tracing::error!(
+                file = location.file(),
+                line = location.line(),
+                "Panique Rust"
+            );
+        }
+        previous_hook(info);
+    }));
     tracing::info!(build, "Ouverture de la bibliothèque");
     let db = Library::open(&root.join("reunions.sqlite3"))?;
     db.recover()?;
@@ -92,15 +104,6 @@ pub fn run() -> Result<()> {
         });
     drop(lock);
     Ok(())
-}
-#[derive(Clone, Copy, PartialEq)]
-enum Page {
-    Home,
-    New,
-    Library,
-    Detail,
-    Profiles,
-    Settings,
 }
 enum Event {
     Hardware(String),
@@ -363,6 +366,7 @@ impl Desk {
             }
             Event::Installed(r) => {
                 self.cancel = None;
+                tracing::info!(reussite = r.is_ok(), "Fin du téléchargement du modèle");
                 let v = r?;
                 self.settings["whisper"] = v["folder"].clone();
                 self.settings["whisper_revision"] = v["revision"].clone();
@@ -608,12 +612,12 @@ impl Desk {
         }
         Ok(())
     }
-    fn install(&mut self, preset: &str) -> Result<()> {
-        if !view::confirm(&format!(
-            "Télécharger le modèle « {preset} » depuis Hugging Face et le conserver sur cet ordinateur ?"
-        )) {
+    fn answer_download(&mut self, approved: bool) -> Result<()> {
+        let Some(preset) = self.page.answer_download(approved) else {
             return Ok(());
-        }
+        };
+        ensure!(!self.busy(), "Un travail est déjà actif");
+        tracing::info!(preset, "Téléchargement du modèle confirmé");
         let ctl = Arc::new(AtomicBool::new(false));
         self.cancel = Some(ctl.clone());
         self.stage = "Mise en relation avec le catalogue public".into();

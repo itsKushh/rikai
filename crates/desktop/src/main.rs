@@ -1,4 +1,6 @@
 #![cfg_attr(windows, windows_subsystem = "windows")]
+#[cfg(any(windows, test))]
+mod page;
 #[cfg(windows)]
 mod playback;
 #[cfg(windows)]

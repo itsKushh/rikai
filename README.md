@@ -31,7 +31,7 @@ cargo run --locked -p meetingnotes
 
 ## Parcours
 
-1. Dans **Paramètres**, choisir un dossier Faster-Whisper local ou télécharger explicitement un modèle. La diarisation utilise deux fichiers compatibles avec Sherpa (segmentation et embeddings), la synthèse locale un fichier GGUF de conversation. Choisir CPU ou CUDA selon le poste.
+1. Dans **Paramètres**, choisir un dossier Faster-Whisper local ou sélectionner **Rapide**, **Équilibré** ou **Haute qualité**. Pour télécharger le modèle sélectionné, cliquer sur **Télécharger** dans l’écran de confirmation de MeetingNotes. **Annuler** ramène aux paramètres. La diarisation utilise deux fichiers compatibles avec Sherpa (segmentation et embeddings), la synthèse locale un fichier GGUF de conversation. Choisir CPU ou CUDA selon le poste.
 2. Dans **Nouvelle réunion**, saisir le titre, sélectionner les sessions applicatives et éventuellement un micro. Si une application manque, lui faire jouer du son. Vérifier les niveaux, informer les participants, puis démarrer. Les pistes s'écrivent en PCM mono 16 kHz sur disque.
 3. À l'arrêt, les pistes sont finalisées et les applications mixées séparément du micro. Si un modèle de transcription est configuré, le worker traite les pistes. La fiche permet aussi de relancer le traitement. Le micro prend le nom choisi dans les paramètres. Les tours acoustiques ambigus restent signalés.
 4. Depuis la fiche, relire les passages, les écouter, corriger le texte, renommer un intervenant pour cette réunion ou créer un profil vocal avec autorisation. Les propositions de noms doivent être confirmées. Le résumé local cite les segments et possède son propre historique. L'export propose Markdown, texte ou JSON.

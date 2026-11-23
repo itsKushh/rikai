@@ -474,11 +474,13 @@ impl Desk {
         body = body
             .child(label("Télécharger un modèle de transcription"))
             .child(
-                row().children(
-                    ["Rapide", "Équilibré", "Haute qualité"]
-                        .into_iter()
-                        .map(|preset| action(preset, false, cx, move |s, _| s.install(preset))),
-                ),
+                row().children(Page::MODEL_PRESETS.into_iter().map(|preset| {
+                    action(preset, false, cx, move |s, _| {
+                        tracing::info!(preset, "Sélection du modèle");
+                        s.page = Page::ConfirmDownload(preset);
+                        Ok(())
+                    })
+                })),
             );
         for (key, name, folder) in [
             ("whisper", "Transcription · dossier Faster-Whisper", true),
@@ -716,6 +718,14 @@ impl Render for Desk {
                     ("Intervenants".into(), d)
                 }
                 Page::Settings => ("Paramètres".into(), self.settings_view(cx)),
+                Page::ConfirmDownload(preset) => (
+                    format!("Télécharger le modèle « {preset} » ?"),
+                    col()
+                        .child("Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur.")
+                        .child(row()
+                            .child(action("Annuler", false, cx, |s, _| s.answer_download(false)))
+                            .child(action("Télécharger", true, cx, |s, _| s.answer_download(true)))),
+                ),
             }
         };
         div()
