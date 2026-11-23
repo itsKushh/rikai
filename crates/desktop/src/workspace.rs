@@ -369,7 +369,7 @@ impl Desk {
                     ))
                     .child(fact("Résumé", selected_file(&self.settings, "gguf"), p))
                     .child(fact(
-                        "Calcul",
+                        "Calcul préféré",
                         if self.settings["device"] == "cuda" {
                             "CUDA"
                         } else {

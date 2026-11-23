@@ -160,6 +160,36 @@ def align(segment, track, mine, turns, offset):
         )
 
 
+def cuda_unavailable(error):
+    # Certaines DLL sont chargées au premier calcul, lors du parcours des segments.
+    message = str(error).lower()
+    return any(
+        marker in message
+        for marker in (
+            "cublas", "cudnn", "cudart", "nvcuda.dll", "libcuda.so",
+            "cuda failed", "cuda error", "cuda driver", "cuda runtime",
+            "no cuda-capable device", "not compiled with cuda",
+            "requested float16 compute type, but the target device or backend",
+        )
+    )
+
+
+def decode_block(engine, data, language, report):
+    found, _ = engine.transcribe(
+        data, language=language, word_timestamps=True, vad_filter=True
+    )
+    # Publier le bloc seulement après la fin de la lecture du générateur.
+    decoded = []
+    last_update = 0.0
+    for part in found:
+        decoded.append(part)
+        now = time.monotonic()
+        if now - last_update >= 1:
+            report(part.end)
+            last_update = now
+    return decoded
+
+
 def transcribe(p, progress):
     root = local_path(p["directory"], directory=True)
     settings = p["settings"]
@@ -179,14 +209,30 @@ def transcribe(p, progress):
     ):
         progress("Identification des intervenants")
         turns = diarize(root / "applications.wav", settings, progress)
-    progress("Chargement du modèle de transcription", phase="load")
-    device = settings.get("device", "cpu")
-    engine = WhisperModel(
-        str(model),
-        device=device,
-        compute_type="int8" if device == "cpu" else "float16",
-        local_files_only=True,
-    )
+    preferred = settings.get("device", "cpu")
+
+    def load_model(device):
+        stage = (
+            "CUDA indisponible · poursuite de la transcription sur CPU"
+            if preferred == "cuda" and device == "cpu"
+            else "Chargement du modèle de transcription"
+        )
+        progress(stage, phase="load")
+        return WhisperModel(
+            str(model),
+            device=device,
+            compute_type="int8" if device == "cpu" else "float16",
+            local_files_only=True,
+        )
+
+    for device in (preferred, "cpu"):
+        try:
+            engine = load_model(device)
+            break
+        except (RuntimeError, ValueError, OSError) as exc:
+            if device != "cuda" or not cuda_unavailable(exc):
+                raise
+    language = settings.get("language") or None
     segments = []
     timeline = TurnIndex(turns)
     for index, t in enumerate(tracks, 1):
@@ -202,22 +248,24 @@ def transcribe(p, progress):
         with wave.open(str(path), "rb") as reader:
             seconds = reader.getnframes() // reader.getframerate()
         stage = f"Transcription · piste {index}/{len(tracks)}"
-        last_update = 0.0
         for offset, data in blocks(path):
-            progress(f"{stage} · {offset // 1000} / {seconds} s")
-            found, _ = engine.transcribe(
-                data,
-                language=settings.get("language") or None,
-                word_timestamps=True,
-                vad_filter=True,
-            )
-            for part in found:
+            def report(elapsed):
+                position = min(seconds, int(offset / 1000 + elapsed))
+                progress(f"{stage} · {position} / {seconds} s · {device.upper()}")
+
+            while True:
+                report(0)
+                try:
+                    decoded = decode_block(engine, data, language, report)
+                    break
+                except (RuntimeError, ValueError, OSError) as exc:
+                    if device != "cuda" or not cuda_unavailable(exc):
+                        raise
+                del engine
+                device = "cpu"
+                engine = load_model(device)
+            for part in decoded:
                 segments.extend(align(part, file, mine, timeline, offset))
-                now = time.monotonic()
-                if now - last_update >= 1:
-                    position = min(seconds, int(offset / 1000 + part.end))
-                    progress(f"{stage} · {position} / {seconds} s")
-                    last_update = now
     segments.sort(key=lambda s: (s["start_ms"], s["end_ms"], s["track"]))
     from echo import annotate
 
@@ -229,7 +277,7 @@ def transcribe(p, progress):
 
         progress("Comparaison aux profils locaux")
         proposals = suggest(root, settings, segments, p["profiles"])
-    return {"segments": segments, "turns": turns, "proposals": proposals}
+    return {"segments": segments, "turns": turns, "proposals": proposals, "device": device}
 
 
 def summarize(p, progress):

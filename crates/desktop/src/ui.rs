@@ -229,7 +229,7 @@ impl Desk {
                 |_| {},
             );
             let gpu = match res {
-                Ok(v) if v["cuda"].as_u64().unwrap_or(0) > 0 => "CUDA détecté",
+                Ok(v) if v["cuda"].as_u64().unwrap_or(0) > 0 => "GPU NVIDIA détecté",
                 Ok(_) => "Calcul sur processeur",
                 Err(_) => "Worker indisponible",
             };
@@ -486,7 +486,7 @@ impl Desk {
                             .into();
                 }
             }
-            Event::Processed(id, summary, settings, res) => {
+            Event::Processed(id, summary, mut settings, res) => {
                 self.cancel = None;
                 let saved: Result<()> = (|| {
                     let result = res?;
@@ -499,6 +499,9 @@ impl Desk {
                         )?;
                         self.db.status(id, "Terminée")?;
                     } else {
+                        if let Some(device) = result["device"].as_str() {
+                            settings["transcription_device"] = json!(device);
+                        }
                         self.db.publish(
                             id,
                             &settings.to_string(),
@@ -535,6 +538,13 @@ impl Desk {
                         if self.segments.len() > 1 { "s" } else { "" }
                     )
                 };
+                if !summary
+                    && settings["device"] == "cuda"
+                    && settings["transcription_device"] == "cpu"
+                {
+                    self.message
+                        .push_str(" Calcul sur CPU (CUDA indisponible).");
+                }
                 if !summary && settings["auto_summary"] == true && !self.segments.is_empty() {
                     self.process(true)?;
                 }
