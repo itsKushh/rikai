@@ -1,7 +1,5 @@
-"""Private GitHub Releases. The credential never crosses the UI/worker pipe."""
+"""Anonymous updates from the public Rikai release channel."""
 
-import ctypes
-from ctypes import wintypes as wt
 import hashlib
 import os
 from pathlib import Path
@@ -11,11 +9,9 @@ import sys
 from urllib.parse import urlsplit
 
 import requests
-from remote import credential
 
-REPO = "itsKushh/kpiche"
+REPO = "itsKushh/rikai"
 API = "https://api.github.com/repos/" + REPO
-TARGET = "Rikai/GitHub"
 INSTALLER = "Rikai-Setup-x64.exe"
 
 
@@ -24,35 +20,27 @@ def version(text):
     return tuple(map(int, match.groups())) if match else None
 
 
-def github(path, token, **kwargs):
+def github(path, **kwargs):
     headers = {
         "Accept": "application/vnd.github+json",
-        "Authorization": "Bearer " + token,
         "X-GitHub-Api-Version": "2022-11-28",
         "User-Agent": "Rikai-Updater",
     }
     headers.update(kwargs.pop("headers", {}))
     return requests.get(
-        API + path, headers=headers, allow_redirects=False, timeout=(10, 35), **kwargs
+        API + path,
+        headers=headers,
+        auth=lambda request: request,
+        allow_redirects=False,
+        timeout=(10, 35),
+        **kwargs,
     )
 
 
-def connected():
-    if sys.platform != "win32":
-        return None
-    try:
-        return credential(TARGET)
-    except ValueError:
-        return None
-
-
 def check_update(p, _progress):
-    token = connected()
-    if not token:
-        return {"state": "disconnected"}
-    with github("/releases/latest", token) as response:
+    with github("/releases/latest") as response:
         if response.status_code == 404:
-            with github("/releases?per_page=1", token) as repo:
+            with github("/releases?per_page=1") as repo:
                 if repo.status_code == 200:
                     return {"state": "current"}
                 raise ValueError(
@@ -90,7 +78,6 @@ def check_update(p, _progress):
         try:
             with github(
                 f"/contents/releases/{tag}.i18n.json?ref={tag}",
-                token,
                 headers={"Accept": "application/vnd.github.raw+json"},
             ) as translated:
                 if translated.ok and len(translated.content) <= 180_000:
@@ -109,30 +96,6 @@ def check_update(p, _progress):
     }
 
 
-def connect_github(p, progress):
-    from github_credentials import prompt, save
-
-    progress("Connexion en cours…")
-    secret = prompt(p.get("locale", "fr"))
-    if not secret:
-        return {"state": "cancelled"}
-    with github("/releases?per_page=1", secret) as response:
-        if response.status_code != 200:
-            raise ValueError(
-                "GitHub a refusé l’accès au dépôt. Vérifiez les permissions du jeton."
-            )
-    save(TARGET, secret)
-    return check_update(p, progress)
-
-
-def disconnect_github(_p, _progress):
-    api = ctypes.WinDLL("Advapi32", use_last_error=True)
-    api.CredDeleteW.argtypes = (wt.LPCWSTR, wt.DWORD, wt.DWORD)
-    if not api.CredDeleteW(TARGET, 1, 0) and ctypes.get_last_error() != 1168:
-        raise ctypes.WinError(ctypes.get_last_error())
-    return {"state": "disconnected"}
-
-
 def download_update(p, progress):
     # Refresh the authoritative release metadata before selecting the executable.
     release = check_update(p, progress)
@@ -144,7 +107,6 @@ def download_update(p, progress):
     temp = folder / (INSTALLER + ".part")
     response = github(
         f"/releases/assets/{release['asset']}",
-        connected(),
         headers={"Accept": "application/octet-stream"},
         stream=True,
     )
@@ -158,7 +120,11 @@ def download_update(p, progress):
         ):
             raise ValueError("Adresse de téléchargement GitHub inattendue.")
         response = requests.get(
-            location, stream=True, allow_redirects=False, timeout=(10, 60)
+            location,
+            stream=True,
+            auth=lambda request: request,
+            allow_redirects=False,
+            timeout=(10, 60),
         )
     with response:
         response.raise_for_status()

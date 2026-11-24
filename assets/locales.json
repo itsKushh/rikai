@@ -160,6 +160,13 @@
   "読みやすいPCMフラグメントなし",
   "没有可读的PCM片段"
  ],
+ "Aucun modèle de transcription sélectionné": [
+  "No transcription model selected",
+  "Ningún modelo de transcripción seleccionado",
+  "Модель распознавания не выбрана",
+  "文字起こしモデルは未選択です",
+  "尚未选择转录模型"
+ ],
  "Aucun modèle sélectionné": [
   "No model selected",
   "Ningún modelo seleccionado",
@@ -468,6 +475,20 @@
   "重複を検出中 · {0}/{1} ウィンドウ",
   "正在检测重叠 · {0}/{1} 个窗口"
  ],
+ "Choisir un emplacement": [
+  "Choose a folder",
+  "Elegir una carpeta",
+  "Выбрать папку",
+  "フォルダーを選択",
+  "选择文件夹"
+ ],
+ "Choisir un fichier GGUF": [
+  "Choose a GGUF file",
+  "Elegir un archivo GGUF",
+  "Выбрать файл GGUF",
+  "GGUF ファイルを選択",
+  "选择 GGUF 文件"
+ ],
  "Choisissez d’abord un modèle de transcription.": [
   "First, choose a transcription model.",
   "En primer lugar, seleccione un modelo de transcripción.",
@@ -495,6 +516,13 @@
   "Выберите другой файл, кроме источника.",
   "ソースパス以外のファイルを選択します。",
   "选择另一个文件,而不是源轨道。"
+ ],
+ "Choisissez un dossier en dehors des composants existants.": [
+  "Choose a folder outside the existing components.",
+  "Elija una carpeta fuera de los componentes existentes.",
+  "Выберите папку вне каталогов компонентов.",
+  "既存のコンポーネントの外にあるフォルダーを選択してください。",
+  "请选择现有组件目录之外的文件夹。"
  ],
  "Choisissez un modèle GGUF et une réunion transcrite.": [
   "Choose a GGUF model and a transcribed meeting.",
@@ -594,20 +622,6 @@
   "確認",
   "确认"
  ],
- "Connecter GitHub": [
-  "Connect GitHub",
-  "Conectar GitHub",
-  "Подключить GitHub",
-  "GitHub に接続",
-  "连接 GitHub"
- ],
- "Connectez GitHub pour consulter les versions privées.": [
-  "Connect GitHub to check private releases.",
-  "Conecta tu cuenta de GitHub para consultar las versiones privadas.",
-  "Подключите GitHub, чтобы проверять версии в закрытом репозитории.",
-  "非公開リポジトリのリリースを確認するには GitHub に接続してください。",
-  "连接 GitHub 以检查私有仓库中的版本。"
- ],
  "Connexion en cours…": [
   "Connecting…",
   "Conectando…",
@@ -705,13 +719,6 @@
   "Создайте встречу и выберите источники звука.",
   "音源を選択するには会議を作成してください。",
   "创建会议后即可选择音源。"
- ],
- "Dans GitHub, sélectionnez le dépôt kpiche et donnez au jeton un accès en lecture au contenu. Windows conserve le jeton sur cet ordinateur.": [
-  "On GitHub, select the kpiche repository and grant the token read access to its contents. Windows stores the token on this computer.",
-  "En GitHub, selecciona el repositorio kpiche y concede al token permiso de lectura de su contenido. Windows guarda el token en este equipo.",
-  "В GitHub выберите репозиторий kpiche и разрешите токену читать его содержимое. Windows сохранит токен на этом компьютере.",
-  "GitHub で kpiche リポジトリを選び、トークンにコンテンツの読み取り権限を付与してください。トークンはこの PC に保存されます。",
-  "在 GitHub 上选择 kpiche 仓库，并授予令牌读取仓库内容的权限。Windows 会将令牌保存在此电脑上。"
  ],
  "Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique Rikai/hôte avec votre clé comme mot de passe.": [
   "In the Windows ID Manager, create a Rikai/Host generic ID with your key as a password.",
@@ -825,13 +832,6 @@
   "決断",
   "决定"
  ],
- "Déconnecter GitHub": [
-  "Disconnect GitHub",
-  "Desconectar GitHub",
-  "Отключить GitHub",
-  "GitHub との接続を解除",
-  "断开 GitHub 连接"
- ],
  "Déjà installé": [
   "Already installed",
   "Ya instalado",
@@ -860,6 +860,27 @@
   "検出中…",
   "正在检测…"
  ],
+ "Emplacement des composants": [
+  "Component location",
+  "Ubicación de los componentes",
+  "Расположение компонентов",
+  "コンポーネントの保存先",
+  "组件位置"
+ ],
+ "Emplacement des composants enregistré.": [
+  "Component location saved.",
+  "Ubicación de los componentes guardada.",
+  "Расположение компонентов сохранено.",
+  "コンポーネントの保存先を設定しました。",
+  "已保存组件位置。"
+ ],
+ "Emplacement modifié. Certains originaux sont encore utilisés.": [
+  "Location changed. Some original files are still in use.",
+  "Ubicación cambiada. Algunos archivos originales siguen en uso.",
+  "Расположение изменено. Некоторые исходные файлы всё ещё используются.",
+  "保存先を変更しました。一部の元ファイルは使用中です。",
+  "位置已更改。部分原文件仍在使用中。"
+ ],
  "Empreinte invalide": [
   "Invalid fingerprint",
   "Huella no válida",
@@ -880,6 +901,13 @@
   "Местные отпечатки. Предложение остается отдельным от подтвержденной идентичности.",
   "地元の指紋:提案は確認されたアイデンティティと異なります。",
   "地点指纹:一个提示与确认的身份保持区别。"
+ ],
+ "Empreintes vocales facultatives": [
+  "Optional voice embeddings",
+  "Huellas de voz opcionales",
+  "Голосовые отпечатки необязательны",
+  "声紋の設定は任意です",
+  "可选的声纹设置"
  ],
  "En attente": [
   "Waiting",
@@ -1700,6 +1728,13 @@
   "この録音のトラックを削除します。",
   "将删除本次录音的音轨。"
  ],
+ "Lien de stockage inattendu : {chemin}": [
+  "Unexpected storage link: {chemin}",
+  "Enlace de almacenamiento inesperado: {chemin}",
+  "Неожиданная ссылка в хранилище: {chemin}",
+  "保存先に予期しないリンクがあります：{chemin}",
+  "存储路径中存在意外链接：{chemin}"
+ ],
  "Limite de consolidation du compte rendu atteinte": [
   "Limit of consolidation of the account",
   "Límite de consolidación de la cuenta afectada",
@@ -1839,13 +1874,6 @@
   "Обновления",
   "更新",
   "更新"
- ],
- "Mises à jour privées": [
-  "Private updates",
-  "Actualizaciones privadas",
-  "Обновления из закрытого репозитория",
-  "非公開リポジトリからの更新",
-  "私有仓库更新"
  ],
  "Modifier le résumé": [
   "Edit summary",
@@ -2105,6 +2133,13 @@
   "Открыть транскрипцию v {0}",
   "トランスクリプション v {0} 開く",
   "开启翻译 v {0}"
+ ],
+ "Ouvrir le dossier": [
+  "Open folder",
+  "Abrir carpeta",
+  "Открыть папку",
+  "フォルダーを開く",
+  "打开文件夹"
  ],
  "Ouvrir {}": [
   "Open {0}",
@@ -2554,6 +2589,13 @@
   "ONNX セグメンテーションモデル",
   "ONNX 分割模型"
  ],
+ "Segmentation facultative": [
+  "Optional speaker segmentation",
+  "Segmentación de hablantes opcional",
+  "Сегментация речи необязательна",
+  "話者の区間分割は任意です",
+  "可选的说话人分段"
+ ],
  "Session": [
   "Session",
   "Sesión",
@@ -2658,6 +2700,13 @@
   "Выберите хотя бы один источник.",
   "少なくとも1つの源を選択します。",
   "选择至少一个来源"
+ ],
+ "Sélectionnez un dossier existant.": [
+  "Select an existing folder.",
+  "Seleccione una carpeta existente.",
+  "Выберите существующую папку.",
+  "既存のフォルダーを選択してください。",
+  "请选择现有文件夹。"
  ],
  "Sélectionnez un modèle GGUF et un modèle Faster-Whisper pour le résumé automatique.": [
   "Select a GGUF model and a Faster-Whisper model for the automatic summary.",
@@ -2953,6 +3002,20 @@
   "文字起こし済み",
   "已转写"
  ],
+ "Transfert des composants": [
+  "Moving components",
+  "Trasladando componentes",
+  "Перенос компонентов",
+  "コンポーネントを移動中",
+  "正在迁移组件"
+ ],
+ "Transférer les composants déjà installés": [
+  "Move installed components",
+  "Trasladar los componentes instalados",
+  "Перенести установленные компоненты",
+  "インストール済みのコンポーネントを移動",
+  "迁移已安装的组件"
+ ],
  "Téléchargement GitHub incomplet.": [
   "GitHub is incomplete.",
   "Descarga GitHub incompleto.",
@@ -3022,6 +3085,13 @@
   "URL HTTPS без идентификаторов.",
   "HTTPS URL は、必要なID なしです。",
   "HTTPS URL 无需识别器。"
+ ],
+ "Un fichier différent existe déjà : {fichier}": [
+  "A different file already exists: {fichier}",
+  "Ya existe un archivo diferente: {fichier}",
+  "Уже существует другой файл: {fichier}",
+  "同じ場所に異なるファイルがあります：{fichier}",
+  "已有同名但内容不同的文件：{fichier}"
  ],
  "Un flux audio est déjà actif.": [
   "A audio stream is already active.",
@@ -3351,6 +3421,13 @@
   "Неудача",
   "失敗",
   "失败"
+ ],
+ "Échec de la vérification de la copie.": [
+  "Copy verification failed.",
+  "No se pudo verificar la copia.",
+  "Не удалось проверить копию.",
+  "コピーの検証に失敗しました。",
+  "副本校验失败。"
  ],
  "Écouter": [
   "Play",

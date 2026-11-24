@@ -31,7 +31,6 @@ class Updates(unittest.TestCase):
         reply.__enter__.return_value = reply
         reply.json.return_value = release
         with (
-            patch.object(updates, "connected", return_value="test"),
             patch.object(updates, "github", return_value=reply),
         ):
             check = lambda v: updates.check_update({"version": v}, lambda *_: None)
@@ -65,7 +64,6 @@ class Updates(unittest.TestCase):
             TemporaryDirectory() as d,
             patch.dict(os.environ, LOCALAPPDATA=d),
             patch.object(updates, "check_update", return_value=offer),
-            patch.object(updates, "connected", return_value="private"),
             patch.object(updates, "github", return_value=api),
             patch.object(updates.requests, "get", return_value=cdn) as fetch,
         ):
@@ -87,16 +85,14 @@ class Updates(unittest.TestCase):
             with self.assertRaises(ValueError):
                 updates.download_update(params, lambda *a, **k: None)
 
-    def test_disconnected_check_is_quiet(self):
-        with (
-            patch.object(updates, "connected", return_value=None),
-            patch.object(updates, "github") as server,
-        ):
-            self.assertEqual(
-                updates.check_update({"version": "0.2.0"}, None),
-                {"state": "disconnected"},
-            )
-            server.assert_not_called()
+    def test_anonymous_check_uses_public_channel(self):
+        with patch.object(updates.requests, "get") as get:
+            updates.github("/releases/latest")
+        self.assertEqual(
+            get.call_args.args[0],
+            "https://api.github.com/repos/itsKushh/rikai/releases/latest",
+        )
+        self.assertNotIn("Authorization", get.call_args.kwargs["headers"])
 
     def test_apply_rechecks_bytes_and_updates_the_running_installation(self):
         with TemporaryDirectory() as d:

@@ -118,7 +118,8 @@ mod system_load;
 enum Event {
     Load(system_load::Load),
     GpuTest(Result<Value>),
-    Hardware(String, Value, bool),
+    Hardware(String, Value, bool, Value),
+    StorageChanged(Result<Value>),
     Translated(i64, String, String, Result<Value>),
     Update(&'static str, Result<Value>),
     Recovered(i64, Result<(usize, usize)>),
@@ -159,6 +160,7 @@ struct PlayingSegment {
 struct Desk {
     section: usize,
     installed: Value,
+    storage: Value,
     nvidia_ready: bool,
     language_search: Field,
     language_picker: Option<i64>,
@@ -228,7 +230,7 @@ struct Desk {
     dialogues: ListState,
     playing: Option<PlayingSegment>,
     scroll_grab: Option<Pixels>,
-    tab_geometry: [std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>; 4],
+    tab_geometry: [std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>; 4],
     discard: bool,
     library: Vec<Meeting>,
     segments: Vec<Segment>,
@@ -288,12 +290,11 @@ impl Desk {
         let hardware = format!("{cpu} · {ram} Gio de RAM disponibles");
         let recommended = if ram < 6 { "Rapide" } else { "Équilibré" }.to_string();
         let tx_hw = tx.clone();
-        let cache = root.join("modeles");
         thread::spawn(move || {
             let res = super::worker::run(
                 0,
                 "capabilities",
-                json!({"cache":cache}),
+                json!({}),
                 Arc::new(AtomicBool::new(false)),
                 |_| {},
             );
@@ -307,11 +308,13 @@ impl Desk {
                 gpu.into(),
                 caps["installed"].clone(),
                 caps["runtime"]["cublas_major"] == 12,
+                caps["storage"].clone(),
             ));
         });
         let mut s = Self {
             section: 0,
             installed: json!({}),
+            storage: Value::Null,
             nvidia_ready: false,
             language_search: field(cx),
             language_picker: None,
@@ -624,8 +627,20 @@ impl Desk {
                 }
             }
             Event::Update(op, res) => self.finish_update(op, res)?,
-            Event::Hardware(s, installed, ready) => {
-                self.installed = installed;
+            Event::StorageChanged(result) => {
+                self.cancel = None;
+                self.page = Page::Settings;
+                let result = result?;
+                self.apply_inventory(result["installed"].clone(), result["storage"].clone())?;
+                self.message = if result["storage"]["cleanup_pending"] == true {
+                    "Emplacement modifié. Certains originaux sont encore utilisés."
+                } else {
+                    "Emplacement des composants enregistré."
+                }
+                .into();
+            }
+            Event::Hardware(s, installed, ready, storage) => {
+                self.apply_inventory(installed, storage)?;
                 self.nvidia_ready = ready;
                 if s == "GPU NVIDIA détecté" {
                     self.recommended = "Précision Turbo".into();
@@ -660,11 +675,10 @@ impl Desk {
                 let v = match r {
                     Ok(v) => v,
                     Err(e) => {
-                        self.pending_translation = None;
-                        self.pending_summary = false;
                         return Err(e);
                     }
                 };
+                self.page = Page::Settings;
                 if v["runtime"].is_string() {
                     self.nvidia_ready = true;
                     self.settings["device"] = json!("cuda");
@@ -1115,11 +1129,13 @@ impl Desk {
         Ok(())
     }
     fn answer_download(&mut self, approved: bool) -> Result<()> {
-        if !approved
-            && (self.pending_translation.take().is_some()
-                || std::mem::take(&mut self.pending_summary))
-        {
-            self.page = Page::Detail;
+        if self.busy() {
+            return Ok(());
+        }
+        if !approved && (self.pending_translation.is_some() || self.pending_summary) {
+            self.pending_translation = None;
+            self.pending_summary = false;
+            self.page = self.settings_origin;
             return Ok(());
         }
         let Some(preset) = self.page.answer_download(approved) else {
@@ -1129,7 +1145,7 @@ impl Desk {
         tracing::info!(preset, "Téléchargement du modèle confirmé");
         let ctl = self.begin_work();
         self.stage = "Mise en relation avec le catalogue public".into();
-        let params = json!({"consent":true,"cache":self.root.join("modeles"),"preset":preset});
+        let params = json!({"consent":true,"preset":preset});
         let tx = self.tx.clone();
         std::thread::spawn(move || {
             let method = if preset == "NVIDIA CUDA" {

@@ -4,6 +4,7 @@ import json
 import hashlib
 import os
 import re
+from package_storage import configuration, locations
 from transfers import download_large
 from pathlib import Path
 
@@ -47,7 +48,12 @@ def inventory(cache):
                 (marker.parent / name).stat().st_size == size
                 for name, size in m["files"].items()
             ):
-                items[m["preset"]] = m["result"]
+                result = dict(m["result"], folder=str(marker.parent))
+                if result.get("kind") == "summary":
+                    result["path"] = str(marker.parent / GGUF)
+                elif result.get("kind") == "translation":
+                    result["path"] = str(marker.parent)
+                items[m["preset"]] = result
         except (OSError, KeyError, TypeError, ValueError):
             continue
     # Versions installed before Rikai 0.2 had no receipt.
@@ -71,7 +77,32 @@ def inventory(cache):
                     "revision": folder.name,
                 }
                 break
+    # A completed GGUF can survive a previous run that exited before writing its receipt.
+    if "Résumé local" not in items:
+        repo, revision, group, _ = PACKAGES["Résumé local"]
+        folder = Path(cache) / group / revision
+        model = folder / GGUF
+        if model.is_file() and model.stat().st_size == 2104932768:
+            with model.open("rb") as f:
+                if (
+                    hashlib.file_digest(f, "sha256").hexdigest()
+                    == "626b4a6678b86442240e33df819e00132d3ba7dddfe1cdc4fbb18e0a9615c62d"
+                ):
+                    items["Résumé local"] = dict(
+                        repo=repo,
+                        revision=revision,
+                        kind=group,
+                        folder=str(folder),
+                        path=str(model),
+                    )
     return items
+
+
+def installed_packages(roots):
+    installed = {}
+    for root in reversed(roots):
+        installed.update(inventory(Path(root) / "modeles"))
+    return installed
 
 
 def matches_hub_file(path, entry):
@@ -114,7 +145,8 @@ def install(p, progress):
     ]
     if not set(needed).issubset(f.rfilename for f in files):
         raise ValueError("Distribution de modèle incomplète")
-    folder = Path(p["cache"]) / size / metadata.sha
+    cache = Path(p["cache"]) if p.get("cache") else locations()[0] / "modeles"
+    folder = cache / size / metadata.sha
     folder.mkdir(parents=True, exist_ok=True)
     total = sum(entry.size for entry in files)
     done = 0
@@ -189,10 +221,29 @@ def capabilities(p, progress):
 
     from nvidia_runtime import runtime_versions
 
+    storage = (
+        configuration()
+        if os.environ.get("LOCALAPPDATA")
+        else {"roots": [], "redirects": {}}
+    )
+    installed = (
+        inventory(p["cache"])
+        if p.get("cache")
+        else installed_packages(storage["roots"])
+    )
+    try:
+        runtime = runtime_versions()
+    except (OSError, RuntimeError):
+        runtime = {}
+    try:
+        cuda = ctranslate2.get_cuda_device_count()
+    except (RuntimeError, OSError):
+        cuda = 0
     return {
-        "runtime": runtime_versions(),
-        "installed": inventory(p["cache"]) if p.get("cache") else {},
+        "storage": storage,
+        "runtime": runtime,
+        "installed": installed,
         "python": sys.version.split()[0],
         "cpu": platform.machine(),
-        "cuda": ctranslate2.get_cuda_device_count(),
+        "cuda": cuda,
     }

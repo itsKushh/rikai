@@ -1,6 +1,91 @@
 use super::*;
 
 impl Desk {
+    pub(super) fn apply_inventory(&mut self, installed: Value, storage: Value) -> Result<()> {
+        self.installed = installed;
+        self.storage = storage;
+        let prior = self.settings.clone();
+        if let Some(redirects) = self.storage["redirects"].as_object() {
+            for key in [
+                "whisper",
+                "gguf",
+                "translation",
+                "segmentation",
+                "embedding",
+            ] {
+                if let Some(path) = self.settings[key].as_str() {
+                    for (source, dest) in redirects {
+                        if let Some(root) = dest.as_str()
+                            && let Ok(rel) = std::path::Path::new(path)
+                                .strip_prefix(PathBuf::from(source).join("modeles"))
+                        {
+                            let file = PathBuf::from(root).join("modeles").join(rel);
+                            if file.exists() {
+                                self.settings[key] = json!(file);
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        for (key, name) in [
+            ("gguf", "Résumé local"),
+            ("translation", "Traduction locale"),
+        ] {
+            let selected = self.settings[key]
+                .as_str()
+                .is_some_and(|p| std::path::Path::new(p).exists());
+            if !selected && self.available(name) {
+                self.settings[key] = self.installed[name]["path"].clone();
+            }
+        }
+        if prior != self.settings {
+            self.save_settings()?;
+        }
+        Ok(())
+    }
+
+    pub(super) fn pick_storage(&mut self, w: &Window, cx: &mut Context<Self>) -> Result<()> {
+        let dialog = rfd::AsyncFileDialog::new()
+            .set_parent(w)
+            .set_title(tr("Choisir un emplacement"))
+            .set_directory(
+                self.storage["roots"][0]
+                    .as_str()
+                    .map(PathBuf::from)
+                    .unwrap_or_else(|| self.root.clone()),
+            );
+        cx.spawn(async move |desk, cx| {
+            let Some(chosen) = dialog.pick_folder().await else {
+                return;
+            };
+            let _ = desk.update(cx, |s, cx| {
+                if s.busy() {
+                    return;
+                }
+                s.menu = None;
+                s.page = Page::StorageChange;
+                let tx = s.tx.clone();
+                let ctl = s.begin_work();
+                s.stage = "Emplacement des composants".into();
+                let params = json!({
+                    "destination": chosen.path(),
+                    "transfer": s.settings["move_packages"] == true
+                });
+                thread::spawn(move || {
+                    let result = crate::worker::run(0, "change_location", params, ctl, |event| {
+                        let _ = tx.send(Event::Stage(event));
+                    });
+                    let _ = tx.send(Event::StorageChanged(result));
+                });
+                cx.notify();
+            });
+        })
+        .detach();
+        Ok(())
+    }
+
     pub(super) fn repo_for(preset: &str) -> &'static str {
         match preset {
             "Rapide" => "Systran/faster-whisper-base",
@@ -136,7 +221,7 @@ impl Desk {
                 self.update_ready = self.update_status == "ready";
                 self.update_info = Some(data);
             }
-            "disconnected" | "current" => {
+            "current" => {
                 self.update_info = None;
                 self.update_ready = false;
             }

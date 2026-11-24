@@ -6,6 +6,7 @@ pub(crate) enum Page {
     Detail,
     Profiles,
     Settings,
+    StorageChange,
     ConfirmDownload(&'static str),
 }
 
@@ -17,7 +18,9 @@ impl Page {
         let Self::ConfirmDownload(preset) = *self else {
             return None;
         };
-        *self = Self::Settings;
+        if !approved {
+            *self = Self::Settings;
+        }
         approved.then_some(preset)
     }
 }
@@ -36,8 +39,7 @@ mod tests {
 
             page = Page::ConfirmDownload(preset);
             assert_eq!(page.answer_download(true), Some(preset));
-            assert_eq!(page, Page::Settings);
-            assert_eq!(page.answer_download(true), None);
+            assert_eq!(page, Page::ConfirmDownload(preset));
         }
 
         for mut page in [
@@ -46,6 +48,7 @@ mod tests {
             Page::Library,
             Page::Detail,
             Page::Profiles,
+            Page::StorageChange,
         ] {
             let current = page;
             assert_eq!(page.answer_download(true), None);

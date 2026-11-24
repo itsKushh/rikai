@@ -116,7 +116,7 @@ fn window_button(
         } else {
             rgb_to_hsla(rgb(p.edge)).opacity(0.25)
         })
-        .when(tab, |s| s.rounded(px(8.)))
+        .when(tab, |s| s.rounded(px(10.)))
         .when(!quiet, |s| s.shadow(p.bevel()))
         .text_color(rgb(fg))
         .when(!tab, |d| d.hover(move |s| s.bg(rgb(hover_bg))))
@@ -925,6 +925,7 @@ impl Desk {
             0 => self.models_settings(cx),
             1 => col()
                 .gap(px(18.))
+                .child(self.storage_settings(cx))
                 .child(self.package_row("Traduction locale", "M2M100 · 100 langues · 496 Mo", cx))
                 .child(
                     col()
@@ -995,11 +996,25 @@ impl Desk {
             )));
         }
         let mut local = col().child(label("Modèles déjà téléchargés"));
-        for (key, name, folder) in [
-            ("whisper", "Dossier Faster-Whisper", true),
-            ("segmentation", "Segmentation ONNX", false),
-            ("embedding", "Empreintes ONNX", false),
-            ("gguf", "Résumé GGUF", false),
+        for (key, name, folder, empty) in [
+            (
+                "whisper",
+                "Dossier Faster-Whisper",
+                true,
+                "Aucun modèle de transcription sélectionné",
+            ),
+            (
+                "segmentation",
+                "Segmentation ONNX",
+                false,
+                "Segmentation facultative",
+            ),
+            (
+                "embedding",
+                "Empreintes ONNX",
+                false,
+                "Empreintes vocales facultatives",
+            ),
         ] {
             local = local
                 .child(
@@ -1016,14 +1031,27 @@ impl Desk {
                         .text_ellipsis_start()
                         .text_size(px(11.))
                         .text_color(rgb(p.muted))
-                        .child(
-                            self.settings[key]
-                                .as_str()
-                                .unwrap_or(tr("Aucun modèle sélectionné"))
-                                .to_owned(),
-                        ),
+                        .child(self.settings[key].as_str().unwrap_or(tr(empty)).to_owned()),
                 );
         }
+        let summary = self
+            .package_row("Résumé local", "Qwen2.5 · 3B · GGUF · 2,10 Go", cx)
+            .child(window_button(
+                "Choisir un fichier GGUF",
+                Button::Quiet,
+                None,
+                false,
+                cx,
+                |s, w, cx| s.pick("gguf", false, w, cx),
+            ))
+            .when_some(self.settings["gguf"].as_str(), |d, path| {
+                d.child(
+                    div()
+                        .text_size(px(11.))
+                        .text_color(rgb(p.muted))
+                        .child(path.to_owned()),
+                )
+            });
         let provider = col().child(label("Fournisseur distant facultatif"))
             .child(input(cx,&self.endpoint,"endpoint","URL HTTPS du fournisseur"))
             .child(input(cx,&self.remote_model,"remote_model","Nom du modèle distant"))
@@ -1037,7 +1065,7 @@ impl Desk {
         col()
             .gap(px(18.))
             .child(presets)
-            .child(self.package_row("Résumé local", "Qwen2.5 · 3B · GGUF · 2,10 Go", cx))
+            .child(summary)
             .child(local)
             .child(provider)
     }
@@ -1339,7 +1367,7 @@ impl Desk {
                 .is_some_and(|c| c.load(Ordering::Acquire))
             {
                 body = body.child(label("Annulation en cours…"));
-            } else {
+            } else if page != Page::StorageChange {
                 body = body.child(action("Annuler le traitement", false, cx, |s, _| {
                     if let Some(c) = &s.cancel {
                         c.store(true, Ordering::Release);
@@ -1430,6 +1458,7 @@ impl Desk {
                     }
                     ("Intervenants".into(), d)
                 }
+                Page::StorageChange => ("Emplacement des composants".into(), col()),
                 Page::Settings => ("Paramètres".into(), self.settings_view(cx)),
                 Page::ConfirmDownload(preset) => (
                     if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("{} · {}",tr("Télécharger"),tr(preset))},

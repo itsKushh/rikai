@@ -394,9 +394,14 @@ impl Desk {
             .h_full()
             .flex_shrink_0()
             .rounded_full()
-            .hover(move |d| d.bg(rgb(p.control)))
-            .focus_visible(move |d| d.bg(rgb(p.control)))
-            .transitions(|t| t.bg(millis(110)))
+            .opacity(if self.scroll_grab.is_some() {
+                0.95
+            } else {
+                0.53
+            })
+            .hover(|d| d.opacity(0.85))
+            .focus_visible(|d| d.opacity(1.0))
+            .transitions(|t| t.opacity(motion(115)))
             .child(
                 canvas(
                     |_, _, _| (),
@@ -408,7 +413,7 @@ impl Desk {
                             );
                             w.paint_quad(
                                 PaintQuad::new(rect)
-                                    .background(rgb(p.muted).opacity(0.55))
+                                    .background(rgb(p.muted))
                                     .corner_radii(px(2.5)),
                             );
                         }

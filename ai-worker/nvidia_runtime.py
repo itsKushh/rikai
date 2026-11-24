@@ -10,6 +10,7 @@ import shutil
 import sys
 import tempfile
 import zipfile
+from package_storage import locations
 from transfers import download_large
 
 
@@ -47,7 +48,7 @@ _handles = {}
 
 
 def runtime_root():
-    return Path(os.environ["LOCALAPPDATA"]) / "Rikai" / "nvidia"
+    return locations()[0] / "nvidia"
 
 
 def ready(folder):
@@ -178,8 +179,15 @@ def activate():
     global _dll_directory
     if sys.platform != "win32" or _handles:
         return
-    folder = runtime_root() / RELEASE
-    if not ready(folder):
+    folder = next(
+        (
+            root / "nvidia" / RELEASE
+            for root in locations()
+            if ready(root / "nvidia" / RELEASE)
+        ),
+        None,
+    )
+    if folder is None:
         return  # Le toolkit système peut également fournir cuBLAS.
     os.environ["PATH"] = str(folder) + os.pathsep + os.environ.get("PATH", "")
     _dll_directory = os.add_dll_directory(str(folder))

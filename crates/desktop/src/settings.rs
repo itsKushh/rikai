@@ -39,6 +39,88 @@ impl Desk {
         }
         div().px(px(8.)).py(px(7.)).child(tabs)
     }
+    pub(super) fn storage_settings(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let dir = self.storage["roots"][0]
+            .as_str()
+            .map(PathBuf::from)
+            .unwrap_or_else(|| self.root.clone());
+        col()
+            .child(label("Emplacement des composants"))
+            .child(
+                div()
+                    .text_color(rgb(p.muted))
+                    .child(dir.display().to_string()),
+            )
+            .child(toggle(
+                "Transférer les composants déjà installés",
+                "move_packages",
+                self,
+                cx,
+            ))
+            .child(window_button(
+                "Choisir un emplacement",
+                Button::Secondary,
+                None,
+                false,
+                cx,
+                |s, w, cx| s.pick_storage(w, cx),
+            ))
+    }
+
+    pub(super) fn package_modal(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let (offer, body) = self.page_body(self.page, true, cx);
+        let title = match self.page {
+            Page::ConfirmDownload(preset) if self.busy() => tr(preset).to_owned(),
+            Page::StorageChange => tr("Emplacement des composants").to_owned(),
+            _ => crate::i18n::message(&offer),
+        };
+        div()
+            .absolute()
+            .inset_0()
+            .flex()
+            .items_center()
+            .justify_center()
+            .occlude()
+            .bg(black().opacity(0.67))
+            .backdrop_blur(px(4.))
+            .child(
+                p.panel()
+                    .id("package-dialog")
+                    .w(px(420.))
+                    .max_w(relative(0.92))
+                    .max_h(relative(0.92))
+                    .p_4()
+                    .gap_3()
+                    .track_focus(&self.release_focus)
+                    .role(Role::Dialog)
+                    .aria_modal(true)
+                    .aria_label(title.clone())
+                    .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
+                        if e.keystroke.key == "escape" && !s.busy() {
+                            let _ = s.answer_download(false);
+                            cx.stop_propagation();
+                            cx.notify();
+                        }
+                    }))
+                    .child(raw_label(title))
+                    .when(!self.message.is_empty(), |d| {
+                        d.child(crate::i18n::message(&self.message))
+                    })
+                    .child(
+                        div()
+                            .id("package-modal-content")
+                            .min_h_0()
+                            .overflow_y_scroll()
+                            .child(body),
+                    )
+                    .with_animation("package-reveal", reveal(cx, 190), |d, t| {
+                        d.relative().top(px(6. * (1. - t))).opacity(t)
+                    }),
+            )
+    }
+
     pub(super) fn package_row(
         &self,
         preset: &'static str,
@@ -56,6 +138,28 @@ impl Desk {
                     s.page = Page::ConfirmDownload(preset);
                     Ok(())
                 })
+            })
+            .when(self.available(preset), |d| {
+                let path = self.installed[preset]["path"].as_str().unwrap_or_default();
+                let installed_path = PathBuf::from(path);
+                d.child(button(
+                    "Ouvrir le dossier",
+                    Button::Quiet,
+                    None,
+                    false,
+                    cx,
+                    move |_, _| {
+                        let dir = if installed_path.is_file() {
+                            installed_path.parent().unwrap_or(&installed_path)
+                        } else {
+                            &installed_path
+                        };
+                        std::process::Command::new("explorer.exe")
+                            .arg(dir)
+                            .spawn()?;
+                        Ok(())
+                    },
+                ))
             })
             .when(
                 self.available(preset)
@@ -144,22 +248,37 @@ impl Desk {
         let auto = self.settings["updates_auto"] != false;
         let info = match self.update_status.as_str() {
             "current" => "Rikai est à jour.",
-            "disconnected" | "cancelled" | "" => {
-                "Connectez GitHub pour consulter les versions privées."
-            }
+            "" => "",
             "available" => "Une mise à jour est disponible.",
             "ready" => "Mise à jour prête.",
             other => other,
         };
-        col().child(label("Mises à jour privées"))
-            .child(checkbox(tr("Vérifier au démarrage").into(),auto,false,p).on_click(cx.listener(move|s,_,_,cx|{
-                s.settings["updates_auto"]=json!(!auto);if let Err(e)=s.save_settings(){s.message=e.to_string();}cx.notify();
-            })))
-            .child(div().text_color(rgb(p.muted)).child(crate::i18n::message(info)))
-            .child(div().text_color(rgb(p.muted)).child(tr("Dans GitHub, sélectionnez le dépôt kpiche et donnez au jeton un accès en lecture au contenu. Windows conserve le jeton sur cet ordinateur.")))
-            .child(if waiting{disabled_button("Connexion en cours…",p)}else{action("Connecter GitHub",false,cx,|s,_|{s.update_request("connect_github");Ok(())})})
-            .child(if waiting{disabled_button("Vérifier maintenant",p)}else{action("Vérifier maintenant",false,cx,|s,_|{s.update_request("check_update");Ok(())})})
-            .when(!waiting && !matches!(self.update_status.as_str(),"disconnected"|"cancelled"|""),|d|d.child(button("Déconnecter GitHub",Button::Quiet,None,false,cx,|s,_|{s.update_request("disconnect_github");Ok(())})))
+        col()
+            .child(label("Mises à jour"))
+            .child(
+                checkbox(tr("Vérifier au démarrage").into(), auto, false, p).on_click(cx.listener(
+                    move |s, _, _, cx| {
+                        s.settings["updates_auto"] = json!(!auto);
+                        if let Err(e) = s.save_settings() {
+                            s.message = e.to_string();
+                        }
+                        cx.notify();
+                    },
+                )),
+            )
+            .child(
+                div()
+                    .text_color(rgb(p.muted))
+                    .child(crate::i18n::message(info)),
+            )
+            .child(if waiting {
+                disabled_button("Vérifier maintenant", p)
+            } else {
+                action("Vérifier maintenant", false, cx, |s, _| {
+                    s.update_request("check_update");
+                    Ok(())
+                })
+            })
     }
     pub(super) fn release_modal(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();

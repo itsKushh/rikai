@@ -50,19 +50,21 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 
 **Calcul sur GPU.** Avec une carte NVIDIA et un pilote compatible CUDA 12, sélectionnez **CUDA** dans **Paramètres → Calcul**, puis **Vérifier CUDA avec ce modèle**. Le test exécute le modèle de transcription sélectionné sur la carte. Ces paramètres permettent aussi de régler les threads CPU, le plafond de RAM et la part de temps GPU. Le mode CPU fonctionne sans carte NVIDIA.
 
+**Emplacement des téléchargements.** Dans **Paramètres → Dépendances**, choisissez le dossier des modèles et du moteur NVIDIA. Cochez **Transférer les composants déjà installés** avant de choisir le dossier pour les déplacer. Si la case est décochée, seuls les prochains téléchargements utilisent le nouvel emplacement.
+
 **Résumé local.** Un fichier GGUF contient les poids et les métadonnées du modèle de langage. Depuis une réunion transcrite, **Générer le résumé local** propose d’installer Qwen2.5 au premier usage. Vous pouvez aussi choisir votre propre GGUF compatible dans les paramètres.
 
 **Langues.** L’interface suit la langue de Windows par défaut. Le réglage **Paramètres → Interface** propose Français, English, Español, Русский, 日本語 et 简体中文. La langue de transcription et la langue cible d’une traduction se choisissent séparément.
 
 ## Données et confidentialité
 
-La bibliothèque SQLite, les pistes audio, les modèles téléchargés et le journal technique se trouvent sous `%LOCALAPPDATA%\Rikai`. Pour sauvegarder une bibliothèque complète, fermez Rikai, puis copiez ce dossier. La désinstallation conserve ces données.
+Par défaut, la bibliothèque SQLite, les pistes audio, les modèles téléchargés et le journal technique se trouvent sous `%LOCALAPPDATA%\Rikai`. Pour sauvegarder une bibliothèque complète, fermez Rikai, puis copiez ce dossier. Si vous avez choisi un autre emplacement pour les composants, sauvegardez également ce dossier. La désinstallation conserve ces données.
 
 Le résumé local traite la transcription sur le PC. Si vous configurez un fournisseur de résumé distant, Rikai demande votre accord à chaque envoi. Le fournisseur reçoit le texte, les noms des intervenants et les références des passages nécessaires au compte rendu. Sa clé API est conservée dans le Gestionnaire d’identifiants Windows.
 
 ## Mises à jour
 
-Pour mettre à jour Rikai, fermez l’application et lancez l’installeur de la dernière version. **La version 0.2.0 utilise encore l’ancienne adresse du dépôt pour la vérification intégrée.** Depuis le renommage, utilisez la page des versions pour obtenir l’installeur. [Versions de Rikai](https://github.com/itsKushh/rikai/releases/latest)
+Depuis la version 0.2.1, Rikai consulte les versions publiques au démarrage sans compte GitHub. Vous pouvez désactiver la vérification automatique ou la lancer manuellement dans **Paramètres → Mises à jour**. Après confirmation, Rikai télécharge l’installeur et vérifie son empreinte SHA-256. Si vous venez de la version 0.2.0, installez une première fois la nouvelle version depuis GitHub. [Versions de Rikai](https://github.com/itsKushh/rikai/releases/latest)
 
 ## Compilation et tests
 

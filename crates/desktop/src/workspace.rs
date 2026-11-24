@@ -4,10 +4,10 @@ pub(super) fn strip(
     p: Palette,
     group: &'static str,
     index: usize,
-    geometry: &std::rc::Rc<std::cell::Cell<(Pixels, Pixels)>>,
+    geometry: &std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
 ) -> Div {
-    let radius = if group == "inspector-pill" { 11. } else { 14. };
-    let (left, width) = geometry.get();
+    let radius = if group == "inspector-pill" { 10. } else { 14. };
+    let indicator = geometry.get();
     let geometry = geometry.clone();
     div()
         .flex()
@@ -24,24 +24,29 @@ pub(super) fn strip(
             linear_color_stop(rgb(p.muted).opacity(0.19), 1.),
         ))
         .shadow(p.pressed())
-        .child(div().absolute().inset_0().when(width > px(0.), |layer| {
-            layer.child(
-                div()
-                    .id(group)
-                    .absolute()
-                    .left(left)
-                    .w(width)
-                    .top(px(3.))
-                    .bottom(px(3.))
-                    .rounded(px(radius - 3.))
-                    .bg(rgb(p.selected))
-                    .shadow(p.bevel())
-                    .transitions(|t| t.left(motion(180)).w(motion(180))),
-            )
-        }))
+        .child(
+            div()
+                .absolute()
+                .inset_0()
+                .when(indicator.size.width > px(0.), |layer| {
+                    layer.child(
+                        div()
+                            .id(group)
+                            .absolute()
+                            .left(indicator.origin.x)
+                            .top(indicator.origin.y)
+                            .w(indicator.size.width)
+                            .h(indicator.size.height)
+                            .rounded(px(radius - 4.))
+                            .bg(rgb(p.selected))
+                            .shadow(p.bevel())
+                            .transitions(|t| t.left(motion(180)).w(motion(180))),
+                    )
+                }),
+        )
         .on_children_prepainted(move |bounds, w, _| {
             if let (Some(layer), Some(tab)) = (bounds.first(), bounds.get(index + 1)) {
-                let target = (tab.origin.x - layer.origin.x, tab.size.width);
+                let target = Bounds::new(tab.origin - layer.origin, tab.size);
                 if target != geometry.get() {
                     geometry.set(target);
                     w.request_animation_frame();
@@ -114,12 +119,14 @@ fn selected_file(settings: &Value, key: &str) -> String {
 
 impl Desk {
     fn drawer_open(&self) -> bool {
-        self.confirmation.is_some()
-            || matches!(self.page, Page::Settings | Page::ConfirmDownload(_))
+        self.confirmation.is_some() || self.page == Page::Settings
     }
 
     fn workspace_page(&self) -> Page {
-        if matches!(self.page, Page::Settings | Page::ConfirmDownload(_)) {
+        if matches!(
+            self.page,
+            Page::Settings | Page::ConfirmDownload(_) | Page::StorageChange
+        ) {
             self.settings_origin
         } else {
             self.page
@@ -352,6 +359,7 @@ impl Desk {
                         Ok(())
                     })
                     .flex_1()
+                    .rounded(px(6.))
                     .px(px(4.)),
                 )
             };
@@ -552,11 +560,7 @@ impl Desk {
             .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
                 if e.keystroke.key == "escape" {
                     if s.menu.take().is_none() {
-                        if matches!(s.page, Page::ConfirmDownload(_)) {
-                            let _ = s.answer_download(false);
-                        } else {
-                            s.dismiss_drawer();
-                        }
+                        s.dismiss_drawer();
                     }
                     cx.stop_propagation();
                     cx.notify();
@@ -587,6 +591,7 @@ impl Desk {
                     .flex_shrink_0()
                     .px_4()
                     .py_2()
+                    .text_right()
                     .text_size(px(11.))
                     .text_color(rgb(p.muted))
                     .child(concat!("Rikai v", env!("CARGO_PKG_VERSION"))),
@@ -634,16 +639,20 @@ impl Render for Desk {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = *cx.global::<Palette>();
         let narrow = window.viewport_size().width < px(810.);
-        let update = self.update_info.is_some()
+        let package = matches!(self.page, Page::ConfirmDownload(_) | Page::StorageChange);
+        let update = !package
+            && self.confirmation.is_none()
+            && self.update_info.is_some()
             && (self.cancel.is_none() && self.ctl.is_none() && self.preview.is_none()
                 || self.update_downloading);
-        if update && !self.release_was_open {
+        let modal = update || package;
+        if modal && !self.release_was_open {
             self.release_focus.focus(window, cx);
         }
-        if !update && self.release_was_open && self.drawer_open() {
+        if !modal && self.release_was_open && self.drawer_open() {
             self.drawer_focus.focus(window, cx);
         }
-        self.release_was_open = update;
+        self.release_was_open = modal;
         let drawer = self.drawer_open();
         let goal = if drawer { 1.0 } else { 0.0 };
         let transition =
@@ -661,7 +670,7 @@ impl Render for Desk {
         }
         self.drawer_was_open = drawer;
         let page = self.workspace_page();
-        let background_activity = !drawer || self.confirmation.is_some();
+        let background_activity = !modal && (!drawer || self.confirmation.is_some());
         let transcript = page == Page::Detail && self.tab == 1 && !self.metadata && !self.busy();
         let home = page == Page::Home && !(self.busy() && background_activity);
         let mut left = col().min_h_0().flex_1().gap(px(16.));
@@ -784,9 +793,10 @@ impl Render for Desk {
                     })
                     .child(div().flex_1().min_h_0().child(layout)),
             )
-            .when(drawer || visibility > 0.001, |s| {
+            .when(!package && (drawer || visibility > 0.001), |s| {
                 s.child(self.settings_drawer(visibility, cx))
             })
+            .when(package, |s| s.child(self.package_modal(cx)))
             .when(update, |s| s.child(self.release_modal(cx)))
     }
 }

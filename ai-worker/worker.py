@@ -1,5 +1,6 @@
 """Un travail par processus. stdin reste ouvert pour cancel/shutdown."""
 
+from contextlib import nullcontext
 import json
 import os
 import sys
@@ -11,8 +12,9 @@ if __name__ == "__main__":
     freeze_support()
 
 from models import capabilities, install
+from package_storage import change_location, storage_lock
 from translation import translate
-from updates import apply_update, check_update, download_update, connect_github, disconnect_github
+from updates import apply_update, check_update, download_update
 from voices import enroll
 from processing import gpu_probe, summarize, transcribe
 from nvidia_runtime import install_runtime
@@ -81,8 +83,11 @@ def command_lines():
     msvcrt.setmode(sys.stdin.fileno(), os.O_BINARY)
     peek = kernel.PeekNamedPipe
     peek.argtypes = [
-        wintypes.HANDLE, wintypes.LPVOID, wintypes.DWORD,
-        ctypes.POINTER(wintypes.DWORD), ctypes.POINTER(wintypes.DWORD),
+        wintypes.HANDLE,
+        wintypes.LPVOID,
+        wintypes.DWORD,
+        ctypes.POINTER(wintypes.DWORD),
+        ctypes.POINTER(wintypes.DWORD),
         ctypes.POINTER(wintypes.DWORD),
     ]
     peek.restype = wintypes.BOOL
@@ -142,13 +147,26 @@ def main():
                     os._exit(2)
 
         # os.read/readline en arrière-plan ne doit pas bloquer la fermeture de l'interpréteur.
-        if req["method"] in ("transcribe", "summarize", "enroll", "install", "install_cuda", "test_cuda", "translate", "download_update","connect_github"):
+        if req["method"] in (
+            "transcribe",
+            "summarize",
+            "enroll",
+            "install",
+            "install_cuda",
+            "test_cuda",
+            "translate",
+            "download_update",
+        ):
             reader = threading.Thread(target=controls, daemon=True)
             reader.start()
         engines = {
-            "apply_update":apply_update,"translate":translate, "check_update":check_update,"download_update":download_update,"connect_github":connect_github,"disconnect_github":disconnect_github,
+            "apply_update": apply_update,
+            "translate": translate,
+            "check_update": check_update,
+            "download_update": download_update,
             "selftest": selftest,
             "install_cuda": install_runtime,
+            "change_location": change_location,
             "test_cuda": gpu_probe,
             "install": install,
             "capabilities": capabilities,
@@ -161,11 +179,19 @@ def main():
         if req["method"] not in engines:
             raise ValueError("Méthode inconnue")
         if reader is not None:
-            emit(job, "progress", stage="Requête reçue par le moteur IA", phase="startup")
-        result = engines[req["method"]](
-            req.get("params", {}),
-            lambda stage, **fields: emit(job, "progress", stage=stage, **fields),
+            emit(
+                job, "progress", stage="Requête reçue par le moteur IA", phase="startup"
+            )
+        method = req["method"]
+        params = req.get("params", {})
+        managed_install = method == "install_cuda" or (
+            method == "install" and not params.get("cache")
         )
+        with storage_lock() if managed_install else nullcontext():
+            result = engines[method](
+                params,
+                lambda stage, **fields: emit(job, "progress", stage=stage, **fields),
+            )
         emit(job, "result", result=result)
         return 0
     except Exception as exc:
