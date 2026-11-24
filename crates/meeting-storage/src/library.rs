@@ -6,7 +6,49 @@ pub struct Hit {
     pub start_ms: i64,
     pub text: String,
 }
+pub struct Excerpt {
+    pub recording: i64,
+    pub title: String,
+    pub duration_ms: i64,
+    pub segment: Option<i64>,
+    pub text: String,
+    pub speaker: String,
+}
 impl Library {
+    /// Show one passage from the active transcription, including recordings
+    /// awaiting transcription. For a search, prefer the actual matching passage.
+    pub fn excerpts(&self, query: &str) -> Result<Vec<Excerpt>> {
+        let mut statement = self.0.prepare(
+            "SELECT m.id, m.title, m.duration_ms, s.id, substr(coalesce(s.edited,s.raw,''),1,220),
+                    coalesce(a.display_name,p.name,s.speaker,'')
+             FROM meeting m
+             LEFT JOIN transcript_segment s ON s.id=(
+                SELECT x.id FROM transcript_segment x
+                LEFT JOIN meeting_speaker_assignment v ON v.meeting_id=m.id AND v.label=x.speaker
+                LEFT JOIN voice_profile vp ON vp.id=v.profile_id
+                WHERE x.transcript_id=(SELECT max(id) FROM transcript WHERE meeting_id=m.id)
+                  AND (?1='' OR instr(lower(m.title),lower(?1)) OR instr(lower(coalesce(x.edited,x.raw)),lower(?1))
+                        OR instr(lower(coalesce(v.display_name,vp.name,x.speaker)),lower(?1)))
+                ORDER BY x.start_ms DESC,x.id DESC LIMIT 1)
+             LEFT JOIN meeting_speaker_assignment a ON a.meeting_id=m.id AND a.label=s.speaker
+             LEFT JOIN voice_profile p ON p.id=a.profile_id
+             WHERE ?1='' OR instr(lower(m.title),lower(?1)) OR s.id IS NOT NULL
+             ORDER BY m.id DESC LIMIT 16"
+        )?;
+        Ok(statement
+            .query_map([query.trim()], |r| {
+                Ok(Excerpt {
+                    recording: r.get(0)?,
+                    title: r.get(1)?,
+                    duration_ms: r.get(2)?,
+                    segment: r.get(3)?,
+                    text: r.get(4)?,
+                    speaker: r.get(5)?,
+                })
+            })?
+            .collect::<Result<_, _>>()?)
+    }
+
     pub fn hits(&self, query: &str) -> Result<Vec<Hit>> {
         if query.trim().is_empty() {
             return Ok(vec![]);

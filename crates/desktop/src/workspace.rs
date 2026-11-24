@@ -1,17 +1,48 @@
 use super::*;
 
+#[derive(IntoElement)]
+struct TabBackground {
+    group: &'static str,
+    target: Bounds<Pixels>,
+    palette: Palette,
+}
+impl RenderOnce for TabBackground {
+    fn render(self, w: &mut Window, cx: &mut App) -> impl IntoElement {
+        let target = self.target;
+        let slide = w.use_keyed_transition(self.group, cx, motion(210), |_, _| target);
+        if *slide.read_goal(cx) != target {
+            slide.update(cx, |bounds, _| *bounds = target);
+        }
+        let b = if cx.reduce_motion() {
+            target
+        } else {
+            *slide.evaluate(w, cx)
+        };
+        div()
+            .absolute()
+            .left(b.origin.x)
+            .top(px(3.))
+            .bottom(px(3.))
+            .w(b.size.width)
+            .rounded(px(11.))
+            .bg(rgb(self.palette.selected))
+            .shadow(self.palette.bevel())
+    }
+}
+
 pub(super) fn strip(
     p: Palette,
     group: &'static str,
     index: usize,
     geometry: &std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>,
 ) -> Div {
-    let radius = if group == "inspector-pill" { 10. } else { 14. };
+    let radius = 15.;
     let indicator = geometry.get();
     let geometry = geometry.clone();
     div()
         .flex()
         .items_center()
+        .flex_shrink_0()
         .gap(px(2.))
         .p(px(3.))
         .relative()
@@ -29,19 +60,11 @@ pub(super) fn strip(
                 .absolute()
                 .inset_0()
                 .when(indicator.size.width > px(0.), |layer| {
-                    layer.child(
-                        div()
-                            .id(group)
-                            .absolute()
-                            .left(indicator.origin.x)
-                            .top(indicator.origin.y)
-                            .w(indicator.size.width)
-                            .h(indicator.size.height)
-                            .rounded(px(radius - 4.))
-                            .bg(rgb(p.selected))
-                            .shadow(p.bevel())
-                            .transitions(|t| t.left(motion(180)).w(motion(180))),
-                    )
+                    layer.child(TabBackground {
+                        group,
+                        target: indicator,
+                        palette: p,
+                    })
                 }),
         )
         .on_children_prepainted(move |bounds, w, _| {
@@ -224,14 +247,22 @@ impl Desk {
                     "Paramètres",
                     Button::Secondary,
                     Some(SLIDERS),
-                    compact,
+                    true,
                     cx,
                     |s, _| s.go(Page::Settings),
                 ))
+                .child(window_button(
+                    "Traduction",
+                    Button::Secondary,
+                    Some(TRANSLATE),
+                    false,
+                    cx,
+                    |s, w, cx| s.open_live(w, cx),
+                ))
                 .child(button(
-                    "Nouvelle réunion",
+                    "Enregistrer",
                     Button::Primary,
-                    Some(PLUS),
+                    Some(WAVE),
                     false,
                     cx,
                     |s, _| s.go(Page::New),
@@ -290,45 +321,150 @@ impl Desk {
         bar.child(controls)
     }
 
+    fn breadcrumb(&self, page: Page, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let mut path = vec![(Page::Home, tr("Espace de travail").to_owned())];
+        match page {
+            Page::New => path.push((page, tr("Enregistrer").into())),
+            Page::Profiles => path.push((page, tr("Voix").into())),
+            Page::Library | Page::Detail => {
+                path.push((Page::Library, tr("Bibliothèque").into()));
+                if page == Page::Detail {
+                    let title = self
+                        .library
+                        .iter()
+                        .find(|m| m.id == self.id)
+                        .map(|m| m.title.clone())
+                        .unwrap_or_else(|| tr("Enregistrement").into());
+                    path.push((Page::Detail, title));
+                    path.push((
+                        Page::Detail,
+                        tr(["Résumé", "Transcription", "Intervenants"][self.tab as usize]).into(),
+                    ));
+                }
+            }
+            _ => {}
+        }
+        let mut trail = div()
+            .flex()
+            .items_center()
+            .min_w_0()
+            .gap(px(6.))
+            .px(px(17.))
+            .h(px(22.))
+            .flex_shrink_0()
+            .text_size(px(11.));
+        let last = path.len() - 1;
+        for (i, (target, title)) in path.into_iter().enumerate() {
+            if i > 0 {
+                trail = trail.child(div().text_color(rgb(p.muted)).child("›"));
+            }
+            if i == last {
+                trail = trail.child(div().truncate().child(title));
+            } else {
+                trail = trail.child(
+                    div()
+                        .id(("crumb", i))
+                        .role(Role::Button)
+                        .focusable()
+                        .tab_stop(true)
+                        .truncate()
+                        .cursor_pointer()
+                        .text_color(rgb(p.muted))
+                        .hover(|d| d.text_color(rgb(p.text)))
+                        .child(title)
+                        .on_click(cx.listener(move |s, _, _, cx| {
+                            if !s.busy() {
+                                let result = if target == Page::Detail {
+                                    s.tab = 0;
+                                    s.detail(s.id)
+                                } else {
+                                    s.go(target)
+                                };
+                                if let Err(e) = result {
+                                    s.message = e.to_string();
+                                }
+                                cx.notify();
+                            }
+                        })),
+                );
+            }
+        }
+        trail
+    }
+
     pub(super) fn preview(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
-        let mut center = div()
-            .size_full()
-            .min_h(px(130.))
-            .flex()
-            .flex_col()
-            .items_center()
-            .justify_center()
-            .gap(px(12.))
-            .p_4()
-            .rounded(px(8.))
-            .bg(rgb(p.base))
-            .text_center()
-            .child(glyph(MIC, 34., p.muted));
-        if let Some(m) = self.library.first() {
-            center = center.child(raw_label(m.title.clone())).child(
-                div()
-                    .text_color(rgb(p.muted))
-                    .child(crate::i18n::message(&format!(
-                        "{}   ·   {}",
-                        m.date,
-                        time(m.duration_ms as u64)
-                    ))),
-            );
-            if !self.drawer_open() {
-                let id = m.id;
-                center = center.child(action("Ouvrir la réunion", false, cx, move |s, _| {
-                    s.detail(id)
+        let mut items = col().gap(px(3.));
+        for entry in &self.excerpts {
+            let id = entry.recording;
+            let segment = entry.segment;
+            let line = div()
+                .id(("recording-excerpt", id as u64))
+                .role(Role::Button)
+                .focusable()
+                .tab_stop(true)
+                .cursor_pointer()
+                .rounded(px(9.))
+                .px_3()
+                .py_2()
+                .hover(|d| d.bg(rgb(p.control)))
+                .transitions(|t| t.bg(motion(120)))
+                .child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .justify_between()
+                        .gap_2()
+                        .child(raw_label(entry.title.clone()).truncate())
+                        .child(
+                            div()
+                                .flex_shrink_0()
+                                .text_color(rgb(p.muted))
+                                .child(time(entry.duration_ms as u64)),
+                        ),
+                )
+                .when(segment.is_some(), |d| {
+                    d.child(
+                        div()
+                            .flex()
+                            .gap_2()
+                            .text_color(rgb(p.muted))
+                            .child(div().flex_shrink_0().child(entry.speaker.clone()))
+                            .child(div().truncate().child(entry.text.clone())),
+                    )
+                })
+                .on_click(cx.listener(move |s, _, _, cx| {
+                    if let Err(e) = s.detail(id) {
+                        s.message = e.to_string();
+                    } else if let Some(i) = s.segments.iter().position(|x| Some(x.id) == segment) {
+                        s.tab = 1;
+                        s.dialogues.scroll_to_reveal_item(i);
+                    }
+                    cx.notify();
                 }));
-            }
-        } else {
-            center = center.child(label("Prêt à enregistrer")).child(
-                div()
-                    .text_color(rgb(p.muted))
-                    .child(tr("Créez une réunion pour choisir vos sources audio.")),
-            );
+            items = items.child(line);
         }
-        center
+        if self.excerpts.is_empty() {
+            items = items.child(div().p_2().text_color(rgb(p.muted)).child(tr(
+                if self.browse_term.is_empty() {
+                    "Vos extraits apparaîtront ici après la capture."
+                } else {
+                    "Aucun enregistrement trouvé."
+                },
+            )));
+        }
+        col()
+            .size_full()
+            .p_2()
+            .child(label("Parcourir les enregistrements"))
+            .child(input(
+                cx,
+                &self.browse_query,
+                "browse-recordings",
+                "Rechercher un titre, un intervenant ou une phrase",
+            ))
+            .child(scroll("home-excerpts", items))
     }
 
     fn inspector_panel(&self, page: Page, passive: bool, cx: &Context<Self>) -> Div {
@@ -341,7 +477,7 @@ impl Desk {
         )
         .w_full();
         for (tab, title, icon) in [
-            (Inspector::Session, "Session", DESK),
+            (Inspector::Session, "Session", SESSION),
             (Inspector::Audio, "Audio", AUDIO),
             (Inspector::Models, "Modèles", MODEL),
         ] {
@@ -359,7 +495,7 @@ impl Desk {
                         Ok(())
                     })
                     .flex_1()
-                    .rounded(px(6.))
+                    .rounded(px(11.))
                     .px(px(4.)),
                 )
             };
@@ -375,7 +511,7 @@ impl Desk {
                 content = content.child(label("Informations de session"));
                 if let Some(m) = meeting {
                     content = content
-                        .child(fact("Réunion", m.title.clone(), p))
+                        .child(fact("Enregistrement", m.title.clone(), p))
                         .child(fact("Date", m.date.clone(), p))
                         .child(fact("Durée", time(m.duration_ms as u64), p))
                         .child(fact("État", m.status.clone(), p));
@@ -690,22 +826,33 @@ impl Render for Desk {
                         } else {
                             window.viewport_size().height * 0.31
                         })
-                        .child(header("Réunions récentes", p))
+                        .child(header("Enregistrements récents", p))
                         .child(scroll(
-                            "recent-meetings",
+                            "recent-recordings",
                             self.meetings_view(cx, 10, !drawer),
                         )),
                 );
         } else {
             let (title, body) = self.page_body(page, background_activity, cx);
+            let detail = page == Page::Detail && !(self.busy() && background_activity);
+            let content = body.p_4().when(detail, |d| d.pt(px(9.)));
             left = left.child(
                 p.panel()
                     .flex_1()
                     .child(header(title, p))
+                    .when(detail, |d| {
+                        d.child(
+                            div()
+                                .px_4()
+                                .pt_4()
+                                .flex_shrink_0()
+                                .child(self.detail_tabs(cx)),
+                        )
+                    })
                     .child(if transcript {
-                        body.p_3().into_any_element()
+                        content.into_any_element()
                     } else {
-                        scroll("workspace-content", body.p_4()).into_any_element()
+                        scroll("workspace-content", content).into_any_element()
                     }),
             );
         }
@@ -718,10 +865,13 @@ impl Render for Desk {
                 .child(
                     col()
                         .gap_3()
-                        .child(left.min_h(px(320.)).when(transcript, |d| {
-                            d.h((window.viewport_size().height - px(75.)).max(px(320.)))
-                                .flex_shrink_0()
-                        }))
+                        .child(
+                            left.min_h(px(320.))
+                                .when(page == Page::Detail || home, |d| {
+                                    d.h((window.viewport_size().height - px(105.)).max(px(320.)))
+                                        .flex_shrink_0()
+                                }),
+                        )
                         .child(inspector.min_h(px(225.))),
                 )
                 .into_any_element()
@@ -778,6 +928,7 @@ impl Render for Desk {
                 window.is_maximized(),
                 cx,
             ))
+            .child(self.breadcrumb(page, cx))
             .child(
                 div()
                     .relative()

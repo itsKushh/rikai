@@ -133,13 +133,6 @@ impl Desk {
     pub(super) fn start_translation(&mut self, id: i64, language: String) -> Result<()> {
         ensure!(!self.busy(), "Un traitement est en cours");
         self.language_picker = None;
-        if self
-            .translations
-            .get(&id)
-            .is_some_and(|v| v.iter().any(|(l, _)| l == &language))
-        {
-            return Ok(());
-        }
         let folder = self.settings["translation"]
             .as_str()
             .filter(|p| std::path::Path::new(p).join("model.bin").is_file());
@@ -150,14 +143,20 @@ impl Desk {
             self.page = Page::ConfirmDownload("Traduction locale");
             return Ok(());
         };
-        let text = self
+        let index = self
             .segments
             .iter()
-            .find(|s| s.id == id)
-            .context("Passage introuvable")?
-            .text
-            .clone();
-        let params = json!({"text":text,"target":language,"source":self.db.segment_language(id)?,"folder":folder});
+            .position(|s| s.id == id)
+            .context("Passage introuvable")?;
+        let seg = &self.segments[index];
+        let text = seg.text.clone();
+        let context = self.segments[index.saturating_sub(2)..(index + 3).min(self.segments.len())]
+            .iter()
+            .filter(|s| s.track == seg.track && s.speaker == seg.speaker)
+            .map(|s| s.text.as_str())
+            .collect::<Vec<_>>()
+            .join(" ");
+        let params = json!({"text":text,"context":context,"target":language,"source":self.db.segment_language(id)?,"folder":folder});
         let cancel = self.begin_work();
         self.stage = "Traduction du passage".into();
         let tx = self.tx.clone();

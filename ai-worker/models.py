@@ -1,4 +1,4 @@
-"""Installation explicite de modèles publics. Aucune donnée de réunion n'est lue ici."""
+"""Installation explicite de modèles publics. Aucune donnée de capture n'est lue ici."""
 
 import json
 import hashlib

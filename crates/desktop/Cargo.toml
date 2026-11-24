@@ -10,6 +10,8 @@ serde_json.workspace = true
 regex = "1"
 gpui = { package = "gpui-ce", version = "=0.3.0", default-features = false }
 gpui_platform = { package = "gpui_ce_platform", version = "=0.3.0", default-features = false }
+tempfile = "3"
+unicode-segmentation = "1"
 rfd = "=0.17.2"
 gpui_ce_elements = "=0.3.0"
 

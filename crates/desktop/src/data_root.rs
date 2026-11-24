@@ -45,6 +45,7 @@ mod tests {
         let active = fs::File::create(old.join("session.lock"))?;
         active.lock()?;
         assert!(locate(&profile).is_err());
+        active.unlock()?;
         drop(active);
         let new = locate(&profile)?;
         assert_eq!(fs::read(new.join("audio/1/piste.wav"))?, b"recording");

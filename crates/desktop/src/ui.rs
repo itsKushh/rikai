@@ -111,6 +111,7 @@ pub fn run() -> Result<()> {
     drop(lock);
     Ok(())
 }
+use view::live;
 #[path = "services.rs"]
 mod services;
 #[path = "system_load.rs"]
@@ -158,6 +159,10 @@ struct PlayingSegment {
 }
 
 struct Desk {
+    live_window: Option<WindowHandle<live::Live>>,
+    browse_query: Field,
+    browse_term: String,
+    excerpts: Vec<meeting_storage::Excerpt>,
     section: usize,
     installed: Value,
     storage: Value,
@@ -312,6 +317,10 @@ impl Desk {
             ));
         });
         let mut s = Self {
+            live_window: None,
+            browse_query: field(cx),
+            browse_term: String::new(),
+            excerpts: Vec::new(),
             section: 0,
             installed: json!({}),
             storage: Value::Null,
@@ -406,8 +415,22 @@ impl Desk {
         }
         cx.observe(&s.language_search, |_, _, cx| cx.notify())
             .detach();
+        cx.observe(&s.browse_query, |s, f, cx| {
+            let query = f.read(cx).as_str();
+            if query == s.browse_term {
+                return;
+            }
+            s.browse_term = query.to_owned();
+            match s.db.excerpts(query) {
+                Ok(rows) => s.excerpts = rows,
+                Err(e) => s.message = e.to_string(),
+            }
+            cx.notify();
+        })
+        .detach();
         s.update_request("check_update");
         cx.observe(&s.vocabulary, |_, _, cx| cx.notify()).detach();
+        s.excerpts = s.db.excerpts("").unwrap_or_default();
         if let Err(e) = s.refresh("") {
             s.message = e.to_string();
         }
@@ -483,7 +506,7 @@ impl Desk {
         let dlg = rfd::AsyncFileDialog::new()
             .set_parent(w)
             .add_filter("Extrait WAV", &["wav"])
-            .set_file_name(format!("reunion-{}-passage-{id}.wav", self.id));
+            .set_file_name(format!("enregistrement-{}-passage-{id}.wav", self.id));
         cx.spawn(async move |desk, cx| {
             if let Some(file) = dlg.save_file().await {
                 let result = cx
@@ -930,7 +953,7 @@ impl Desk {
         }
     }
     fn start(&mut self, cx: &App) -> Result<()> {
-        ensure!(!self.busy(), "Une réunion est déjà active");
+        ensure!(!self.busy(), "Un enregistrement est déjà en cours");
         self.stop_segment();
         let inputs = self.selected_inputs();
         ensure!(
@@ -944,7 +967,7 @@ impl Desk {
             );
         }
         let title = self.title.read(cx).as_str().trim();
-        ensure!(!title.is_empty(), "Donnez un titre à la réunion.");
+        ensure!(!title.is_empty(), "Donnez un titre à l’enregistrement.");
         if self.settings["auto_summary"] == true {
             ensure!(
                 self.settings["gguf"].is_string() && self.settings["whisper"].is_string(),
@@ -1053,7 +1076,7 @@ impl Desk {
             }
             ensure!(
                 !self.segments.is_empty() && (remote || settings["gguf"].is_string()),
-                "Choisissez un modèle GGUF et une réunion transcrite."
+                "Choisissez un modèle GGUF et un enregistrement transcrit."
             );
             json!({"settings":settings,"remote_consent":remote,"segments":self.db.segments(id)?})
         } else {
@@ -1104,6 +1127,9 @@ impl Desk {
         }
         if page == Page::Profiles {
             self.profiles = self.db.profiles(false)?;
+        }
+        if page == Page::Home {
+            self.excerpts = self.db.excerpts(&self.browse_term)?;
         }
         if page == Page::Home || page == Page::Library {
             self.refresh("")?;
@@ -1251,12 +1277,12 @@ impl Desk {
         let dlg = rfd::AsyncFileDialog::new()
             .set_parent(w)
             .add_filter(fmt, &[fmt])
-            .set_file_name(format!("reunion-{}.{}", self.id, fmt));
+            .set_file_name(format!("enregistrement-{}.{}", self.id, fmt));
         let meeting = self
             .library
             .iter()
             .find(|m| m.id == self.id)
-            .context("Réunion absente")?;
+            .context("Enregistrement introuvable")?;
         let segments = if self.summary_only {
             vec![]
         } else {

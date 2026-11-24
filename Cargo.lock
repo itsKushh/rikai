@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "audio-capture"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "hound",
@@ -3335,7 +3335,7 @@ dependencies = [
 
 [[package]]
 name = "meeting-storage"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "rusqlite",
@@ -4927,7 +4927,7 @@ dependencies = [
 
 [[package]]
 name = "rikai"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "audio-capture",
@@ -4940,8 +4940,10 @@ dependencies = [
  "rfd",
  "serde_json",
  "sysinfo 0.38.4",
+ "tempfile",
  "tracing",
  "tracing-subscriber",
+ "unicode-segmentation",
  "windows 0.62.2",
 ]
 

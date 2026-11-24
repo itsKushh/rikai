@@ -20,7 +20,7 @@ def invoke(method, params, expected):
         {"version": 1, "id": 1, "method": method, "params": params},
         command=command,
         on_progress=progress,
-        timeout=600 if method in ("install_cuda","install") else 120,
+        timeout=600 if method in ("install_cuda","install") else 300 if method == "summarize" else 120,
     )
     if answer["event"] != expected or code != (0 if expected == "result" else 1):
         raise RuntimeError(f"Échec du worker embarqué : {answer}")
@@ -30,6 +30,9 @@ def invoke(method, params, expected):
 for method in ("capabilities", "selftest"):
     _, response = invoke(method, {}, "result")
     print(method, response["result"])
+    if sys.platform == "win32" and method == "selftest":
+        cpu = response["result"]["llama_cpu"]
+        assert "AVX2 = 1" in cpu and "AVX512" not in cpu and "AVX_VNNI" not in cpu, cpu
 
 # Rejouer la demande envoyée après l'arrêt, en gardant le canal de contrôle
 # ouvert. Un dossier modèle vide provoque une erreur locale déterministe.
@@ -61,3 +64,12 @@ if sys.platform == "win32":
         _, result=invoke("translate",{"text":"Bonjour, merci beaucoup pour votre aide.","folder":model,"source":"","target":"en"},"result")
         assert result["result"]["source"]=="fr" and "thank" in result["result"]["text"].lower(),result
         print("M2M100 Windows : traduction française vers l’anglais vérifiée.")
+
+    # Exercise native quantized kernels and constrained generation, beyond import.
+    with tempfile.TemporaryDirectory() as cache:
+        _, result = invoke("install", {"preset": "Résumé local", "consent": True, "cache": cache}, "result")
+        _, result = invoke("summarize", {
+            "settings": {"gguf": result["result"]["path"]},
+            "segments": [{"id": 7, "speaker": "Luc", "text": "Je dois envoyer le devis vendredi.", "start_ms": 0}],
+        }, "result")
+        assert result["result"]["body"] and result["result"]["evidence"], result

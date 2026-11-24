@@ -32,7 +32,11 @@ impl Desk {
                         Ok(())
                     },
                 )
-                .flex_1()
+                .flex_grow(1.)
+                .whitespace_nowrap()
+                .h(px(28.))
+                .py_0()
+                .rounded(px(11.))
                 .px(px(4.))
                 .text_size(px(11.)),
             );

@@ -265,6 +265,15 @@ fn validate(inputs: &[Input]) -> Result<()> {
 }
 /// Appeler depuis un thread de travail. Le dossier doit être nouveau.
 pub fn record(dir: &Path, inputs: Vec<Input>, ctl: Control) -> Result<Manifest> {
+    record_tracks(dir, inputs, ctl, true)
+}
+
+/// Temporary tracks for the live reader. No combined playback file is needed.
+pub fn record_live(dir: &Path, inputs: Vec<Input>, ctl: Control) -> Result<Manifest> {
+    record_tracks(dir, inputs, ctl, false)
+}
+
+fn record_tracks(dir: &Path, inputs: Vec<Input>, ctl: Control, mix: bool) -> Result<Manifest> {
     check_windows()?;
     validate(&inputs)?;
     std::fs::create_dir(dir)?;
@@ -281,7 +290,9 @@ pub fn record(dir: &Path, inputs: Vec<Input>, ctl: Control) -> Result<Manifest> 
         std::fs::write(dir.join("erreur.txt"), format!("{e:#}"))?;
         return Err(e);
     }
-    mix_apps(dir, &manifest.tracks)?;
+    if mix {
+        mix_apps(dir, &manifest.tracks)?;
+    }
     std::fs::write(dir.join("finalise"), ctl.elapsed_ms().to_string())?;
     Ok(manifest)
 }

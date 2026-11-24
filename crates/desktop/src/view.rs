@@ -55,6 +55,22 @@ fn window_button(
     cx: &Context<Desk>,
     f: impl Fn(&mut Desk, &mut Window, &mut Context<Desk>) -> Result<()> + 'static,
 ) -> Stateful<Div> {
+    control(label, style, icon, icon_only, cx).on_click(cx.listener(move |s, _, w, cx| {
+        s.message.clear();
+        if let Err(e) = f(s, w, cx) {
+            s.message = format!("{e:#}");
+        }
+        cx.notify();
+    }))
+}
+
+fn control(
+    label: impl Into<String>,
+    style: Button,
+    icon: Option<&'static str>,
+    icon_only: bool,
+    cx: &App,
+) -> Stateful<Div> {
     let label = label.into();
     let p = *cx.global::<Palette>();
     let (bg, fg) = match style {
@@ -116,7 +132,7 @@ fn window_button(
         } else {
             rgb_to_hsla(rgb(p.edge)).opacity(0.25)
         })
-        .when(tab, |s| s.rounded(px(10.)))
+        .when(tab, |s| s.rounded(px(11.)))
         .when(!quiet, |s| s.shadow(p.bevel()))
         .text_color(rgb(fg))
         .when(!tab, |d| d.hover(move |s| s.bg(rgb(hover_bg))))
@@ -144,13 +160,6 @@ fn window_button(
         })
         .when_some(icon, |s, icon| s.child(glyph(icon, 15., fg)))
         .when(!icon_only, |s| s.child(display))
-        .on_click(cx.listener(move |s, _, w, cx| {
-            s.message.clear();
-            if let Err(e) = f(s, w, cx) {
-                s.message = format!("{e:#}");
-            }
-            cx.notify();
-        }))
 }
 struct ControlHint(String);
 impl Render for ControlHint {
@@ -284,14 +293,15 @@ impl Desk {
     fn meetings_view(&self, cx: &Context<Self>, limit: usize, interactive: bool) -> Div {
         let p = *cx.global::<Palette>();
         let mut list = div().flex().flex_col().child(
-            table_row(div().child(tr("Réunion")), "Durée", "État", p).text_color(rgb(p.muted)),
+            table_row(div().child(tr("Enregistrement")), "Durée", "État", p)
+                .text_color(rgb(p.muted)),
         );
         if self.library.is_empty() {
             return list.child(
                 div()
                     .p_4()
                     .text_color(rgb(p.muted))
-                    .child(tr("Aucune réunion trouvée.")),
+                    .child(tr("Aucun enregistrement trouvé.")),
             );
         }
         for m in self.library.iter().take(limit) {
@@ -346,7 +356,7 @@ impl Desk {
                     cx,
                     &self.title,
                     "title",
-                    "Titre de la réunion",
+                    "Titre de l’enregistrement",
                 )))
                 .child(col().flex_1().child(label("Projet")).child(input(
                     cx,
@@ -509,40 +519,42 @@ impl Desk {
         body
     }
 
+    fn detail_tabs(&self, cx: &Context<Self>) -> Div {
+        workspace::strip(
+            *cx.global::<Palette>(),
+            "detail-pill",
+            usize::from(self.tab),
+            &self.tab_geometry[2],
+        )
+        .children(
+            ["Résumé", "Transcription", "Intervenants"]
+                .into_iter()
+                .enumerate()
+                .map(|(i, t)| {
+                    button(
+                        t,
+                        if self.tab == i as u8 {
+                            Button::Tab
+                        } else {
+                            Button::IdleTab
+                        },
+                        None,
+                        false,
+                        cx,
+                        move |s, _| {
+                            s.stop_segment();
+                            s.tab = i as u8;
+                            s.edit_id = None;
+                            Ok(())
+                        },
+                    )
+                    .flex_1()
+                }),
+        )
+    }
+
     fn detail_view(&self, cx: &Context<Self>) -> Div {
-        let mut body = col().child(
-            workspace::strip(
-                *cx.global::<Palette>(),
-                "detail-pill",
-                usize::from(self.tab),
-                &self.tab_geometry[2],
-            )
-            .children(
-                ["Résumé", "Transcription", "Intervenants"]
-                    .into_iter()
-                    .enumerate()
-                    .map(|(i, t)| {
-                        button(
-                            t,
-                            if self.tab == i as u8 {
-                                Button::Tab
-                            } else {
-                                Button::IdleTab
-                            },
-                            None,
-                            false,
-                            cx,
-                            move |s, _| {
-                                s.stop_segment();
-                                s.tab = i as u8;
-                                s.edit_id = None;
-                                Ok(())
-                            },
-                        )
-                        .flex_1()
-                    }),
-            ),
-        );
+        let mut body = col();
         let dir = self.audio_dir(self.id);
         if dir.join("sources.json").is_file() && !dir.join("finalise").is_file() {
             body = body.child(action(
@@ -685,7 +697,7 @@ impl Desk {
                     if raw.starts_with("Intervenant ") && raw != "Intervenant incertain" {
                         let acoustic = raw.to_owned();
                         body = body.child(action(
-                            format!("Renommer {raw} pour cette réunion"),
+                            format!("Renommer {raw} pour cet enregistrement"),
                             false,
                             cx,
                             move |s, cx| {
@@ -765,16 +777,16 @@ impl Desk {
         }));
         for (title, all) in [
             ("Supprimer les fichiers audio", false),
-            ("Supprimer la réunion", true),
+            ("Supprimer l’enregistrement", true),
         ] {
             body = body.child(action(title, false, cx, move |s, _| {
                 let id = s.id;
                 s.ask(
                     title,
                     if all {
-                        "La réunion, sa transcription et ses pistes seront supprimées."
+                        "L’enregistrement, sa transcription et ses pistes seront supprimées."
                     } else {
-                        "Les pistes audio de cette réunion seront supprimées."
+                        "Les pistes audio de cet enregistrement seront supprimées."
                     },
                     "Supprimer",
                     move |s| {
@@ -1149,7 +1161,7 @@ impl Desk {
             )
             .child(
                 col()
-                    .child(label("Dossier des réunions"))
+                    .child(label("Dossier des enregistrements"))
                     .child(self.root.display().to_string()),
             )
     }
@@ -1278,9 +1290,9 @@ impl Desk {
                 info = info.child(crate::i18n::message(&notice));
             }
             if !self.stopping {
-                info = info.child(action("Annuler la réunion", false, cx, |s, _| {
+                info = info.child(action("Annuler l’enregistrement", false, cx, |s, _| {
                     s.ask(
-                        "Abandonner la réunion ?",
+                        "Abandonner l’enregistrement ?",
                         "Les pistes de cet enregistrement seront supprimées.",
                         "Abandonner",
                         |s| {
@@ -1387,7 +1399,7 @@ impl Desk {
         } else {
             match page {
                 Page::Home => ("Espace de travail".into(), self.preview(cx)),
-                Page::New => ("Nouvelle réunion".into(), self.setup_view(cx)),
+                Page::New => ("Enregistrer".into(), self.setup_view(cx)),
                 Page::Library => {
                     let mut d = col()
                         .child(input(cx,
@@ -1415,7 +1427,7 @@ impl Desk {
                         ));
                     }
                     (
-                        "Mes réunions".into(),
+                        "Mes enregistrements".into(),
                         d.child(self.meetings_view(cx, usize::MAX, true)),
                     )
                 }
@@ -1474,6 +1486,8 @@ impl Desk {
     }
 }
 
+#[path = "live.rs"]
+pub(super) mod live;
 #[path = "workspace.rs"]
 mod workspace;
 

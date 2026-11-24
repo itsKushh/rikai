@@ -13,7 +13,16 @@ if (-not [Environment]::Is64BitProcess -or $env:OS -ne 'Windows_NT') { throw 'Wi
 if (Test-Path Env:GPUI_RENDER_ALLOW_MISSING_DXBC) { throw 'Les shaders DXBC sont obligatoires pour la distribution.' }
 $Python = Join-Path $PWD 'ai-worker/.venv/Scripts/python.exe'
 if ($Stage -in 'All','Dependencies') {
-    Run-Checked uv @('sync','--directory','ai-worker','--locked','--python','3.12','--extra','summary','--extra','packaging')
+    # Build ggml for the AVX2 baseline supported by Zen 3. Native MSVC probing
+    # can otherwise compile AVX-512 instructions from the hosted builder.
+    Run-Checked uv @(
+        'sync','--directory','ai-worker','--locked','--python','3.12','--extra','summary','--extra','packaging',
+        '--no-binary-package','llama-cpp-python',
+        '--config-settings-package','llama-cpp-python:cmake.define.GGML_NATIVE=OFF',
+        '--config-settings-package','llama-cpp-python:cmake.define.GGML_AVX2=ON',
+        '--config-settings-package','llama-cpp-python:cmake.define.GGML_AVX512=OFF',
+        '--config-settings-package','llama-cpp-python:cmake.define.GGML_AVX_VNNI=OFF'
+    )
 }
 if ($Stage -in 'All','PythonTests') {
     Run-Checked $Python @('-X','faulthandler','-u','-m','unittest','discover','-s','ai-worker/tests','-v')

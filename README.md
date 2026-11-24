@@ -1,7 +1,7 @@
 <div align="center">
   <img src="./docs/images/rikai.png" width="112" height="112" alt="Icône de Rikai" />
   <h1>Rikai</h1>
-  <p>Enregistrez vos réunions sur Windows, retrouvez un passage et remontez du compte rendu aux mots prononcés.</p>
+  <p>Enregistrez le son de vos applications et de votre micro sur Windows, retrouvez un passage et remontez du compte rendu aux mots prononcés.</p>
   <p>
     <a href="https://github.com/itsKushh/rikai/releases/latest"><img src="https://img.shields.io/github/v/release/itsKushh/rikai?style=flat-square&amp;label=version&amp;color=455a64" alt="Dernière version publiée" /></a>
     <a href="https://github.com/itsKushh/rikai/actions/workflows/windows.yml"><img src="https://github.com/itsKushh/rikai/actions/workflows/windows.yml/badge.svg?branch=main" alt="État de la compilation et des tests Windows" /></a>
@@ -12,22 +12,22 @@
   <p><strong><a href="https://github.com/itsKushh/rikai/releases/latest/download/Rikai-Setup-x64.exe">Télécharger pour Windows x64</a></strong> · <a href="https://github.com/itsKushh/rikai/releases">Notes de version</a></p>
 </div>
 
-Rikai est une application de bureau native qui enregistre le son des applications que vous choisissez et conserve votre microphone sur une piste séparée. Après la réunion, vous pouvez rechercher une phrase, réécouter l’extrait correspondant et vérifier une décision citée dans le compte rendu. Une fois les modèles téléchargés, la transcription, la traduction et le résumé fonctionnent sur votre ordinateur, hors ligne.
+Rikai est une application de bureau native qui enregistre le son des applications que vous choisissez et conserve votre microphone sur une piste séparée. Après l’enregistrement, vous pouvez rechercher une phrase, réécouter l’extrait correspondant et vérifier une décision citée dans le compte rendu. Une fois les modèles téléchargés, la transcription, la traduction et le résumé fonctionnent sur votre ordinateur, hors ligne.
 
 <p align="center">
-  <img src="./docs/images/transcription.jpg" width="900" alt="Une réunion dans Rikai avec ses passages horodatés, les commandes de lecture et le choix de la langue de traduction." />
+  <img src="./docs/images/transcription.jpg" width="900" alt="Un enregistrement dans Rikai avec ses passages horodatés, les commandes de lecture et le choix de la langue de traduction." />
 </p>
 
-## Enregistrer sa première réunion
+## Réaliser sa première capture
 
 1. **Installez Rikai.** Exécutez `Rikai-Setup-x64.exe` sous Windows x64 (build 20348 ou ultérieure, dont Windows 11). L’installation se fait pour l’utilisateur courant. Lors d’une mise à niveau, fermez l’ancienne application pour que Rikai puisse reprendre sa bibliothèque.
 2. **Choisissez un modèle de transcription.** Dans **Paramètres → Modèles**, sélectionnez **Équilibré** pour commencer, puis **Télécharger**. La barre de progression indique le volume reçu. Vous pouvez aussi sélectionner un modèle Faster-Whisper déjà présent sur votre disque.
-3. **Réglez les sources.** Cliquez sur **Nouvelle réunion**, donnez-lui un titre, choisissez les applications et, si nécessaire, un microphone. Si une application manque, faites-lui jouer un son. Avec **Tester les niveaux**, parlez et ajustez chaque source pour viser des crêtes entre −18 et −6 dBFS.
+3. **Réglez les sources.** Cliquez sur **Enregistrer**, saisissez un titre, choisissez les applications et, si nécessaire, un microphone. Si une application manque, faites-lui jouer un son. Avec **Tester les niveaux**, parlez et ajustez chaque source pour viser des crêtes entre −18 et −6 dBFS.
 4. **Enregistrez, puis relisez.** Informez les participants et cliquez sur **Démarrer l’enregistrement**. À l’arrêt, Rikai finalise les pistes et lance la transcription si un modèle est configuré. Dans **Transcription**, cliquez sur la lecture pour écouter un passage ou sur ses mots pour corriger le texte.
 
 La capture suit chaque application sélectionnée et ses processus enfants. Les participants d’un même appel Discord partagent donc une piste. Plusieurs onglets d’un navigateur peuvent aussi se retrouver sur la même piste.
 
-## Exploiter une réunion
+## Explorer un enregistrement
 
 | Besoin | Dans Rikai |
 | --- | --- |
@@ -36,6 +36,10 @@ La capture suit chaque application sélectionnée et ses processus enfants. Les 
 | Comprendre un passage dans une autre langue | Le bouton de traduction permet de rechercher une langue parmi 100. Le texte traduit est conservé à côté de l’original. Une correction de l’original invalide ses anciennes traductions. |
 | Revenir sur une décision | Le résumé local cite les passages utilisés. Vous pouvez relire les décisions et les actions dans leur contexte et retrouver les versions précédentes du compte rendu. |
 | Partager un résultat | Exportez le compte rendu seul ou avec la transcription en Markdown, texte ou JSON. Le bouton d’export d’un passage enregistre l’extrait audio en WAV. |
+
+## Traduire en direct
+
+Cliquez sur **Traduction** dans la barre supérieure. Dans la seconde fenêtre, sélectionnez les sources à écouter et la langue cible, puis cliquez sur **Enregistrer**. Whisper affiche les paroles reconnues en gris. M2M100 traduit chaque groupe de mots dans son contexte et la traduction apparaît progressivement. **Arrêter** termine le dernier passage. Les pistes de cette fenêtre sont temporaires. Pour conserver une capture dans la bibliothèque, utilisez **Enregistrer** dans la fenêtre principale.
 
 ## Modèles et accélération
 
@@ -52,7 +56,7 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 
 **Emplacement des téléchargements.** Dans **Paramètres → Dépendances**, choisissez le dossier des modèles et du moteur NVIDIA. Cochez **Transférer les composants déjà installés** avant de choisir le dossier pour les déplacer. Si la case est décochée, seuls les prochains téléchargements utilisent le nouvel emplacement.
 
-**Résumé local.** Un fichier GGUF contient les poids et les métadonnées du modèle de langage. Depuis une réunion transcrite, **Générer le résumé local** propose d’installer Qwen2.5 au premier usage. Vous pouvez aussi choisir votre propre GGUF compatible dans les paramètres.
+**Résumé local.** Un fichier GGUF contient les poids et les métadonnées du modèle de langage. Le moteur Windows de résumé local utilise AVX2. Depuis un enregistrement transcrit, **Générer le résumé local** propose d’installer Qwen2.5 au premier usage. Vous pouvez aussi choisir votre propre GGUF compatible dans les paramètres.
 
 **Langues.** L’interface suit la langue de Windows par défaut. Le réglage **Paramètres → Interface** propose Français, English, Español, Русский, 日本語 et 简体中文. La langue de transcription et la langue cible d’une traduction se choisissent séparément.
 

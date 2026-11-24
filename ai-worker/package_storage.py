@@ -1,4 +1,4 @@
-"""Locations of Rikai-managed downloads, independent of the meeting library."""
+"""Locations of Rikai-managed downloads, independent of the recording library."""
 
 import hashlib
 import json

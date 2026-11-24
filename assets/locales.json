@@ -6,12 +6,12 @@
   "破棄",
   "放弃"
  ],
- "Abandonner la réunion ?": [
-  "Discard this meeting?",
-  "¿Descartar esta reunión?",
-  "Отбросить эту встречу?",
-  "この会議を破棄しますか？",
-  "要放弃这次会议吗？"
+ "Abandonner l’enregistrement ?": [
+  "Discard this recording?",
+  "¿Descartar esta grabación?",
+  "Отменить эту запись?",
+  "この録音を破棄しますか？",
+  "要放弃这段录音吗？"
  ],
  "Action": [
   "Action",
@@ -19,6 +19,13 @@
   "Действие",
   "アクション",
   "行动"
+ ],
+ "Actualiser": [
+  "Refresh",
+  "Actualizar",
+  "Обновить",
+  "更新",
+  "刷新"
  ],
  "Adresse de téléchargement GitHub inattendue.": [
   "Unpredictable GitHub download address.",
@@ -76,19 +83,19 @@
   "キャンセル",
   "取消"
  ],
- "Annuler la réunion": [
-  "Discard meeting",
-  "Descartar reunión",
-  "Отменить встречу",
-  "会議を破棄",
-  "放弃会议"
- ],
  "Annuler le traitement": [
   "Cancel processing",
   "Cancelar el procesamiento",
   "Отменить обработку",
   "処理をキャンセル",
   "取消处理"
+ ],
+ "Annuler l’enregistrement": [
+  "Discard recording",
+  "Descartar grabación",
+  "Отменить запись",
+  "録音を破棄",
+  "放弃录音"
  ],
  "Annulé": [
   "cancelled",
@@ -153,6 +160,13 @@
   "なし",
   "无"
  ],
+ "Aucun enregistrement trouvé.": [
+  "No recordings found.",
+  "No se encontraron grabaciones.",
+  "Записей не найдено.",
+  "録音が見つかりません。",
+  "未找到录音。"
+ ],
  "Aucun fragment PCM lisible": [
   "No readable PCM fragments",
   "No hay fragmentos de PCM lisibles",
@@ -215,13 +229,6 @@
   "Языки не найдены",
   "該当する言語がありません",
   "未找到匹配的语言"
- ],
- "Aucune réunion trouvée.": [
-  "No meetings found.",
-  "No se encontraron reuniones.",
-  "Встречи не найдены.",
-  "会議が見つかりません。",
-  "未找到会议。"
  ],
  "Aucune session détectée. Lancez un son dans l’application.": [
   "No audio sessions found. Play audio in the app.",
@@ -510,6 +517,13 @@
   "設定の両方の Sherpa モデルを選択します。",
   "在设置中选择两个 Sherpa 模型。"
  ],
+ "Choisissez les sources audio à enregistrer.": [
+  "Select the audio sources to record.",
+  "Selecciona las fuentes de audio que quieras grabar.",
+  "Выберите источники звука для записи.",
+  "録音する音源を選択してください。",
+  "请选择要录制的音源。"
+ ],
  "Choisissez un autre fichier que la piste source.": [
   "Choose a different file than the source track.",
   "Seleccione otro archivo que la pista de fuente.",
@@ -524,12 +538,12 @@
   "既存のコンポーネントの外にあるフォルダーを選択してください。",
   "请选择现有组件目录之外的文件夹。"
  ],
- "Choisissez un modèle GGUF et une réunion transcrite.": [
-  "Choose a GGUF model and a transcribed meeting.",
-  "Seleccione un modelo GGUF y una reunión transcrita.",
-  "Выберите модель GGUF и транскриптную встречу.",
-  "GGUF モデルとトランスクリート ミーティングを選択します。",
-  "选择一个 GGUF 模型和一个翻译会议。"
+ "Choisissez un modèle GGUF et un enregistrement transcrit.": [
+  "Choose a GGUF model and a transcribed recording.",
+  "Selecciona un modelo GGUF y una grabación transcrita.",
+  "Выберите модель GGUF и запись с расшифровкой.",
+  "GGUF モデルと文字起こし済みの録音を選択してください。",
+  "请选择 GGUF 模型和已转写的录音。"
  ],
  "Choisissez un modèle d’empreintes ONNX dans Paramètres.": [
   "Select a ONNX fingerprint template in Settings.",
@@ -560,11 +574,11 @@
   "与本地档案相比"
  ],
  "Compte rendu": [
-  "Meeting summary",
-  "Acta de la reunión",
-  "Итоги встречи",
-  "議事録",
-  "会议纪要"
+  "Summary",
+  "Resumen",
+  "Сводка",
+  "要約",
+  "摘要"
  ],
  "Compte rendu enregistré.": [
   "Summary saved.",
@@ -713,13 +727,6 @@
   "音声プロファイルを作成しますか？",
   "要创建声纹档案吗？"
  ],
- "Créez une réunion pour choisir vos sources audio.": [
-  "Create a meeting to choose your audio sources.",
-  "Crea una reunión para elegir las fuentes de audio.",
-  "Создайте встречу и выберите источники звука.",
-  "音源を選択するには会議を作成してください。",
-  "创建会议后即可选择音源。"
- ],
  "Dans le Gestionnaire d’identifiants Windows, créez un identifiant générique Rikai/hôte avec votre clé comme mot de passe.": [
   "In the Windows ID Manager, create a Rikai/Host generic ID with your key as a password.",
   "En el Administrador de Identidores de Windows, crea un ID genérico Rikai/host con su clave como contraseña.",
@@ -776,12 +783,12 @@
   "検証された配布は見つかりません {0}",
   "已验证的分销 未找到 {0}"
  ],
- "Donnez un titre à la réunion.": [
-  "Give a title to the meeting.",
-  "Dale un título a la reunión.",
-  "Дайте название на встречу.",
-  "会議にタイトルを付けてください。",
-  "请给会议一个标题。"
+ "Donnez un titre à l’enregistrement.": [
+  "Give your recording a title.",
+  "Dale un título a la grabación.",
+  "Введите название записи.",
+  "録音のタイトルを入力してください。",
+  "请输入录音标题。"
  ],
  "Dossier Faster-Whisper": [
   "Faster-Whisper folder",
@@ -797,12 +804,12 @@
   "欠席の目的地情報",
   "缺席目的地文件"
  ],
- "Dossier des réunions": [
-  "Meetings folder",
-  "Carpeta de reuniones",
-  "Папка встреч",
-  "会議フォルダー",
-  "会议文件夹"
+ "Dossier des enregistrements": [
+  "Recordings folder",
+  "Carpeta de grabaciones",
+  "Папка записей",
+  "録音フォルダー",
+  "录音文件夹"
  ],
  "Dossier d’installation absent": [
   "Announced installation file",
@@ -944,12 +951,26 @@
   "録音",
   "录音"
  ],
+ "Enregistrement introuvable": [
+  "Recording not found",
+  "No se encontró la grabación",
+  "Запись не найдена",
+  "録音が見つかりません",
+  "未找到录音"
+ ],
+ "Enregistrements récents": [
+  "Recent recordings",
+  "Grabaciones recientes",
+  "Недавние записи",
+  "最近の録音",
+  "最近的录音"
+ ],
  "Enregistrer": [
-  "Save",
-  "Guardar",
-  "Сохранить",
-  "保存",
-  "保存"
+  "Record",
+  "Grabar",
+  "Записать",
+  "録音する",
+  "录音"
  ],
  "Enregistrer la correction": [
   "Save correction",
@@ -1168,6 +1189,13 @@
   "捕獲の終わり",
   "捕获结束"
  ],
+ "Finalisation": [
+  "Finishing",
+  "Finalizando",
+  "Завершение",
+  "終了処理中",
+  "正在完成"
+ ],
  "Finalisation des pistes…": [
   "Finalization of the tracks.",
   "Finalizar las pistas...",
@@ -1193,8 +1221,8 @@
   "Unknown session format",
   "Formato de sesión desconocido",
   "Неизвестный формат сеанса",
-  "未知のセッション形式",
-  "未知的会议格式"
+  "不明なセッション形式",
+  "未知的会话格式"
  ],
  "Format des pistes": [
   "Track format",
@@ -1427,6 +1455,13 @@
   "NVIDIA ランタイムをインストールしますか？",
   "要安装 NVIDIA 运行库吗？"
  ],
+ "Installez le modèle de traduction dans les paramètres.": [
+  "Install the translation model in Settings.",
+  "Instala el modelo de traducción en Ajustes.",
+  "Установите модель перевода в настройках.",
+  "設定で翻訳モデルをインストールしてください。",
+  "请在设置中安装翻译模型。"
+ ],
  "Interface": [
   "Interface",
   "Interfaz",
@@ -1504,13 +1539,6 @@
   "オーディオ・トラックが欠席。",
   "音频路线不存在"
  ],
- "La réunion, sa transcription et ses pistes seront supprimées.": [
-  "The meeting, its transcript and its audio tracks will be deleted.",
-  "Se eliminarán la reunión, su transcripción y sus pistas de audio.",
-  "Встреча, её расшифровка и аудиодорожки будут удалены.",
-  "会議、文字起こし、音声トラックを削除します。",
-  "将删除会议及其转写文本和音轨。"
- ],
  "La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?": [
   "Translating this passage requires M2M100. Download the 496 MB model for offline translation?",
   "Este fragmento requiere M2M100. ¿Descargar el modelo de 496 MB para traducir sin conexión?",
@@ -1552,6 +1580,13 @@
   "Язык",
   "言語",
   "语言"
+ ],
+ "Langue cible": [
+  "Target language",
+  "Idioma de destino",
+  "Язык перевода",
+  "翻訳先の言語",
+  "目标语言"
  ],
  "Langue de l’interface": [
   "Interface language",
@@ -1714,12 +1749,12 @@
   "モデルのファイル一覧を取得中",
   "正在读取模型文件列表"
  ],
- "Les pistes audio de cette réunion seront supprimées.": [
-  "This meeting’s audio tracks will be deleted.",
-  "Se eliminarán las pistas de audio de esta reunión.",
-  "Аудиодорожки этой встречи будут удалены.",
-  "この会議の音声トラックを削除します。",
-  "将删除此会议的音轨。"
+ "Les pistes audio de cet enregistrement seront supprimées.": [
+  "This recording’s audio tracks will be deleted.",
+  "Se eliminarán las pistas de audio de esta grabación.",
+  "Аудиодорожки этой записи будут удалены.",
+  "この録音の音声トラックが削除されます。",
+  "将删除这段录音的音轨。"
  ],
  "Les pistes de cet enregistrement seront supprimées.": [
   "This recording’s tracks will be deleted.",
@@ -1763,6 +1798,13 @@
   "インストラクターの指紋はGitHubと一致しない。",
   "安装器指纹不符合 GitHub。"
  ],
+ "L’enregistrement, sa transcription et ses pistes seront supprimées.": [
+  "The recording, transcript and audio tracks will be deleted.",
+  "Se eliminarán la grabación, la transcripción y las pistas de audio.",
+  "Запись, расшифровка и аудиодорожки будут удалены.",
+  "録音、文字起こし、音声トラックが削除されます。",
+  "将删除录音、转写文本和音轨。"
+ ],
  "L’extrait autorisé, son empreinte et les suggestions associées seront supprimés.": [
   "The authorized extract, its footprint and the associated suggestions will be deleted.",
   "El extracto autorizado, su huella y las sugerencias asociadas serán eliminadas.",
@@ -1784,12 +1826,12 @@
   "M2M100 · 100 言語 · 496 MB",
   "M2M100 · 100 种语言 · 496 MB"
  ],
- "Mes réunions": [
-  "My meetings",
-  "Mis reuniones",
-  "Мои встречи",
-  "マイ会議",
-  "我的会议"
+ "Mes enregistrements": [
+  "My recordings",
+  "Mis grabaciones",
+  "Мои записи",
+  "自分の録音",
+  "我的录音"
  ],
  "Mesure NVIDIA indisponible": [
   "NVIDIA metrics unavailable",
@@ -2085,13 +2127,6 @@
   "新しいプロファイル名",
   "新档案名称"
  ],
- "Nouvelle réunion": [
-  "New meeting",
-  "Nueva reunión",
-  "Новая встреча",
-  "新しい会議",
-  "新建会议"
- ],
  "Objet": [
   "Purpose",
   "Objetivo",
@@ -2120,13 +2155,6 @@
   "AI エンジンを起動中…",
   "正在启动 AI 引擎…"
  ],
- "Ouvrir la réunion": [
-  "Open meeting",
-  "Abrir reunión",
-  "Открыть встречу",
-  "会議を開く",
-  "打开会议"
- ],
  "Ouvrir la transcription v{v}": [
   "Open the transcription v {0}",
   "Abrir la transcripción v {0}",
@@ -2140,6 +2168,13 @@
   "Открыть папку",
   "フォルダーを開く",
   "打开文件夹"
+ ],
+ "Ouvrir l’enregistrement": [
+  "Open recording",
+  "Abrir grabación",
+  "Открыть запись",
+  "録音を開く",
+  "打开录音"
  ],
  "Ouvrir {}": [
   "Open {0}",
@@ -2168,6 +2203,13 @@
   "Настройки",
   "設定",
   "设置"
+ ],
+ "Parcourir les enregistrements": [
+  "Browse recordings",
+  "Explorar grabaciones",
+  "Обзор записей",
+  "録音を探す",
+  "浏览录音"
  ],
  "Parcourir les passages": [
   "Scroll through passages",
@@ -2372,6 +2414,13 @@
   "検索",
   "搜索"
  ],
+ "Rechercher un titre, un intervenant ou une phrase": [
+  "Search for a title, speaker or phrase",
+  "Buscar un título, una persona o una frase",
+  "Найти название, говорящего или фразу",
+  "タイトル・話者・フレーズで検索",
+  "搜索标题、发言人或语句"
+ ],
  "Rechercher une langue": [
   "Search languages",
   "Buscar un idioma",
@@ -2407,12 +2456,12 @@
   "{0} の名前を変更",
   "重命名 {0}"
  ],
- "Renommer {raw} pour cette réunion": [
-  "Rename {0} for this meeting",
-  "Cambiar el nombre de {0} en esta reunión",
-  "Переименовать {0} для этой встречи",
-  "この会議での {0} の名前を変更",
-  "更改本次会议中 {0} 的名称"
+ "Renommer {raw} pour cet enregistrement": [
+  "Rename {0} for this recording",
+  "Cambiar el nombre de {0} en esta grabación",
+  "Переименовать {0} для этой записи",
+  "この録音での {0} の名前を変更",
+  "更改此录音中 {0} 的名称"
  ],
  "Reprendre": [
   "Resume",
@@ -2485,11 +2534,11 @@
   "恢复可读的路径"
  ],
  "Rédaction du compte rendu": [
-  "Writing meeting summary",
-  "Redactando el resumen de la reunión",
-  "Подготовка итогов встречи",
-  "議事録を作成中",
-  "正在撰写会议纪要"
+  "Writing summary",
+  "Redactando el resumen",
+  "Подготовка сводки",
+  "要約を作成中",
+  "正在撰写摘要"
  ],
  "Réduire": [
   "Minimize",
@@ -2539,27 +2588,6 @@
   "Локальная сводка",
   "ローカル要約",
   "本地摘要"
- ],
- "Réunion": [
-  "Meeting",
-  "Reunión",
-  "Встреча",
-  "会議",
-  "会议"
- ],
- "Réunion absente": [
-  "The absent meeting",
-  "Reunión ausente",
-  "Отсутствие встречи",
-  "欠席会議",
-  "缺席会议"
- ],
- "Réunions récentes": [
-  "Recent meetings",
-  "Reuniones recientes",
-  "Недавние встречи",
-  "最近の会議",
-  "最近的会议"
  ],
  "Révision du modèle invalide": [
   "Revision of the Invalid Model",
@@ -2659,19 +2687,19 @@
   "この音声プロファイルを削除しますか？",
   "要删除此声纹档案吗？"
  ],
- "Supprimer la réunion": [
-  "Delete meeting",
-  "Eliminar reunión",
-  "Удалить встречу",
-  "会議を削除",
-  "删除会议"
- ],
  "Supprimer les fichiers audio": [
   "Delete audio files",
   "Eliminar archivos de audio",
   "Удалить аудиофайлы",
   "音声ファイルを削除",
   "删除音频文件"
+ ],
+ "Supprimer l’enregistrement": [
+  "Delete recording",
+  "Eliminar grabación",
+  "Удалить запись",
+  "録音を削除",
+  "删除录音"
  ],
  "Supprimer {name}": [
   "Delete {0}",
@@ -2813,6 +2841,13 @@
   "テストを終了",
   "结束测试"
  ],
+ "Terminé": [
+  "Finished",
+  "Finalizado",
+  "Готово",
+  "完了",
+  "已完成"
+ ],
  "Terminée": [
   "Finished",
   "Terminado",
@@ -2883,12 +2918,12 @@
   "タイトル",
   "标题"
  ],
- "Titre de la réunion": [
-  "Meeting title",
-  "Título de la reunión",
-  "Название встречи",
-  "会議のタイトル",
-  "会议标题"
+ "Titre de l’enregistrement": [
+  "Recording title",
+  "Título de la grabación",
+  "Название записи",
+  "録音のタイトル",
+  "录音标题"
  ],
  "Titre, paroles ou intervenant": [
   "Title, transcript or speaker",
@@ -2897,12 +2932,26 @@
   "タイトル、発言、話者",
   "标题、发言内容或发言人"
  ],
+ "Traduction": [
+  "Translation",
+  "Traducción",
+  "Перевод",
+  "翻訳",
+  "翻译"
+ ],
  "Traduction du passage": [
   "Translating passage",
   "Traduciendo el fragmento",
   "Перевод фрагмента",
   "発言を翻訳中",
   "正在翻译片段"
+ ],
+ "Traduction en direct": [
+  "Live translation",
+  "Traducción en directo",
+  "Перевод в реальном времени",
+  "リアルタイム翻訳",
+  "实时翻译"
  ],
  "Traduction locale": [
   "Local translation",
@@ -3086,6 +3135,13 @@
   "HTTPS URL は、必要なID なしです。",
   "HTTPS URL 无需识别器。"
  ],
+ "Un enregistrement est déjà en cours": [
+  "A recording is already in progress",
+  "Ya hay una grabación en curso",
+  "Запись уже идёт",
+  "すでに録音中です",
+  "正在录音"
+ ],
  "Un fichier différent existe déjà : {fichier}": [
   "A different file already exists: {fichier}",
   "Ya existe un archivo diferente: {fichier}",
@@ -3156,13 +3212,6 @@
   "回復はすでに存在する。",
   "恢复已经存在。"
  ],
- "Une réunion est déjà active": [
-  "The meeting is already active.",
-  "Una reunión ya está activa.",
-  "Встреча уже активна.",
-  "会議はすでに活躍している。",
-  "会议已经活跃了。"
- ],
  "Utiliser ce modèle": [
   "Use this model",
   "Usar este modelo",
@@ -3211,6 +3260,13 @@
   "Громкость",
   "音量",
   "音量"
+ ],
+ "Vos extraits apparaîtront ici après la capture.": [
+  "Your clips will appear here after recording.",
+  "Tus fragmentos aparecerán aquí después de grabar.",
+  "После записи здесь появятся фрагменты.",
+  "録音後、ここに抜粋が表示されます。",
+  "录音后，片段将显示在这里。"
  ],
  "Vérification CUDA": [
   "Review of CUDA",
@@ -3428,6 +3484,13 @@
   "Не удалось проверить копию.",
   "コピーの検証に失敗しました。",
   "副本校验失败。"
+ ],
+ "Écoute en direct": [
+  "Listening live",
+  "Escuchando en directo",
+  "Идёт прослушивание",
+  "音声を認識中",
+  "正在聆听"
  ],
  "Écouter": [
   "Play",

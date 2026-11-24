@@ -40,6 +40,7 @@ fn command() -> Result<Command> {
 pub struct Progress {
     pub stage: String,
     pub bytes: Option<(u64, u64)>,
+    pub live: Option<Value>,
 }
 impl Progress {
     fn parse(event: &Value) -> Result<Self> {
@@ -59,6 +60,7 @@ impl Progress {
                 .context("Étape manquante")?
                 .to_owned(),
             bytes,
+            live: event.get("live").cloned(),
         })
     }
 }

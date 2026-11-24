@@ -2,7 +2,7 @@ mod jobs;
 mod library;
 mod profiles;
 use anyhow::{Result, ensure};
-pub use library::Hit;
+pub use library::{Excerpt, Hit};
 use rusqlite::{Connection, OptionalExtension, params};
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -287,7 +287,7 @@ mod tests {
         let path =
             std::env::temp_dir().join(format!("rikai-storage-{}.sqlite", std::process::id()));
         let mut db = Library::open(&path)?;
-        let id = db.create("Réunion étude", "Produit", "{}")?;
+        let id = db.create("Enregistrement étude", "Produit", "{}")?;
         let s = Segment {
             id: 0,
             start_ms: 100,

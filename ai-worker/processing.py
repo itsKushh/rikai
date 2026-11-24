@@ -1,4 +1,4 @@
-"""Moteurs strictement locaux. Tous les temps sont relatifs au début de la réunion."""
+"""Moteurs strictement locaux. Tous les temps sont relatifs au début de l’enregistrement."""
 
 from itertools import groupby
 from functools import lru_cache

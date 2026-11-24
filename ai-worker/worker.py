@@ -14,6 +14,7 @@ if __name__ == "__main__":
 from models import capabilities, install
 from package_storage import change_location, storage_lock
 from translation import translate
+from live import listen
 from updates import apply_update, check_update, download_update
 from voices import enroll
 from processing import gpu_probe, summarize, transcribe
@@ -59,6 +60,7 @@ def selftest(params, progress):
         diarisation=sherpa_onnx.__version__,
         ctranslate2=ctranslate2.__version__,
         llama=llama_cpp.__version__,
+        llama_cpu=llama_cpp.llama_print_system_info().decode("utf-8"),
     )
 
 
@@ -155,6 +157,7 @@ def main():
             "install_cuda",
             "test_cuda",
             "translate",
+            "listen",
             "download_update",
         ):
             reader = threading.Thread(target=controls, daemon=True)
@@ -162,6 +165,7 @@ def main():
         engines = {
             "apply_update": apply_update,
             "translate": translate,
+            "listen": listen,
             "check_update": check_update,
             "download_update": download_update,
             "selftest": selftest,
