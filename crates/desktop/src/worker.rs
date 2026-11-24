@@ -41,6 +41,7 @@ pub struct Progress {
     pub stage: String,
     pub bytes: Option<(u64, u64)>,
     pub live: Option<Value>,
+    pub generated_chars: Option<u64>,
 }
 impl Progress {
     fn parse(event: &Value) -> Result<Self> {
@@ -61,6 +62,7 @@ impl Progress {
                 .to_owned(),
             bytes,
             live: event.get("live").cloned(),
+            generated_chars: event["generated_chars"].as_u64(),
         })
     }
 }
@@ -173,6 +175,7 @@ fn exchange(
                             let update = Progress::parse(&e)?;
                             response_limit = match e["phase"].as_str() {
                                 Some("startup") => startup_limit,
+                                Some("summary_decode") => idle_limit.min(Duration::from_secs(120)),
                                 Some("load") => idle_limit.min(Duration::from_secs(300)),
                                 _ => idle_limit,
                             };
@@ -260,18 +263,18 @@ mod tests {
     }
 
     #[test]
-    fn stalled_inference_identifies_last_stage() {
+    fn stalled_summary_decoder_identifies_last_block() {
         let msg = stalled_child(
             r#"import sys,time
 sys.stdin.readline()
-print('{"version":1,"id":7,"event":"progress","stage":"chargement"}', flush=True)
+print('{"version":1,"id":7,"event":"progress","stage":"bloc 2/6","phase":"summary_decode","generated_chars":82}', flush=True)
 time.sleep(30)"#,
             json!({"id": 7}),
             Duration::from_secs(15),
             Duration::from_millis(350),
             Arc::default(),
         );
-        assert!(msg.contains("chargement"), "{msg}");
+        assert!(msg.contains("bloc 2/6"), "{msg}");
     }
 
     #[test]

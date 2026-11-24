@@ -419,6 +419,13 @@
   "録音が中断されました",
   "录音已中断"
  ],
+ "Caractères générés pour ce bloc · {n}": [
+  "Characters generated for this block · {0}",
+  "Caracteres generados para este bloque · {0}",
+  "Сгенерировано символов для этого блока · {0}",
+  "このブロックで生成した文字数 · {0}",
+  "此块已生成的字符数 · {0}"
+ ],
  "Ce passage est vide": [
   "This passage is empty.",
   "Este paso es vacío",
@@ -586,6 +593,13 @@
   "Сводка сохранена.",
   "要約を保存しました。",
   "摘要已保存。"
+ ],
+ "Compte rendu partiel enregistré. Certains passages restent à vérifier.": [
+  "Partial summary saved. Some passages need review.",
+  "Se ha guardado un resumen parcial. Quedan fragmentos por revisar.",
+  "Частичная сводка сохранена. Некоторые фрагменты требуют проверки.",
+  "要約の一部を保存しました。確認が必要な箇所があります。",
+  "已保存部分摘要。部分段落仍需核实。"
  ],
  "Compte rendu tronqué. Réduisez la taille des blocs.": [
   "The summary was truncated. Reduce the block size.",
@@ -1119,6 +1133,13 @@
   "事実を抽出中 · ブロック {0}",
   "正在提取事实 · 第 {0} 块"
  ],
+ "Extraction des faits · bloc {i}/{n}": [
+  "Extracting facts · block {0}/{1}",
+  "Extracción de hechos · bloque {0}/{1}",
+  "Извлечение фактов · блок {0}/{1}",
+  "事実を抽出中 · ブロック {0}/{1}",
+  "正在提取要点 · 第 {0}/{1} 块"
+ ],
  "Extrait WAV": [
   "WAV clip",
   "Fragmento WAV",
@@ -1650,6 +1671,13 @@
   "Модели не удалось завершить сводку по этому фрагменту.",
   "モデルはこの箇所の要約を完了できませんでした。",
   "模型未能完成此片段的摘要。"
+ ],
+ "Le modèle n’a produit aucun fait vérifiable après la reprise.": [
+  "The model produced no verifiable facts after retrying.",
+  "El modelo no produjo ningún hecho verificable tras el reintento.",
+  "После повторной попытки модель не выдала ни одного проверяемого факта.",
+  "再試行後も、検証可能な事実を抽出できませんでした。",
+  "重试后，模型仍未提取到可核实的事实。"
  ],
  "Le moteur IA a fermé son canal de réponse sans résultat.": [
   "The IA engine closed its response channel without a result.",
@@ -2490,6 +2518,13 @@
   "Повторная обработка части сводки",
   "要約のブロックを再処理中",
   "正在重新处理摘要片段"
+ ],
+ "Reprise du bloc {i}/{n} · partie {j}/{k}": [
+  "Retrying block {0}/{1} · part {2}/{3}",
+  "Reintentando el bloque {0}/{1} · parte {2}/{3}",
+  "Повторная обработка блока {0}/{1} · часть {2}/{3}",
+  "ブロック {0}/{1} を再処理中 · パート {2}/{3}",
+  "正在重新处理第 {0}/{1} 块 · 第 {2}/{3} 部分"
  ],
  "Requête reçue par le moteur IA": [
   "AI engine received the request",

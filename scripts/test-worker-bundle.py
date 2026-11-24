@@ -12,7 +12,13 @@ command = [str(Path(sys.argv[1]).resolve())]
 
 def invoke(method, params, expected):
     stages = []
+    saw_generation = False
     def progress(event):
+        nonlocal saw_generation
+        if event.get("generated_chars", 0) > 0:
+            saw_generation = True
+        if stages and stages[-1] == event["stage"]:
+            return
         stages.append(event["stage"])
         print(f"{method} · {event['stage']}", flush=True)
 
@@ -24,6 +30,8 @@ def invoke(method, params, expected):
     )
     if answer["event"] != expected or code != (0 if expected == "result" else 1):
         raise RuntimeError(f"Échec du worker embarqué : {answer}")
+    if method == "summarize":
+        assert saw_generation, "No streamed summary progress from the packaged worker"
     return stages, answer
 
 
@@ -71,9 +79,10 @@ if sys.platform == "win32":
         stages, result = invoke("summarize", {
             "settings": {"gguf": result["result"]["path"]},
             "segments": [
-                {"id": i, "speaker": "Luc", "text": "Je dois envoyer le devis vendredi." if i == 1 else "Oui."}
+                {"id": i, "speaker": "Luc", "text": ("Je dois envoyer le devis vendredi. " * 300) if i == 1 else "Oui."}
                 for i in range(1, 33)
             ] + [{"id": 33, "speaker": "Eva", "text": "Je dois réserver le studio lundi."}],
         }, "result")
-        assert "Extraction des faits · bloc 2" in stages, stages
+        assert "Extraction des faits · bloc 3/3" in stages, stages
+        assert not result["result"]["partial"], result
         assert result["result"]["body"] and {1, 33} <= set(result["result"]["evidence"]), result

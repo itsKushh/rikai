@@ -209,6 +209,7 @@ struct Desk {
     work_started: Instant,
     last_progress: Instant,
     transfer: Option<(u64, u64)>,
+    generated_chars: Option<u64>,
     paused: bool,
     stopping: bool,
     cancel: Option<Arc<AtomicBool>>,
@@ -369,6 +370,7 @@ impl Desk {
             work_started: Instant::now(),
             last_progress: Instant::now(),
             transfer: None,
+            generated_chars: None,
             paused: false,
             stopping: false,
             cancel: None,
@@ -753,6 +755,7 @@ impl Desk {
                 }
                 self.stage = update.stage;
                 self.transfer = update.bytes;
+                self.generated_chars = update.generated_chars;
                 self.last_progress = Instant::now();
             }
             Event::LevelsTested(result) => {
@@ -807,6 +810,7 @@ impl Desk {
                 }
             }
             Event::Processed(id, summary, mut settings, res) => {
+                let partial = res.as_ref().is_ok_and(|v| v["partial"] == true);
                 self.cancel = None;
                 let saved: Result<()> = (|| {
                     let result = res?;
@@ -847,7 +851,9 @@ impl Desk {
                     "Fin du traitement IA"
                 );
                 saved.with_context(|| format!("Traitement interrompu · {}", self.stage))?;
-                self.message = if summary {
+                self.message = if summary && partial {
+                    "Compte rendu partiel enregistré. Certains passages restent à vérifier.".into()
+                } else if summary {
                     "Compte rendu enregistré.".into()
                 } else if self.segments.is_empty() {
                     "Transcription terminée. Aucune parole détectée sur les pistes.".into()
@@ -1020,6 +1026,7 @@ impl Desk {
         self.work_started = Instant::now();
         self.last_progress = self.work_started;
         self.transfer = None;
+        self.generated_chars = None;
         ctl
     }
     fn recover_audio(&mut self) -> Result<()> {

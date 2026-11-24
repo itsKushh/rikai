@@ -1,0 +1,7 @@
+{
+  "en": "## Local summaries\nRikai shows the current block, total blocks and the number of characters generated. If the model repeats itself or cuts off, Rikai makes one recovery pass. Verified facts retain their source references. A partial report lists passages that still need review. Two minutes without a response during decoding now triggers an error.",
+  "es": "## Resumen local\nRikai muestra el bloque actual, el total de bloques y los caracteres generados. Si el modelo se repite o corta su respuesta, Rikai vuelve a procesar el bloque una sola vez. Los hechos conservan sus referencias y un resumen parcial identifica los fragmentos pendientes de revisión. Si el motor deja de responder durante dos minutos mientras genera texto, Rikai muestra un error.",
+  "ru": "## Локальная сводка\nRikai показывает номер текущего блока, общее число блоков и количество сгенерированных символов. Если модель повторяется или обрывает ответ, Rikai повторно обрабатывает этот блок один раз. Извлечённые факты сохраняют ссылки на источники. В неполной сводке перечислены фрагменты для проверки. Если при генерации движок не отвечает две минуты, Rikai сообщает об ошибке.",
+  "ja": "## ローカル要約\n処理中のブロック番号、総ブロック数、生成した文字数が表示されます。モデルが同じ事実を繰り返したり、応答が途切れたりした場合、該当ブロックを一度だけ再処理します。抽出した事実には元の発言への参照が付きます。要約できなかった箇所は確認用の一覧に表示されます。生成中にエンジンからの応答が2分間途絶えると、エラーを表示します。",
+  "zh": "## 本地摘要\nRikai 会显示当前块编号、总块数和已生成的字符数。如果模型反复输出相同内容或回答中断，Rikai 会对该块重试一轮。已提取的要点保留原文引用。部分摘要会列出仍需核对的段落。生成过程中，如果引擎连续两分钟没有响应，Rikai 会提示错误。"
+}

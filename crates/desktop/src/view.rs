@@ -1363,6 +1363,11 @@ impl Desk {
                             .child(label(value)),
                     );
             }
+            if let Some(count) = self.generated_chars {
+                body = body.child(div().text_size(px(12.)).text_color(rgb(p.muted)).child(
+                    crate::i18n::message(&format!("Caractères générés pour ce bloc · {count}")),
+                ));
+            }
             let idle = self.last_progress.elapsed().as_secs();
             let timing = if idle >= 15 {
                 format!("Temps écoulé {elapsed} · dernière réponse il y a {idle} s")
