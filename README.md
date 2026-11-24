@@ -68,6 +68,7 @@ Par défaut l'inférence lit les modèles locaux. Le fournisseur distant compati
 
 ## Repères
 
+- Le code original de Rikai est propriétaire. Sa réutilisation nécessite une autorisation écrite. [Conditions de consultation et de réutilisation](LICENSE)
 - [Architecture, sources examinées et licences](docs/ARCHITECTURE.md)
 - [Plan, fonctionnalités et limites de cette version](docs/IMPLEMENTATION_PLAN.md)
 - [Contrat Rust–Python](docs/IPC.md)
