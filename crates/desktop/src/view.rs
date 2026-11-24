@@ -332,8 +332,10 @@ impl Desk {
                         .role(Role::Button)
                         .aria_label(crate::i18n::message(&format!("Ouvrir {}", m.title)))
                         .cursor_pointer()
+                        .bg(rgb_to_hsla(rgb(p.control)).opacity(0.))
                         .hover(move |s| s.bg(rgb(p.control)))
                         .focus_visible(move |s| s.bg(rgb(p.selected)))
+                        .transitions(|t| t.bg(motion(120)))
                         .on_click(cx.listener(move |s, _, _, cx| {
                             if let Err(e) = s.detail(id) {
                                 s.message = e.to_string();

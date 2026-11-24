@@ -1,0 +1,7 @@
+{
+  "en": "## Local summaries\nRikai now retries a truncated block in smaller pieces and keeps completed blocks. Decisions and actions retain their source references, including in long edited passages.\n\n## Navigation\nRecording rows fade smoothly when the pointer leaves. Breadcrumb links now ease into and out of their hover colour.",
+  "es": "## Resúmenes locales\nSi la respuesta se trunca, Rikai divide el bloque y vuelve a procesarlo. Conserva los bloques terminados y las referencias de las decisiones y tareas, incluso en fragmentos largos editados a mano.\n\n## Navegación\nEl fondo de las filas de grabaciones se desvanece suavemente al retirar el puntero. Los enlaces de la ruta de navegación cambian de color de forma gradual.",
+  "ru": "## Локальные сводки\nЕсли ответ модели обрывается, Rikai делит проблемный блок на части и обрабатывает его повторно. Готовые блоки сохраняются, а решения и задачи остаются привязаны к исходным фрагментам, в том числе после ручного редактирования длинных отрывков.\n\n## Навигация\nПодсветка строки записи плавно исчезает, когда указатель покидает строку. Ссылки в навигационной цепочке плавно меняют цвет при наведении и уходе указателя.",
+  "ja": "## ローカル要約\nモデルの出力が途中で途切れた場合、該当ブロックを分割して再処理します。処理済みのブロックは保持され、決定事項やタスクから元の発言をたどれます。手動編集した長い発言にも対応します。\n\n## ナビゲーション\n録音の行からポインターを外すと背景が滑らかに消えます。パンくずリストのリンクも、ポインターを重ねたり外したりすると色が滑らかに変化します。",
+  "zh": "## 本地摘要\n当模型的回答被截断时，Rikai 会拆分当前片段并自动重试，同时保留已完成的部分。决定和待办事项仍可追溯到原文，也支持手动编辑过的长段落。\n\n## 导航\n移开指针时，录音条目的背景会平滑淡出。路径导航链接的悬停颜色也会平滑过渡。"
+}

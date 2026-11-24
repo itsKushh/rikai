@@ -1644,6 +1644,13 @@
   "文字起こしモデルを Hugging Face からダウンロードし、この PC に保存します。",
   "将从 Hugging Face 下载转写模型并保存在此电脑上。"
  ],
+ "Le modèle n’a pas terminé la synthèse de ce passage.": [
+  "The model could not finish summarizing this passage.",
+  "El modelo no pudo terminar el resumen de este fragmento.",
+  "Модели не удалось завершить сводку по этому фрагменту.",
+  "モデルはこの箇所の要約を完了できませんでした。",
+  "模型未能完成此片段的摘要。"
+ ],
  "Le moteur IA a fermé son canal de réponse sans résultat.": [
   "The IA engine closed its response channel without a result.",
   "El motor IA cerró su canal de respuesta sin resultado.",
@@ -2476,6 +2483,13 @@
   "Возможное попадание звука в микрофон",
   "音の回り込みの可能性",
   "可能存在串音"
+ ],
+ "Reprise du bloc de synthèse": [
+  "Retrying the summary block",
+  "Reintentando el bloque de resumen",
+  "Повторная обработка части сводки",
+  "要約のブロックを再処理中",
+  "正在重新处理摘要片段"
  ],
  "Requête reçue par le moteur IA": [
   "AI engine received the request",

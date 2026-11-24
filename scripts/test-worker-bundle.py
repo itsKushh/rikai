@@ -68,8 +68,12 @@ if sys.platform == "win32":
     # Exercise native quantized kernels and constrained generation, beyond import.
     with tempfile.TemporaryDirectory() as cache:
         _, result = invoke("install", {"preset": "Résumé local", "consent": True, "cache": cache}, "result")
-        _, result = invoke("summarize", {
+        stages, result = invoke("summarize", {
             "settings": {"gguf": result["result"]["path"]},
-            "segments": [{"id": 7, "speaker": "Luc", "text": "Je dois envoyer le devis vendredi.", "start_ms": 0}],
+            "segments": [
+                {"id": i, "speaker": "Luc", "text": "Je dois envoyer le devis vendredi." if i == 1 else "Oui."}
+                for i in range(1, 33)
+            ] + [{"id": 33, "speaker": "Eva", "text": "Je dois réserver le studio lundi."}],
         }, "result")
-        assert result["result"]["body"] and result["result"]["evidence"], result
+        assert "Extraction des faits · bloc 2" in stages, stages
+        assert result["result"]["body"] and {1, 33} <= set(result["result"]["evidence"]), result

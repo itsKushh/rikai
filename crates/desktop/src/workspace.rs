@@ -372,6 +372,8 @@ impl Desk {
                         .cursor_pointer()
                         .text_color(rgb(p.muted))
                         .hover(|d| d.text_color(rgb(p.text)))
+                        .focus_visible(|d| d.text_color(rgb(p.text)))
+                        .transitions(|t| t.text_color(motion(120)))
                         .child(title)
                         .on_click(cx.listener(move |s, _, _, cx| {
                             if !s.busy() {
@@ -408,6 +410,7 @@ impl Desk {
                 .rounded(px(9.))
                 .px_3()
                 .py_2()
+                .bg(rgb_to_hsla(rgb(p.control)).opacity(0.))
                 .hover(|d| d.bg(rgb(p.control)))
                 .transitions(|t| t.bg(motion(120)))
                 .child(
