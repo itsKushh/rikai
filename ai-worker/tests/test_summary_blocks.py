@@ -265,6 +265,12 @@ Merci de votre attention.
         self.assertNotIn("§", points[0].text)
         self.assertEqual(points[1].refs, [2, 8])
         self.assertEqual(points[1].text, "Ana parle de la date d’ouverture du marché.")
+        styled = (
+            content.replace("## En bref\n", "**En bref** : ")
+            .replace("## Sujets abordés", "**Sujets abordés :**")
+            .replace("d’ouverture du marché (§2–8)", "d’ouverture du *marché* (§2–8)")
+        )
+        self.assertEqual(read_markdown(styled, set(passages), passages), points)
         self.assertIsNone(
             read_markdown(content.replace("§2–8", "§2, 99"), set(passages), passages)
         )
