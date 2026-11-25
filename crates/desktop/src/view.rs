@@ -268,6 +268,31 @@ fn raw_label(s: impl Into<SharedString>) -> Div {
         .font_weight(FontWeight::SEMIBOLD)
         .child(s.into())
 }
+fn report_text(report: &str) -> Div {
+    if report.is_empty() {
+        return div().child(tr("Aucun résumé enregistré."));
+    }
+    if !report.starts_with("## En bref\n") && !report.starts_with("## Synthèse partielle\n") {
+        return div().child(report.to_owned());
+    }
+    let mut body = col().gap(px(5.));
+    for (index, line) in report.lines().filter(|s| !s.is_empty()).enumerate() {
+        body = if let Some(heading) = line.strip_prefix("## ") {
+            body.child(raw_label(heading.to_owned()).when(index > 0, |d| d.mt(px(9.))))
+        } else if let Some(text) = line.strip_prefix("- ") {
+            body.child(
+                div()
+                    .flex()
+                    .gap(px(7.))
+                    .child("•")
+                    .child(div().flex_1().min_w_0().child(text.to_owned())),
+            )
+        } else {
+            body.child(div().child(line.to_owned()))
+        };
+    }
+    body
+}
 fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl IntoElement {
     let p = *cx.global::<Palette>();
     text_input(id)
@@ -590,11 +615,7 @@ impl Desk {
         }
         match self.tab {
             0 => {
-                body = body.child(if self.summary.is_empty() {
-                    tr("Aucun résumé enregistré.").to_owned()
-                } else {
-                    self.summary.clone()
-                });
+                body = body.child(report_text(&self.summary));
                 if !self.summary.is_empty() {
                     body = body.child(action("Modifier le résumé", false, cx, |s, cx| {
                         s.edit.update(cx, |f, cx| f.emplace(&s.summary, cx));
@@ -1048,8 +1069,14 @@ impl Desk {
                         .child(self.settings[key].as_str().unwrap_or(tr(empty)).to_owned()),
                 );
         }
-        let summary = self
-            .package_row("Résumé local", "Qwen2.5 · 3B · GGUF · 2,10 Go", cx)
+        let summary = col()
+            .gap(px(12.))
+            .child(self.package_row(
+                "Résumé contextualisé",
+                "Qwen3 Instruct · 4B · GGUF · 2,50 Go",
+                cx,
+            ))
+            .child(self.package_row("Résumé local", "Qwen2.5 · 3B · GGUF · 2,10 Go", cx))
             .child(window_button(
                 "Choisir un fichier GGUF",
                 Button::Quiet,
@@ -1482,7 +1509,7 @@ impl Desk {
                 Page::ConfirmDownload(preset) => (
                     if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("{} · {}",tr("Télécharger"),tr(preset))},
                     col()
-                        .child(tr(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else if preset=="Résumé local" {"Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?"} else if preset=="Traduction locale" {"La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?"} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."}))
+                        .child(tr(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else if preset=="Résumé contextualisé" {"Télécharger Qwen3 Instruct (2,50 Go) et l’utiliser pour les prochains résumés locaux ?"} else if preset=="Résumé local" {"Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?"} else if preset=="Traduction locale" {"La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?"} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."}))
                         .child(row()
                             .child(action("Annuler", false, cx, |s, _| s.answer_download(false)))
                             .child(action("Télécharger", true, cx, |s, _| s.answer_download(true)))),

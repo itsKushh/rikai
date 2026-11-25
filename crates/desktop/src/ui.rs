@@ -715,7 +715,7 @@ impl Desk {
                 }
                 if let Some(kind) = v["kind"].as_str() {
                     let (key, preset) = if kind == "summary" {
-                        ("gguf", "Résumé local")
+                        ("gguf", v["preset"].as_str().unwrap_or("Résumé local"))
                     } else {
                         ("translation", "Traduction locale")
                     };

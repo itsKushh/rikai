@@ -34,7 +34,7 @@ La capture suit chaque application sélectionnée et ses processus enfants. Les 
 | Retrouver une intervention | La bibliothèque recherche les titres, les paroles et les intervenants. Un résultat dans la transcription ouvre le passage correspondant. Des filtres permettent de préciser le projet, le tag ou la date. |
 | Vérifier qui parle | Le micro a sa propre piste. Avec les modèles de segmentation et d’empreintes vocales configurés, Rikai peut distinguer les voix distantes. Vous confirmez les noms proposés et recueillez l’accord de la personne avant de créer un profil vocal. |
 | Comprendre un passage dans une autre langue | Le bouton de traduction permet de rechercher une langue parmi 100. Le texte traduit est conservé à côté de l’original. Une correction de l’original invalide ses anciennes traductions. |
-| Revenir sur une décision | Le résumé local cite les passages utilisés. Vous pouvez relire les décisions et les actions dans leur contexte et retrouver les versions précédentes du compte rendu. |
+| Comprendre un enregistrement | Le résumé commence par un aperçu, puis regroupe les sujets avec des références aux paroles. Selon l’échange, il peut aussi relever une difficulté, une piste de travail ou un engagement. Les versions précédentes restent consultables. |
 | Partager un résultat | Exportez le compte rendu seul ou avec la transcription en Markdown, texte ou JSON. Le bouton d’export d’un passage enregistre l’extrait audio en WAV. |
 
 ## Traduire en direct
@@ -49,6 +49,7 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 | --- | --- | ---: |
 | Whisper large-v3-turbo pour la transcription | **Paramètres → Modèles → Précision Turbo** | 1,62 Go |
 | Moteur NVIDIA pour accélérer la transcription | **Paramètres → Dépendances → Installer le moteur NVIDIA** | 641 Mo |
+| Qwen3-4B-Instruct-2507 pour le résumé contextuel | **Paramètres → Modèles → Résumé contextualisé** | 2,50 Go |
 | Qwen2.5-3B-Instruct pour le résumé local | **Paramètres → Modèles → Résumé local** | 2,10 Go |
 | M2M100 pour la traduction des passages | **Paramètres → Dépendances → Traduction locale** | 496 Mo |
 
@@ -56,7 +57,9 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 
 **Emplacement des téléchargements.** Dans **Paramètres → Dépendances**, choisissez le dossier des modèles et du moteur NVIDIA. Cochez **Transférer les composants déjà installés** avant de choisir le dossier pour les déplacer. Si la case est décochée, seuls les prochains téléchargements utilisent le nouvel emplacement.
 
-**Résumé local.** Un fichier GGUF contient les poids et les métadonnées du modèle de langage. Le moteur Windows de résumé local utilise AVX2. Depuis un enregistrement transcrit, **Générer le résumé local** propose d’installer Qwen2.5 au premier usage. Vous pouvez aussi choisir votre propre GGUF compatible dans les paramètres.
+**Résumé local.** Ouvrez un enregistrement déjà transcrit et cliquez sur **Générer le résumé local**. Rikai utilise les paroles dans l’ordre, avec les noms des voix et vos corrections. Si le texte tient dans le contexte du modèle, une seule lecture suffit. Pour un enregistrement plus long, le modèle prend des notes par bloc, puis rédige une synthèse commune. Les références § renvoient aux passages d’origine.
+
+Le moteur Windows de résumé utilise le CPU avec AVX2. Au premier usage, Rikai propose Qwen3 si aucun modèle n’est sélectionné. Si vous utilisiez déjà Qwen2.5 ou un GGUF personnel, vous pouvez garder votre sélection ou télécharger **Résumé contextualisé** dans les paramètres. Le fichier GGUF contient les poids et les métadonnées nécessaires au calcul hors ligne. [Modèle Qwen3](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507) · [Version GGUF distribuée](https://huggingface.co/bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF)
 
 **Langues.** L’interface suit la langue de Windows par défaut. Le réglage **Paramètres → Interface** propose Français, English, Español, Русский, 日本語 et 简体中文. La langue de transcription et la langue cible d’une traduction se choisissent séparément.
 

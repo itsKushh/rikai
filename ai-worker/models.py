@@ -18,7 +18,14 @@ PRESETS = {
 
 # The release pins the weights used by the bundled summarizer and translator.
 GGUF = "qwen2.5-3b-instruct-q4_k_m.gguf"
+GGUF_CONTEXT = "Qwen_Qwen3-4B-Instruct-2507-Q4_K_M.gguf"
 PACKAGES = {
+    "Résumé contextualisé": (
+        "bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF",
+        "ae44f08e1392f39c0e474af10c3ff8355c8b6688",
+        "summary",
+        [GGUF_CONTEXT, "README.md"],
+    ),
     "Résumé local": (
         "Qwen/Qwen2.5-3B-Instruct-GGUF",
         "7dabda4d13d513e3e842b20f0d435c732f172cbe",
@@ -50,7 +57,10 @@ def inventory(cache):
             ):
                 result = dict(m["result"], folder=str(marker.parent))
                 if result.get("kind") == "summary":
-                    result["path"] = str(marker.parent / GGUF)
+                    weights = PACKAGES[m["preset"]][3][0]
+                    if weights not in m["files"]:
+                        continue
+                    result["path"] = str(marker.parent / weights)
                 elif result.get("kind") == "translation":
                     result["path"] = str(marker.parent)
                 items[m["preset"]] = result
@@ -198,7 +208,8 @@ def install(p, progress):
         result = {"folder": str(folder), "repo": repo, "revision": metadata.sha}
         if preset in PACKAGES:
             result["kind"] = size
-            result["path"] = str(folder / GGUF if size == "summary" else folder)
+            result["preset"] = preset
+            result["path"] = str(folder / needed[0] if size == "summary" else folder)
         marker = folder / "rikai-install.tmp"
         marker.write_text(
             json.dumps(

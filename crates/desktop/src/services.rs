@@ -30,6 +30,7 @@ impl Desk {
             }
         }
         for (key, name) in [
+            ("gguf", "Résumé contextualisé"),
             ("gguf", "Résumé local"),
             ("translation", "Traduction locale"),
         ] {
@@ -127,7 +128,7 @@ impl Desk {
         self.settings_origin = self.page;
         self.pending_summary = true;
         self.section = 0;
-        self.page = Page::ConfirmDownload("Résumé local");
+        self.page = Page::ConfirmDownload("Résumé contextualisé");
         Ok(())
     }
     pub(super) fn start_translation(&mut self, id: i64, language: String) -> Result<()> {

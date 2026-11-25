@@ -107,6 +107,33 @@ class PackageStorage(unittest.TestCase):
         self.relocate(True)
         self.assertEqual(dest.read_bytes(), b"test weights")
 
+    def test_two_summary_models_keep_their_own_paths_after_transfer(self):
+        preset = "Résumé contextualisé"
+        _, revision, group, files = models.PACKAGES[preset]
+        relative = Path("modeles", group, revision)
+        folder = self.home / relative
+        folder.mkdir(parents=True)
+        for name in files:
+            (folder / name).write_bytes(b"new")
+        (folder / "rikai-install.json").write_text(
+            json.dumps(
+                {
+                    "preset": preset,
+                    "files": dict.fromkeys(files, 3),
+                    "result": {"kind": "summary", "preset": preset, "path": "old path"},
+                }
+            )
+        )
+        installed = self.relocate(True)["installed"]
+        self.assertEqual(
+            Path(installed[preset]["path"]),
+            self.target / relative / models.GGUF_CONTEXT,
+        )
+        self.assertEqual(
+            Path(installed["Résumé local"]["path"]),
+            self.target / self.package / models.GGUF,
+        )
+
     def test_foreign_files_and_nested_location(self):
         extra = self.home / self.package / "mes-notes.txt"
         extra.write_text("private")

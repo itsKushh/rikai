@@ -174,17 +174,11 @@ class Timing(unittest.TestCase):
                 return b
 
             def create_chat_completion(self, **kwargs):
-                fact = {"type": "Décision", "texte": "Déployer", "preuves": [999]}
-                return {
-                    "choices": [
-                        {
-                            "finish_reason": "stop",
-                            "message": {"content": json.dumps({"faits": [fact]})},
-                        }
-                    ]
-                }
+                fact = {"appui": "On hésite", "texte": "Les deux personnes restent indécises.", "preuves": [999]}
+                report = dict(sujets=[fact], faits=[fact], bref="Les deux personnes restent indécises.")
+                return {"choices": [{"finish_reason": "stop", "message": {"content": json.dumps(report)}}]}
 
-        with self.assertRaisesRegex(ValueError, "Preuve"):
+        with self.assertRaisesRegex(ValueError, "aucun fait vérifiable"):
             generate_report(
                 [dict(id=1, speaker="Moi", text="On hésite.")],
                 InvalidEvidence(),

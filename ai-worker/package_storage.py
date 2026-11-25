@@ -67,8 +67,14 @@ def _managed_files(root):
                 continue
             _check_path(root, revision)
             if revision.is_dir():
+                managed = names.union(
+                    name
+                    for _, sha, package_group, files in PACKAGES.values()
+                    if group == package_group and sha == revision.name
+                    for name in files
+                )
                 for file in sorted(revision.iterdir()):
-                    if file.name.removesuffix(".part") in names:
+                    if file.name.removesuffix(".part") in managed:
                         _check_path(root, file)
                         if file.is_file():
                             yield file

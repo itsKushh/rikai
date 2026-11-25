@@ -1784,6 +1784,13 @@
   "モデルのファイル一覧を取得中",
   "正在读取模型文件列表"
  ],
+ "Lecture des sujets · bloc {i}/{n}": [
+  "Reading topics · block {0}/{1}",
+  "Lectura de temas · bloque {0}/{1}",
+  "Анализ тем · блок {0}/{1}",
+  "話題を読み取り中 · ブロック {0}/{1}",
+  "正在梳理话题 · 第 {0}/{1} 块"
+ ],
  "Les pistes audio de cet enregistrement seront supprimées.": [
   "This recording’s audio tracks will be deleted.",
   "Se eliminarán las pistas de audio de esta grabación.",
@@ -2162,6 +2169,20 @@
   "新しいプロファイル名",
   "新档案名称"
  ],
+ "Nouvelle lecture · Lecture des sujets · bloc {i}/{n}": [
+  "Rereading topics · block {0}/{1}",
+  "Relectura de temas · bloque {0}/{1}",
+  "Повторный анализ тем · блок {0}/{1}",
+  "話題を再確認中 · ブロック {0}/{1}",
+  "正在重新梳理话题 · 第 {0}/{1} 块"
+ ],
+ "Nouvelle lecture · Synthèse de l’ensemble de l’échange": [
+  "Retrying the full conversation summary",
+  "Reintentando la síntesis de toda la conversación",
+  "Повторное обобщение всей беседы",
+  "会話全体の要約を再試行中",
+  "正在重新总结整段对话"
+ ],
  "Objet": [
   "Purpose",
   "Objetivo",
@@ -2435,6 +2456,13 @@
   "Qwen2.5 · 3B · GGUF · 2.10 GB",
   "Qwen2.5 · 3B · GGUF · 2.10 GB"
  ],
+ "Qwen3 Instruct · 4B · GGUF · 2,50 Go": [
+  "Qwen3 Instruct · 4B · GGUF · 2.50 GB",
+  "Qwen3 Instruct · 4B · GGUF · 2,50 GB",
+  "Qwen3 Instruct · 4B · GGUF · 2,50 ГБ",
+  "Qwen3 Instruct · 4B · GGUF · 2.50 GB",
+  "Qwen3 Instruct · 4B · GGUF · 2.50 GB"
+ ],
  "Rapide": [
   "Fast",
   "Rápido",
@@ -2631,6 +2659,13 @@
   "要約用 GGUF ファイル",
   "摘要 GGUF 文件"
  ],
+ "Résumé contextualisé": [
+  "Contextual summary",
+  "Resumen contextual",
+  "Контекстная сводка",
+  "文脈を踏まえた要約",
+  "上下文摘要"
+ ],
  "Résumé local": [
   "Local summary",
   "Resumen local",
@@ -2756,6 +2791,13 @@
   "Удалить {0}",
   "{0} を削除",
   "删除 {0}"
+ ],
+ "Synthèse de l’ensemble de l’échange": [
+  "Summarizing the full conversation",
+  "Síntesis de toda la conversación",
+  "Обобщение всей беседы",
+  "会話全体を要約中",
+  "正在总结整段对话"
  ],
  "Synthèse manquante": [
   "Lack of synthesis",
@@ -3162,6 +3204,13 @@
   "Скачать",
   "ダウンロード",
   "下载"
+ ],
+ "Télécharger Qwen3 Instruct (2,50 Go) et l’utiliser pour les prochains résumés locaux ?": [
+  "Download Qwen3 Instruct (2.50 GB) and use it for future local summaries?",
+  "¿Descargar Qwen3 Instruct (2,50 GB) y usarlo para los próximos resúmenes locales?",
+  "Скачать Qwen3 Instruct (2,50 ГБ) и использовать его для следующих локальных сводок?",
+  "Qwen3 Instruct（2.50 GB）をダウンロードして、今後のローカル要約に使用しますか？",
+  "是否下载 Qwen3 Instruct（2.50 GB）并用于今后的本地摘要？"
  ],
  "Téléchargé": [
   "Downloaded",

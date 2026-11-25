@@ -131,6 +131,11 @@ impl Desk {
         description: &'static str,
         cx: &Context<Self>,
     ) -> Div {
+        let key = if preset == "Traduction locale" {
+            "translation"
+        } else {
+            "gguf"
+        };
         let p = *cx.global::<Palette>();
         col()
             .child(label(preset))
@@ -166,19 +171,10 @@ impl Desk {
                 ))
             })
             .when(
-                self.available(preset)
-                    && self.settings[if preset == "Résumé local" {
-                        "gguf"
-                    } else {
-                        "translation"
-                    }] != self.installed[preset]["path"],
+                self.available(preset) && self.settings[key] != self.installed[preset]["path"],
                 |d| {
                     d.child(action("Utiliser ce modèle", false, cx, move |s, _| {
-                        s.settings[if preset == "Résumé local" {
-                            "gguf"
-                        } else {
-                            "translation"
-                        }] = s.installed[preset]["path"].clone();
+                        s.settings[key] = s.installed[preset]["path"].clone();
                         s.save_settings()
                     }))
                 },
