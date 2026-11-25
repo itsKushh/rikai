@@ -123,10 +123,14 @@ def main():
         commands = command_lines()
         req = json.loads(next(commands))
         job = req["id"]
-        if req["method"] not in ("install", "install_cuda"):
-            os.environ["HF_HUB_OFFLINE"] = "1"
         if req["version"] != 1:
             raise ValueError("Version IPC incompatible")
+        method = req["method"]
+        params = req.get("params", {})
+        # The Hub snapshots this flag on import. Each worker handles a single
+        # request, and only a confirmed model install needs an online Hub client.
+        online_install = method == "install" and params.get("consent") is True
+        os.environ["HF_HUB_OFFLINE"] = "0" if online_install else "1"
 
         def controls():
             for line in commands:
@@ -186,8 +190,6 @@ def main():
             emit(
                 job, "progress", stage="Requête reçue par le moteur IA", phase="startup"
             )
-        method = req["method"]
-        params = req.get("params", {})
         managed_install = method == "install_cuda" or (
             method == "install" and not params.get("cache")
         )

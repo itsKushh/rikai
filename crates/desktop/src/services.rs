@@ -190,7 +190,7 @@ impl Desk {
         let cancel = if method == "download_update" {
             self.transfer = None;
             self.stage = "Téléchargement de la mise à jour".into();
-            self.begin_work()
+            self.begin_download()
         } else {
             Arc::new(AtomicBool::new(false))
         };
@@ -206,6 +206,7 @@ impl Desk {
         self.update_checking = false;
         self.update_downloading = false;
         if op == "download_update" {
+            self.finish_download();
             self.cancel = None;
         }
         let data = match res {

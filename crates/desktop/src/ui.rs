@@ -87,7 +87,8 @@ pub fn run() -> Result<()> {
                 ..Default::default()
             };
             cx.open_window(opt, move |w, cx| {
-                let desk = cx.new(move |cx| Desk::new(root, db, cx));
+                let button = taskbar::DownloadButton::attach(w);
+                let desk = cx.new(move |cx| Desk::new(root, db, button, cx));
                 let weak = desk.downgrade();
                 w.on_window_should_close(cx, move |_, cx| {
                     weak.update(cx, |s, cx| {
@@ -116,6 +117,8 @@ use view::live;
 mod services;
 #[path = "system_load.rs"]
 mod system_load;
+#[path = "taskbar.rs"]
+mod taskbar;
 enum Event {
     Load(system_load::Load),
     GpuTest(Result<Value>),
@@ -159,6 +162,7 @@ struct PlayingSegment {
 }
 
 struct Desk {
+    taskbar: Option<taskbar::DownloadButton>,
     live_window: Option<WindowHandle<live::Live>>,
     browse_query: Field,
     browse_term: String,
@@ -247,7 +251,12 @@ struct Desk {
     stage: String,
 }
 impl Desk {
-    fn new(root: PathBuf, db: Library, cx: &mut Context<Self>) -> Self {
+    fn new(
+        root: PathBuf,
+        db: Library,
+        taskbar: Option<taskbar::DownloadButton>,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
         let mut settings: Value = db
             .pref("settings")
@@ -318,6 +327,7 @@ impl Desk {
             ));
         });
         let mut s = Self {
+            taskbar,
             live_window: None,
             browse_query: field(cx),
             browse_term: String::new(),
@@ -594,6 +604,9 @@ impl Desk {
             }
             cx.notify();
         }
+        if let Some(button) = &mut self.taskbar {
+            button.sync();
+        }
         if self.update_status == "applying" {
             cx.quit();
             return;
@@ -695,6 +708,7 @@ impl Desk {
                 );
             }
             Event::Installed(r) => {
+                self.finish_download();
                 self.cancel = None;
                 tracing::info!(reussite = r.is_ok(), "Fin du téléchargement du modèle");
                 let v = match r {
@@ -750,6 +764,9 @@ impl Desk {
                 self.detail(id)?;
             }
             Event::Stage(update) => {
+                if let (Some(button), Some((done, total))) = (&mut self.taskbar, update.bytes) {
+                    button.progress(done, total);
+                }
                 if self.stage != update.stage {
                     tracing::info!(etape = %update.stage, "Progression IA");
                 }
@@ -1029,6 +1046,17 @@ impl Desk {
         self.generated_chars = None;
         ctl
     }
+    fn begin_download(&mut self) -> Arc<AtomicBool> {
+        if let Some(button) = &mut self.taskbar {
+            button.start();
+        }
+        self.begin_work()
+    }
+    fn finish_download(&mut self) {
+        if let Some(button) = &mut self.taskbar {
+            button.finish();
+        }
+    }
     fn recover_audio(&mut self) -> Result<()> {
         let id = self.id;
         let dir = self.audio_dir(id);
@@ -1176,7 +1204,7 @@ impl Desk {
         };
         ensure!(!self.busy(), "Un travail est déjà actif");
         tracing::info!(preset, "Téléchargement du modèle confirmé");
-        let ctl = self.begin_work();
+        let ctl = self.begin_download();
         self.stage = "Mise en relation avec le catalogue public".into();
         let params = json!({"consent":true,"preset":preset});
         let tx = self.tx.clone();

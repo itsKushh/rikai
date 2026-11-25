@@ -15,7 +15,8 @@ unicode-segmentation = "1"
 rfd = "=0.17.2"
 gpui_ce_elements = "=0.3.0"
 
-windows = { version="=0.62.2", features=["Win32_Media_Multimedia"] }
+raw-window-handle = "0.6"
+windows = { version="=0.62.2", features=["Win32_Media_Multimedia", "Win32_System_Com", "Win32_UI_Shell", "Win32_UI_WindowsAndMessaging"] }
 sysinfo = { version="=0.38.4", default-features=false, features=["system"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", default-features = false, features = ["fmt","std"] }

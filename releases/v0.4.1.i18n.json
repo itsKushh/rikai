@@ -1,0 +1,7 @@
+{
+  "en": "## Downloads\nThe Windows taskbar shows progress for model, NVIDIA runtime and app update downloads, even while Rikai is minimized. The indicator clears on completion, cancellation or failure. Confirming a model download in Rikai now works even when Hugging Face offline mode is enabled on the PC. Local transcription and summaries still work offline.",
+  "es": "## Descargas\nLa barra de tareas de Windows muestra el progreso al descargar modelos, el motor de NVIDIA o una actualización, incluso con Rikai minimizado. El indicador desaparece al finalizar, cancelar o producirse un error. Ahora puedes confirmar la descarga de un modelo aunque Hugging Face esté en modo sin conexión en tu equipo. La transcripción y los resúmenes locales siguen funcionando sin conexión.",
+  "ru": "## Загрузки\nНа панели задач Windows теперь отображается ход загрузки моделей, библиотек NVIDIA и обновлений приложения, даже если окно Rikai свёрнуто. Индикатор исчезает после завершения, отмены или ошибки. Подтверждённая в Rikai загрузка модели работает, даже если на компьютере включён автономный режим Hugging Face. Локальная расшифровка и создание сводок по-прежнему доступны без интернета.",
+  "ja": "## ダウンロード\nモデル、NVIDIA ランタイム、アプリの更新のダウンロード状況が Windows のタスクバーに表示されます。Rikai を最小化しても確認でき、完了、キャンセル、エラー時には表示が消えます。PC で Hugging Face のオフラインモードが有効でも、Rikai でダウンロードを確認すればモデルをインストールできます。ローカルの文字起こしと要約は引き続きオフラインで利用できます。",
+  "zh": "## 下载\nWindows 任务栏会显示模型、NVIDIA 运行库和应用更新的下载进度，最小化 Rikai 后也能查看。下载完成、取消或失败时，进度指示会消失。即使电脑启用了 Hugging Face 离线模式，在 Rikai 中确认后也能下载模型。本地转写和摘要仍可离线使用。"
+}

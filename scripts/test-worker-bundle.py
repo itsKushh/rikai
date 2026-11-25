@@ -75,7 +75,9 @@ if sys.platform == "win32":
 
     # Exercise native quantized kernels and constrained generation, beyond import.
     with tempfile.TemporaryDirectory() as cache:
-        _, result = invoke("install", {"preset": "Résumé contextualisé", "consent": True, "cache": cache}, "result")
+        from unittest.mock import patch
+        with patch.dict(os.environ, HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1"):
+            _, result = invoke("install", {"preset": "Résumé contextualisé", "consent": True, "cache": cache}, "result")
         stages, result = invoke("summarize", {
             "settings": {"gguf": result["result"]["path"]},
             "segments": [
