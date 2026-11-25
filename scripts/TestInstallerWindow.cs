@@ -24,7 +24,9 @@ internal static class TestInstallerWindow
         var installer = Assembly.LoadFrom(args[0]);
         folder = args[1]; preview = args[2];
         Directory.CreateDirectory(preview);
-        Application.ResourceAssembly = installer;
+        // Compiled WPF pages reference their own assembly by name.
+        AppDomain.CurrentDomain.AssemblyResolve += (sender, request) =>
+            new AssemblyName(request.Name).Name == installer.GetName().Name ? installer : null;
         Thread.CurrentThread.CurrentUICulture = CultureInfo.GetCultureInfo("fr-FR");
         Dispatcher.CurrentDispatcher.BeginInvoke(DispatcherPriority.ApplicationIdle, new Action(ExerciseWindow));
         int exit = (int)installer.EntryPoint.Invoke(null, new object[] { new string[0] });
