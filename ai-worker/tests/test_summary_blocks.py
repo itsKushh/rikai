@@ -273,6 +273,12 @@ Merci de votre attention.
             .replace("d’ouverture du marché (§2–8)", "d’ouverture du *marché* (§2–8)")
         )
         self.assertEqual(read_markdown(styled, set(passages), passages), points)
+        self.assertEqual(
+            read_markdown(
+                content.replace("## Sujets abordés\n", ""), set(passages), passages
+            ),
+            points,
+        )
         self.assertIsNone(
             read_markdown(content.replace("§2–8", "§2, 99"), set(passages), passages)
         )

@@ -52,7 +52,7 @@ Une discussion peut passer à un autre sujet sans transition. Préserve ce chang
 Renvoie un objet JSON contenant une liste faits de {appui, texte, preuves}. Chaque note est compréhensible seule."""
 BLOCK_MARKDOWN = """Lis ce bloc jusqu’à la dernière intervention. Prépare une courte fiche qui servira à rédiger le résumé global.
 ## En bref : écris une phrase situant ce passage.
-## Sujets abordés : une puce par thème distinct, y compris les changements de sujet en fin de bloc. Regroupe questions et réponses. Nomme la personne quand son avis ou son engagement compte. Termine chaque puce par les références des paroles, sous la forme (§N, §N). Environ 120 mots au total."""
+## Sujets abordés : une puce par thème distinct, y compris les changements de sujet en fin de bloc. Regroupe questions et réponses. Nomme la personne quand son avis ou son engagement compte. Termine chaque puce par le numéro d’une intervention représentative, sous la forme (§N), même quand les mêmes mots reviennent souvent. Environ 120 mots au total."""
 
 
 class Point(NamedTuple):
@@ -270,11 +270,17 @@ def read_markdown(content, ids, passages):
                 sections[current].append(re.sub(r"^[-*•]\s+", "", inline))
         elif text.startswith("#"):
             current = None
-        elif current == "En bref":
-            sections[current].append(text.strip("*"))
-        elif current and re.match(r"^(?:[-*•]|\d+[.)])\s+", text):
+        elif re.match(r"^(?:[-*•]|\d+[.)])\s+", text):
+            # Small models sometimes put their topic list straight after the overview.
+            if current == "En bref" and sections[current]:
+                current = "Sujets abordés"
+                sections.setdefault(current, [])
+            if current is None:
+                continue
             continuation = True
             sections[current].append(re.sub(r"^(?:[-*•]|\d+[.)])\s+", "", text))
+        elif current == "En bref":
+            sections[current].append(text.strip("*"))
         elif current and continuation and sections[current]:
             sections[current][-1] += " " + text
 
@@ -310,6 +316,16 @@ def read_markdown(content, ids, passages):
             if section == "Sujets abordés":
                 if len(text.split()) < 4:
                     continue
+                if len(refs) > 2:
+                    terms = {w for w in words(text).split() if len(w) > 3}
+                    refs = sorted(
+                        refs,
+                        key=lambda r: len(
+                            terms.intersection(words(passages[r]["text"]).split())
+                        ),
+                        reverse=True,
+                    )[:2]
+                    refs.sort()
                 point = Point(refs, section, text)
             else:
                 quote = re.search(r'[«“"]([^»”"]+)[»”"]', text)
