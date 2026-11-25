@@ -270,7 +270,11 @@ Merci de votre attention.
         )
 
     def test_invalid_markdown_retries_with_grounded_schema(self):
-        replies = iter(["## En bref\nUn texte sans sujet ni source.", report([4])])
+        recovered = {
+            "sujets": [{"texte": "Le quai est en travaux.", "preuves": [4]}],
+            "bref": "Ils discutent des travaux du quai.",
+        }
+        replies = iter(["## En bref\nUn texte sans sujet ni source.", recovered])
         model = Chat(lambda *args: next(replies))
         result = self.generate(
             [dict(id=4, speaker="Lou", text="Le quai est en travaux.")], model

@@ -29,7 +29,7 @@ Dans sujets, écris une puce par thème important (souvent deux à quatre). Rass
 Dans bref, résume ensuite le contexte général et les principaux sujets en une ou deux phrases naturelles, à la troisième personne.
 Quand la voix s’appelle « Moi », écris « la personne qui enregistre » si tu dois la nommer. N’invente ni client, ni engagement, ni conseil.
 Tu peux terminer après bref. Seulement si un complément apporte quelque chose, recopie dans complements une citation exacte exprimant explicitement une appréciation, une difficulté, un enseignement, une piste ou un engagement pour APRÈS l’échange. Les paroles passées, citées ou lancées pendant un jeu ne sont pas des tâches.
-Réponse JSON : sujets est une liste de {appui, texte, preuves}, bref est une chaîne. La liste facultative complements contient des objets {citation, id, type}. Types possibles : """
+Réponse JSON : sujets est une liste de {texte, preuves}. Pour chaque sujet, preuves contient un ou deux numéros de passages qui justifient la phrase. bref est une chaîne. La liste facultative complements contient des objets {citation, id, type}. Types possibles : """
     + ", ".join(SECTIONS[2:])
     + "."
 )
@@ -138,7 +138,6 @@ def format_for(ids, final, limit):
         "texte": {"type": "string", "minLength": 1},
         "preuves": array({"type": "integer", "enum": sorted(ids)}, 2, 1),
     }
-    point = obj(fields)
     if final:
         extra = obj(
             {
@@ -149,14 +148,16 @@ def format_for(ids, final, limit):
         )
         schema = obj(
             {
-                "sujets": array(point, limit, 1),
+                "sujets": array(
+                    obj({key: fields[key] for key in ("texte", "preuves")}), limit, 1
+                ),
                 "bref": fields["texte"],
                 "complements": array(extra, 3),
             }
         )
         schema["required"] = ["sujets", "bref"]
     else:
-        schema = obj({"faits": array(point, limit, 1)})
+        schema = obj({"faits": array(obj(fields), limit, 1)})
     return {"type": "json_object", "schema": schema}
 
 
@@ -192,21 +193,25 @@ def verified(content, ids, final, limit, passages):
                 r"\b(?:le|les|des|et|que|avec|pour|du|au|une?)$", text, re.I
             ):
                 return None
-            quote = f["appui"]
-            # Some GGUFs copy the complete quoted input line as their excerpt.
-            labelled = re.fullmatch(r'§\d+ "(?:[^"\\]|\\.)*" : (".*")', quote.strip())
-            if labelled:
-                quote = json.loads(labelled[1])
-            cited = [r for r in refs if anchored(quote, passages[r]["text"])]
-            if not cited:
-                # Small models sometimes copy the right words and the neighbouring ID.
-                matches = [r for r in ids if anchored(quote, passages[r]["text"])]
-                if len(matches) != 1:
-                    continue
-                refs = cited = matches
             if any(words(text) == words(other.text) for other in output):
                 continue
-            support = line([cited[0]], passages[cited[0]]["speaker"], quote)
+            support = ""
+            if not final:
+                quote = f["appui"]
+                # Some GGUFs copy the complete quoted input line as their excerpt.
+                labelled = re.fullmatch(
+                    r'§\d+ "(?:[^"\\]|\\.)*" : (".*")', quote.strip()
+                )
+                if labelled:
+                    quote = json.loads(labelled[1])
+                cited = [r for r in refs if anchored(quote, passages[r]["text"])]
+                if not cited:
+                    # Small models sometimes copy the right words and the neighbouring ID.
+                    matches = [r for r in ids if anchored(quote, passages[r]["text"])]
+                    if len(matches) != 1:
+                        continue
+                    refs = cited = matches
+                support = line([cited[0]], passages[cited[0]]["speaker"], quote)
             output.append(Point(list(dict.fromkeys(refs)), section, text, support))
         if not output:
             return None
@@ -333,7 +338,7 @@ def generate_report(parts, llm, progress, *, constrain=False):
             instruction = (
                 (MARKDOWN + "\n" + COMMON)
                 if markdown
-                else COMMON + "\n" + GROUNDING + "\n" + (REPORT if final else NOTES)
+                else COMMON + "\n" + (REPORT if final else GROUNDING + "\n" + NOTES)
             )
             instruction += f" Au maximum {limit} sujets. Une phrase courte par sujet."
             if retry:
