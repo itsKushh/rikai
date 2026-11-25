@@ -50,6 +50,9 @@ NOTES = """Lis le bloc entier, y compris sa fin, avant de préparer les notes. R
 Pour chaque thème distinct, donne son nom précis, qui en parle, la position exprimée et les détails qui changent le sens. Distingue lecture, récit passé, opinion et engagement futur.
 Une discussion peut passer à un autre sujet sans transition. Préserve ce changement.
 Renvoie un objet JSON contenant une liste faits de {appui, texte, preuves}. Chaque note est compréhensible seule."""
+BLOCK_MARKDOWN = """Lis ce bloc jusqu’à la dernière intervention. Prépare une courte fiche qui servira à rédiger le résumé global.
+## En bref : écris une phrase situant ce passage.
+## Sujets abordés : une puce par thème distinct, y compris les changements de sujet en fin de bloc. Regroupe questions et réponses. Nomme la personne quand son avis ou son engagement compte. Termine chaque puce par les références des paroles, sous la forme (§N, §N). Environ 120 mots au total."""
 
 
 class Point(NamedTuple):
@@ -344,9 +347,9 @@ def generate_report(parts, llm, progress, *, constrain=False):
         data, ids = batch
         for retry in (False, True):
             limit = (6 if retry else 10) if final else (4 if retry else 7)
-            markdown = final and not retry
+            markdown = not retry
             instruction = (
-                (MARKDOWN + "\n" + COMMON)
+                ((MARKDOWN if final else BLOCK_MARKDOWN) + "\n" + COMMON)
                 if markdown
                 else COMMON + "\n" + (REPORT if final else GROUNDING + "\n" + NOTES)
             )
@@ -369,7 +372,7 @@ def generate_report(parts, llm, progress, *, constrain=False):
                     },
                 ],
                 temperature=0,
-                max_tokens=1000 if markdown else (850 if final else 560),
+                max_tokens=(1000 if markdown else 850) if final else 560,
             )
             if not markdown:
                 options["response_format"] = (
@@ -396,6 +399,24 @@ def generate_report(parts, llm, progress, *, constrain=False):
                 else verified(content, ids, final, limit, passages)
             )
             if result is not None:
+                if markdown and not final:
+                    # Carry actual turns alongside the map's paraphrases so the final
+                    # writer can distinguish speakers and quote their original words.
+                    return [
+                        point._replace(
+                            section=None,
+                            support=" / ".join(
+                                line(
+                                    [r],
+                                    passages[r]["speaker"],
+                                    passages[r]["text"][:280],
+                                )
+                                for r in point.refs[:2]
+                            ),
+                        )
+                        for point in result
+                        if point.section == "Sujets abordés"
+                    ]
                 return result
         return None
 

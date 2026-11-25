@@ -49,9 +49,7 @@ class Chat:
         data = (
             messages[-1]["content"].split("\n", 1)[1].rsplit("\nFin des données.", 1)[0]
         )
-        final = (
-            response_format is None or "bref" in response_format["schema"]["properties"]
-        )
+        final = messages[-1]["content"].endswith("le résumé global en français.")
         self.calls.append((final, data))
         value = self.reply(data, final)
         if value is None:
@@ -59,8 +57,12 @@ class Chat:
             yield chunk(finish="length")
         else:
             if response_format is None and isinstance(value, dict):
-                lines = ["## En bref", value["bref"], "## Sujets abordés"]
-                for point in value["sujets"]:
+                lines = [
+                    "## En bref",
+                    value.get("bref", "Cette partie aborde les sujets suivants."),
+                    "## Sujets abordés",
+                ]
+                for point in value["sujets" if final else "faits"]:
                     refs = ", ".join(f"§{i}" for i in point["preuves"])
                     lines.append(f"- {point['texte']} ({refs})")
                 for extra in value.get("complements", []):
