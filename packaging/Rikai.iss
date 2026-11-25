@@ -19,8 +19,8 @@ DisableProgramGroupPage=yes
 WizardStyle=modern
 SetupIconFile=..\assets\rikai.ico
 UninstallDisplayIcon={app}\rikai.ico
-OutputDir=..\dist
-OutputBaseFilename=Rikai-Setup-x64
+OutputDir=..\dist\installer-engine
+OutputBaseFilename=Rikai-Payload
 Compression=lzma2
 SolidCompression=yes
 CloseApplications=yes
@@ -33,11 +33,11 @@ Name: "russian"; MessagesFile: "compiler:Languages\Russian.isl"
 Name: "french"; MessagesFile: "compiler:Languages\French.isl"
 
 [Files]
-Source: "..\target\release\rikai.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\target\release\rikai-audio.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\assets\rikai.ico"; DestDir: "{app}"
-Source: "..\dist\rikai-worker\*"; DestDir: "{app}\worker"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\dist\notices\*"; DestDir: "{app}\licences"; Flags: recursesubdirs createallsubdirs
+Source: "..\target\release\rikai.exe"; DestDir: "{app}"; Flags: ignoreversion; BeforeInstall: ComponentStage(0)
+Source: "..\target\release\rikai-audio.exe"; DestDir: "{app}"; Flags: ignoreversion; BeforeInstall: ComponentStage(0)
+Source: "..\assets\rikai.ico"; DestDir: "{app}"; BeforeInstall: ComponentStage(0)
+Source: "..\dist\rikai-worker\*"; DestDir: "{app}\worker"; Flags: ignoreversion recursesubdirs createallsubdirs; BeforeInstall: ComponentStage(1)
+Source: "..\dist\notices\*"; DestDir: "{app}\licences"; Flags: recursesubdirs createallsubdirs; BeforeInstall: ComponentStage(1)
 
 [InstallDelete]
 Type: files; Name: "{app}\meetingnotes.exe"
@@ -48,12 +48,72 @@ Type: files; Name: "{userprograms}\MeetingNotes\MeetingNotes.lnk"
 Type: dirifempty; Name: "{userprograms}\MeetingNotes"
 
 [Icons]
-Name: "{group}\Rikai"; Filename: "{app}\rikai.exe"; IconFilename: "{app}\rikai.ico"
+Name: "{group}\Rikai"; Filename: "{app}\rikai.exe"; IconFilename: "{app}\rikai.ico"; BeforeInstall: ComponentStage(2)
 [Run]
 Filename: "{app}\rikai.exe"; Description: "{cm:LaunchProgram,Rikai}"; Flags: postinstall nowait skipifsilent
 
 
 [Code]
+var
+  Guided: Boolean;
+  BridgeDir: String;
+  Stage, Percent, WrittenStage, WrittenPercent: Integer;
+
+procedure InitializeWizard;
+begin
+  Guided := ExpandConstant('{param:RIKAI_GUIDED|0}') = '1';
+  BridgeDir := ExtractFileDir(ExpandConstant('{srcexe}'));
+  WrittenStage := -1;
+  WrittenPercent := -1;
+end;
+
+procedure WriteProgress;
+begin
+  if Guided and ((Stage <> WrittenStage) or (Percent <> WrittenPercent)) then
+    if SaveStringToFile(BridgeDir + '\progress', IntToStr(Stage) + ' ' + IntToStr(Percent), False) then begin
+      WrittenStage := Stage;
+      WrittenPercent := Percent;
+    end;
+end;
+
+procedure ComponentStage(Value: Integer);
+begin
+  Stage := Value;
+  WriteProgress;
+end;
+
+function GetWindowLongW(Wnd: HWND; Index: Integer): Longint;
+  external 'GetWindowLongW@user32.dll stdcall';
+function SetWindowLongW(Wnd: HWND; Index: Integer; Value: Longint): Longint;
+  external 'SetWindowLongW@user32.dll stdcall';
+function SetLayeredWindowAttributes(Wnd: HWND; Key: Cardinal; Alpha: Byte; Flags: Cardinal): Boolean;
+  external 'SetLayeredWindowAttributes@user32.dll stdcall';
+
+procedure CurInstallProgressChanged(CurProgress, MaxProgress: Integer);
+begin
+  if not Guided then Exit;
+  if MaxProgress > 0 then Percent := Round(100.0 * CurProgress / MaxProgress);
+  WriteProgress;
+  if FileExists(BridgeDir + '\cancel') then begin
+    { Inno accepts cancellation only while its wizard is visible. Make the
+      native form transparent before asking Inno to cancel and roll back. }
+    if not WizardForm.Visible then begin
+      SetWindowLongW(WizardForm.Handle, -20, GetWindowLongW(WizardForm.Handle, -20) or $80000 or $80);
+      SetLayeredWindowAttributes(WizardForm.Handle, 0, 0, 2);
+      WizardForm.Show;
+    end;
+    PostMessage(WizardForm.Handle, $0010, 0, 0);
+  end;
+end;
+
+procedure CancelButtonClick(CurPageID: Integer; var Cancel, Confirm: Boolean);
+begin
+  if Guided and FileExists(BridgeDir + '\cancel') then begin
+    Cancel := True;
+    Confirm := False;
+  end;
+end;
+
 function PrepareToInstall(var NeedsRestart: Boolean): String;
 var OldDir, NewDir: String;
 begin

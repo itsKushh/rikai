@@ -44,4 +44,19 @@ if ($Stage -in 'All','Installer') {
     else { $IsccPath = Join-Path "${env:ProgramFiles(x86)}" 'Inno Setup 6\ISCC.exe' }
     $Version = (Select-String -Path Cargo.toml -Pattern '^version = "([^"]+)"').Matches[0].Groups[1].Value
     Run-Checked $IsccPath @("/DRikaiVersion=$Version", 'packaging/Rikai.iss')
+    $MSBuild = Get-Command MSBuild.exe -ErrorAction SilentlyContinue
+    if ($MSBuild) { $MSBuildPath = $MSBuild.Source }
+    else {
+        $VsWhere = Join-Path "${env:ProgramFiles(x86)}" 'Microsoft Visual Studio\Installer\vswhere.exe'
+        $MSBuildPath = & $VsWhere -latest -products * -requires Microsoft.Component.MSBuild -find 'MSBuild\**\Bin\MSBuild.exe' | Select-Object -First 1
+    }
+    if (-not $MSBuildPath) { throw 'MSBuild et le pack de ciblage .NET Framework 4.8 sont requis.' }
+    @"
+[assembly: System.Reflection.AssemblyProduct("Rikai")]
+[assembly: System.Reflection.AssemblyTitle("Rikai Setup")]
+[assembly: System.Reflection.AssemblyVersion("$Version.0")]
+[assembly: System.Reflection.AssemblyInformationalVersion("$Version")]
+"@ | Set-Content 'dist/setup-version.cs' -Encoding utf8
+    Run-Checked $MSBuildPath @('packaging/Setup/RikaiSetup.csproj','/t:Build','/p:Configuration=Release','/nologo','/v:minimal')
+    Copy-Item 'dist/setup-build/RikaiSetup.exe' 'dist/Rikai-Setup-x64.exe' -Force
 }

@@ -5,6 +5,8 @@ use gpui::Div;
 pub(super) mod budgets;
 #[path = "dialogue.rs"]
 mod dialogue;
+#[path = "record.rs"]
+mod record;
 
 #[derive(Clone, Copy)]
 enum Button {
@@ -267,31 +269,6 @@ fn raw_label(s: impl Into<SharedString>) -> Div {
         .text_size(px(13.))
         .font_weight(FontWeight::SEMIBOLD)
         .child(s.into())
-}
-fn report_text(report: &str) -> Div {
-    if report.is_empty() {
-        return div().child(tr("Aucun résumé enregistré."));
-    }
-    if !report.starts_with("## En bref\n") && !report.starts_with("## Synthèse partielle\n") {
-        return div().child(report.to_owned());
-    }
-    let mut body = col().gap(px(5.));
-    for (index, line) in report.lines().filter(|s| !s.is_empty()).enumerate() {
-        body = if let Some(heading) = line.strip_prefix("## ") {
-            body.child(raw_label(heading.to_owned()).when(index > 0, |d| d.mt(px(9.))))
-        } else if let Some(text) = line.strip_prefix("- ") {
-            body.child(
-                div()
-                    .flex()
-                    .gap(px(7.))
-                    .child("•")
-                    .child(div().flex_1().min_w_0().child(text.to_owned())),
-            )
-        } else {
-            body.child(div().child(line.to_owned()))
-        };
-    }
-    body
 }
 fn input(cx: &App, f: &Field, id: &'static str, hint: &'static str) -> impl IntoElement {
     let p = *cx.global::<Palette>();
@@ -570,6 +547,10 @@ impl Desk {
                         cx,
                         move |s, _| {
                             s.stop_segment();
+                            s.record_menu = None;
+                            s.metadata = false;
+                            s.language_picker = None;
+                            s.scroll_grab = None;
                             s.tab = i as u8;
                             s.edit_id = None;
                             Ok(())
@@ -582,15 +563,6 @@ impl Desk {
 
     fn detail_view(&self, cx: &Context<Self>) -> Div {
         let mut body = col();
-        let dir = self.audio_dir(self.id);
-        if dir.join("sources.json").is_file() && !dir.join("finalise").is_file() {
-            body = body.child(action(
-                "Récupérer les pistes lisibles",
-                false,
-                cx,
-                |s, _| s.recover_audio(),
-            ));
-        }
         if self.metadata {
             return body
                 .child(input(cx, &self.title, "rename", "Titre"))
@@ -602,109 +574,27 @@ impl Desk {
                     "tags",
                     "Tags séparés par des virgules",
                 ))
-                .child(action("Enregistrer les informations", true, cx, |s, cx| {
-                    s.db.update_metadata(
-                        s.id,
-                        s.title.read(cx).as_str(),
-                        s.project.read(cx).as_str(),
-                        s.description.read(cx).as_str(),
-                        s.tags.read(cx).as_str(),
-                    )?;
-                    s.detail(s.id)
-                }));
+                .child(
+                    row()
+                        .child(button("Annuler", Button::Quiet, None, false, cx, |s, _| {
+                            s.metadata = false;
+                            Ok(())
+                        }))
+                        .child(action("Enregistrer les informations", true, cx, |s, cx| {
+                            s.db.update_metadata(
+                                s.id,
+                                s.title.read(cx).as_str(),
+                                s.project.read(cx).as_str(),
+                                s.description.read(cx).as_str(),
+                                s.tags.read(cx).as_str(),
+                            )?;
+                            s.detail(s.id)
+                        })),
+                );
         }
         match self.tab {
-            0 => {
-                body = body.child(report_text(&self.summary));
-                if !self.summary.is_empty() {
-                    body = body.child(action("Modifier le résumé", false, cx, |s, cx| {
-                        s.edit.update(cx, |f, cx| f.emplace(&s.summary, cx));
-                        s.edit_id = Some(-1);
-                        Ok(())
-                    }));
-                    if self.edit_id == Some(-1) {
-                        body = body
-                            .child(
-                                text_area("summary-edit")
-                                    .state(self.edit.downgrade())
-                                    .bg(rgb(cx.global::<Palette>().base))
-                                    .rounded(px(11.))
-                                    .p_3()
-                                    .text_color(rgb(cx.global::<Palette>().text))
-                                    .caret_color(rgb_to_hsla(rgb(cx.global::<Palette>().text)))
-                                    .w_full()
-                                    .h(px(200.)),
-                            )
-                            .child(action(
-                                "Enregistrer une nouvelle version",
-                                true,
-                                cx,
-                                |s, cx| {
-                                    s.db.save_summary(
-                                        s.id,
-                                        s.edit.read(cx).as_str(),
-                                        "correction manuelle",
-                                        &[],
-                                    )?;
-                                    s.detail(s.id)
-                                },
-                            ));
-                    }
-                    if let Ok(versions) = self.db.versions(self.id)
-                        && versions.len() > 1
-                    {
-                        for (id, body_text) in versions {
-                            body = body.child(action(
-                                format!("Lire la version {id}"),
-                                false,
-                                cx,
-                                move |s, _| {
-                                    s.summary = body_text.clone();
-                                    Ok(())
-                                },
-                            ));
-                        }
-                    }
-                }
-                if !self.segments.is_empty() {
-                    body = body.child(action("Générer le résumé local", false, cx, |s, _| {
-                        s.offer_summary()
-                    }));
-                    if self.settings["endpoint"].is_string() {
-                        body = body.child(action(
-                            "Envoyer le texte au fournisseur…",
-                            false,
-                            cx,
-                            |s, _| s.request_remote_summary(),
-                        ));
-                    }
-                }
-            }
-            1 => {
-                body = body.child(action("Transcrire les pistes", false, cx, |s, _| {
-                    s.process(false)
-                }));
-                if let Ok(versions) = self.db.transcript_versions(self.id)
-                    && versions.len() > 1
-                {
-                    for v in versions {
-                        body = body.child(action(
-                            format!("Ouvrir la transcription v{v}"),
-                            false,
-                            cx,
-                            move |s, _| {
-                                s.segments = s.db.segments_at(s.id, Some(v))?;
-                                s.stop_segment();
-                                s.edit_id = None;
-                                s.dialogues
-                                    .reset_with_uniform_height(s.segments.len() + 1, px(99.));
-                                Ok(())
-                            },
-                        ));
-                    }
-                }
-                return body.flex_1().min_h_0().child(self.dialogue_list(cx));
-            }
+            0 => return self.summary_reader(cx),
+            1 => return self.transcript_reader(cx),
             _ => {
                 let mut people = std::collections::BTreeMap::new();
                 for seg in &self.segments {
@@ -715,23 +605,44 @@ impl Desk {
                 if people.is_empty() {
                     body = body.child(tr("Aucune intervention transcrite."));
                 }
+                if people.keys().any(|(raw, _)| {
+                    raw.starts_with("Intervenant ") && raw.as_str() != "Intervenant incertain"
+                }) {
+                    body = body.child(input(
+                        cx,
+                        &self.profile_name,
+                        "profile-name",
+                        "Nom de l’intervenant ou du profil autorisé",
+                    ));
+                }
                 for ((raw, name), count) in people {
-                    body = body.child(label(format!("{name} · {count} passages")));
+                    let mut person = row().gap(px(5.)).child(
+                        div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(label(format!("{name} · {count} passages"))),
+                    );
                     if raw.starts_with("Intervenant ") && raw != "Intervenant incertain" {
                         let acoustic = raw.to_owned();
-                        body = body.child(action(
-                            format!("Renommer {raw} pour cet enregistrement"),
-                            false,
-                            cx,
-                            move |s, cx| {
-                                s.db.name_speaker(
-                                    s.id,
-                                    &acoustic,
-                                    s.profile_name.read(cx).as_str(),
-                                )?;
-                                s.detail(s.id)
-                            },
-                        ));
+                        person = person.child(
+                            button(
+                                format!("Renommer {raw} pour cet enregistrement"),
+                                Button::Quiet,
+                                Some(EDIT),
+                                true,
+                                cx,
+                                move |s, cx| {
+                                    s.db.name_speaker(
+                                        s.id,
+                                        &acoustic,
+                                        s.profile_name.read(cx).as_str(),
+                                    )?;
+                                    s.detail(s.id)
+                                },
+                            )
+                            .size(px(29.))
+                            .p_0(),
+                        );
                         if let Some(best) = self
                             .segments
                             .iter()
@@ -739,114 +650,62 @@ impl Desk {
                             .max_by_key(|p| p.end_ms - p.start_ms)
                         {
                             let seg = best.clone();
-                            body = body.child(action(
-                                format!(
-                                    "Créer un profil avec §{} · {}",
-                                    seg.id,
-                                    time(seg.start_ms as u64)
-                                ),
-                                false,
-                                cx,
-                                move |s, cx| {
-                                    s.enroll(
-                                        seg.clone(),
-                                        s.profile_name.read(cx).as_str().to_owned(),
-                                    )
-                                },
-                            ));
+                            person = person.child(
+                                button(
+                                    format!(
+                                        "Créer un profil avec §{} · {}",
+                                        seg.id,
+                                        time(seg.start_ms as u64)
+                                    ),
+                                    Button::Quiet,
+                                    Some(VOICES),
+                                    true,
+                                    cx,
+                                    move |s, cx| {
+                                        s.enroll(
+                                            seg.clone(),
+                                            s.profile_name.read(cx).as_str().to_owned(),
+                                        )
+                                    },
+                                )
+                                .size(px(29.))
+                                .p_0(),
+                            );
                         }
                     }
+                    body = body.child(person);
                 }
-                body = body.child(input(
-                    cx,
-                    &self.profile_name,
-                    "profile-name",
-                    "Nom de l’intervenant ou du profil autorisé",
-                ));
                 for (raw, p, name, score) in &self.suggestions {
-                    body = body.child(crate::i18n::message(&format!(
-                        "{raw} · proposition {name} · similarité {score:.2}"
-                    )));
-                    for (txt, choice) in [("Confirmer", Some(*p)), ("Refuser", None)] {
+                    let mut suggestion = row().gap(px(5.)).child(div().flex_1().min_w_0().child(
+                        crate::i18n::message(&format!(
+                            "{raw} · proposition {name} · similarité {score:.2}"
+                        )),
+                    ));
+                    for (txt, icon, choice) in
+                        [("Confirmer", CHECK, Some(*p)), ("Refuser", CLOSE, None)]
+                    {
                         let raw = raw.clone();
-                        body = body.child(action(
-                            format!("{txt} · {raw}"),
-                            false,
-                            cx,
-                            move |s, _| {
-                                s.db.confirm(s.id, &raw, choice)?;
-                                s.detail(s.id)
-                            },
-                        ));
+                        suggestion = suggestion.child(
+                            button(
+                                format!("{txt} · {raw}"),
+                                Button::Quiet,
+                                Some(icon),
+                                true,
+                                cx,
+                                move |s, _| {
+                                    s.db.confirm(s.id, &raw, choice)?;
+                                    s.detail(s.id)
+                                },
+                            )
+                            .size(px(29.))
+                            .p_0(),
+                        );
                     }
+                    body = body.child(suggestion);
                 }
             }
         }
-        body.child(self.meeting_actions(cx))
-    }
-    fn meeting_actions(&self, cx: &Context<Self>) -> Div {
-        let mut body = col().child(action("Modifier les informations", false, cx, |s, cx| {
-            let (t, p, d, tags) = s.db.metadata(s.id)?;
-            for (f, v) in [
-                (&s.title, t),
-                (&s.project, p),
-                (&s.description, d),
-                (&s.tags, tags),
-            ] {
-                f.update(cx, |f, cx| f.emplace(&v, cx));
-            }
-            s.metadata = true;
-            Ok(())
-        }));
-        for (title, all) in [
-            ("Supprimer les fichiers audio", false),
-            ("Supprimer l’enregistrement", true),
-        ] {
-            body = body.child(action(title, false, cx, move |s, _| {
-                let id = s.id;
-                s.ask(
-                    title,
-                    if all {
-                        "L’enregistrement, sa transcription et ses pistes seront supprimées."
-                    } else {
-                        "Les pistes audio de cet enregistrement seront supprimées."
-                    },
-                    "Supprimer",
-                    move |s| {
-                        s.delete(id, all)?;
-                        if all {
-                            s.go(Page::Library)?;
-                        } else {
-                            s.message = "Fichiers audio supprimés.".into();
-                        }
-                        Ok(())
-                    },
-                )
-            }));
-        }
-        body.child(action(
-            if self.summary_only {
-                "Export · résumé seul"
-            } else {
-                "Export · résumé et transcription active"
-            },
-            false,
-            cx,
-            |s, _| {
-                s.summary_only = !s.summary_only;
-                Ok(())
-            },
-        ))
-        .child(row().children(["md", "txt", "json"].into_iter().map(|fmt| {
-            window_button(
-                format!("Exporter .{fmt}"),
-                Button::Secondary,
-                None,
-                false,
-                cx,
-                move |s, w, cx| s.export(fmt, w, cx),
-            )
-        })))
+        body
     }
     fn preference(&self, pref: Preference, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();

@@ -1,0 +1,25 @@
+Title	Installation de Rikai	Rikai setup	Instalación de Rikai	Установка Rikai	Rikai のセットアップ	安装 Rikai
+Welcome	Installer Rikai	Install Rikai	Instalar Rikai	Установить Rikai	Rikai をインストール	安装 Rikai
+Intro	Enregistrez et transcrivez votre audio sur ce PC.	Record and transcribe audio on this PC.	Graba y transcribe audio en este PC.	Записывайте и расшифровывайте звук на этом ПК.	この PC で音声を録音し、文字起こしできます。	在此电脑上录音并转写。
+Folder	Dossier d’installation	Installation folder	Carpeta de instalación	Папка установки	インストール先	安装文件夹
+Browse	Choisir un dossier	Choose a folder	Elegir carpeta	Выбрать папку	フォルダーを選択	选择文件夹
+UserOnly	Installation pour votre compte Windows.	Installs for your Windows account.	Se instalará para tu cuenta de Windows.	Установка для вашей учётной записи Windows.	現在の Windows ユーザー用にインストールします。	为当前 Windows 用户安装。
+Install	Installer	Install	Instalar	Установить	インストール	安装
+Installing	Installation en cours	Installing Rikai	Instalación en curso	Идёт установка	インストール中	正在安装
+LocalFiles	Installation des composants sur ce PC.	Installing the components on this PC.	Instalando los componentes en este PC.	Устанавливаем компоненты на этот ПК.	この PC にコンポーネントをインストールしています。	正在此电脑上安装组件。
+Application	Application Rikai	Rikai application	Aplicación Rikai	Приложение Rikai	Rikai アプリ	Rikai 应用
+Worker	Moteur de traitement audio	Audio processing engine	Motor de procesamiento de audio	Модуль обработки звука	音声処理エンジン	音频处理引擎
+Shortcuts	Raccourcis Windows	Windows shortcuts	Accesos directos de Windows	Ярлыки Windows	Windows ショートカット	Windows 快捷方式
+Done	Installation terminée	Installation complete	Instalación completada	Установка завершена	インストール完了	安装完成
+Ready	Rikai est prêt à être ouvert.	Rikai is ready to open.	Rikai está listo para abrirse.	Rikai готово к запуску.	Rikai を起動できます。	Rikai 已可启动。
+Open	Ouvrir Rikai	Open Rikai	Abrir Rikai	Открыть Rikai	Rikai を開く	打开 Rikai
+Close	Fermer	Close	Cerrar	Закрыть	閉じる	关闭
+Minimize	Réduire	Minimize	Minimizar	Свернуть	最小化	最小化
+Cancel	Annuler	Cancel	Cancelar	Отмена	キャンセル	取消
+Stopping	Annulation en cours…	Cancelling…	Cancelando…	Отмена…	キャンセル中…	正在取消…
+Cancelled	Installation annulée	Installation cancelled	Instalación cancelada	Установка отменена	インストールをキャンセルしました	已取消安装
+Failed	Installation interrompue	Installation interrupted	Instalación interrumpida	Установка прервана	インストールを中断しました	安装中断
+Retry	Réessayer	Try again	Reintentar	Повторить	再試行	重试
+Invalid	Sélectionnez un dossier avec un chemin absolu.	Choose a folder with an absolute path.	Elige una carpeta con una ruta absoluta.	Выберите папку с абсолютным путём.	絶対パスでフォルダーを指定してください。	请选择具有绝对路径的文件夹。
+Log	Ouvrir le journal	Open log	Abrir registro	Открыть журнал	ログを開く	打开日志
+ErrorCode	Code de sortie	Exit code	Código de salida	Код завершения	終了コード	退出代码

@@ -122,6 +122,22 @@ impl Library {
         }
         Ok(())
     }
+    pub fn summary_ids(&self, id: i64) -> Result<Vec<i64>> {
+        let mut q = self
+            .0
+            .prepare("SELECT id FROM summary WHERE meeting_id=? ORDER BY id DESC")?;
+        Ok(q.query_map([id], |row| row.get(0))?
+            .collect::<Result<_, _>>()?)
+    }
+
+    pub fn summary_at(&self, recording: i64, version: i64) -> Result<String> {
+        Ok(self.0.query_row(
+            "SELECT body FROM summary WHERE meeting_id=? AND id=?",
+            params![recording, version],
+            |row| row.get(0),
+        )?)
+    }
+
     pub fn versions(&self, id: i64) -> Result<Vec<(i64, String)>> {
         let mut q = self
             .0

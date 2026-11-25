@@ -20,18 +20,14 @@ impl Desk {
                 list(
                     state,
                     cx.processor(|s, ix, _, cx| {
-                        if let Some(seg) = s.segments.get(ix) {
-                            s.segment_card(ix, seg, cx).into_any_element()
-                        } else {
-                            s.meeting_actions(cx).pb_2().into_any_element()
-                        }
+                        s.segment_card(ix, &s.segments[ix], cx).into_any_element()
                     }),
                 )
                 .flex_1()
                 .min_w_0()
                 .h_full(),
             )
-            .child(self.dialogue_scrollbar(cx))
+            .child(self.reading_scrollbar(cx))
     }
     fn segment_card(&self, ix: usize, seg: &Segment, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
@@ -368,25 +364,39 @@ impl Desk {
         )
     }
 
-    fn dialogue_scrollbar(&self, cx: &Context<Self>) -> Stateful<Div> {
-        let list = self.dialogues.clone();
+    fn reading_list(&self) -> &ListState {
+        if self.tab == 0 {
+            &self.report_list
+        } else {
+            &self.dialogues
+        }
+    }
+    pub(super) fn reading_scrollbar(&self, cx: &Context<Self>) -> Stateful<Div> {
+        let list = self.reading_list().clone();
         let p = *cx.global::<Palette>();
         let release = |s: &mut Desk, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Desk>| {
             if s.scroll_grab.take().is_some() {
-                s.dialogues.scrollbar_drag_ended();
+                s.reading_list().scrollbar_drag_ended();
                 cx.notify();
             }
         };
         let drag = cx.listener(|s, e: &MouseMoveEvent, _, cx| {
             if let Some(grab) = s.scroll_grab {
-                s.drag_scroll(e.position.y - s.dialogues.viewport_bounds().origin.y, grab);
+                s.drag_scroll(
+                    e.position.y - s.reading_list().viewport_bounds().origin.y,
+                    grab,
+                );
                 cx.notify();
             }
         });
         div()
-            .id("dialogue-scrollbar")
+            .id("record-scrollbar")
             .role(Role::ScrollBar)
-            .aria_label(tr("Parcourir les passages"))
+            .aria_label(tr(if self.tab == 0 {
+                "Parcourir le résumé"
+            } else {
+                "Parcourir les passages"
+            }))
             .focusable()
             .tab_stop(true)
             .relative()
@@ -424,8 +434,8 @@ impl Desk {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|s, e: &MouseDownEvent, _, cx| {
-                    let b = s.dialogues.viewport_bounds();
-                    if let Some((top, height, _)) = thumb(&s.dialogues, b.size.height) {
+                    let b = s.reading_list().viewport_bounds();
+                    if let Some((top, height, _)) = thumb(s.reading_list(), b.size.height) {
                         let y = e.position.y - b.origin.y;
                         let grab = if y >= top && y <= top + height {
                             y - top
@@ -433,7 +443,7 @@ impl Desk {
                             height * 0.5
                         };
                         s.scroll_grab = Some(grab);
-                        s.dialogues.scrollbar_drag_started();
+                        s.reading_list().scrollbar_drag_started();
                         s.drag_scroll(y, grab);
                         cx.notify();
                     }
@@ -447,27 +457,28 @@ impl Desk {
             .on_mouse_up(MouseButton::Left, cx.listener(release))
             .on_mouse_up_out(MouseButton::Left, cx.listener(release))
             .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
-                let page = s.dialogues.viewport_bounds().size.height;
-                let y = s.dialogues.scroll_px_offset_for_scrollbar().y;
+                let page = s.reading_list().viewport_bounds().size.height;
+                let y = s.reading_list().scroll_px_offset_for_scrollbar().y;
                 let target = match e.keystroke.key.as_str() {
                     "home" => px(0.),
-                    "end" => -s.dialogues.max_offset_for_scrollbar().y,
+                    "end" => -s.reading_list().max_offset_for_scrollbar().y,
                     "pageup" => y + page,
                     "pagedown" => y - page,
                     "up" => y + px(32.),
                     "down" => y - px(32.),
                     _ => return,
                 };
-                s.dialogues.set_offset_from_scrollbar(point(px(0.), target));
+                s.reading_list()
+                    .set_offset_from_scrollbar(point(px(0.), target));
                 cx.stop_propagation();
                 cx.notify();
             }))
     }
     fn drag_scroll(&self, y: Pixels, grab: Pixels) {
-        let h = self.dialogues.viewport_bounds().size.height;
-        if let Some((_, handle, max)) = thumb(&self.dialogues, h) {
+        let h = self.reading_list().viewport_bounds().size.height;
+        if let Some((_, handle, max)) = thumb(self.reading_list(), h) {
             let fraction = ((y - grab) / (h - handle).max(px(1.))).clamp(0., 1.);
-            self.dialogues
+            self.reading_list()
                 .set_offset_from_scrollbar(point(px(0.), -max * fraction));
         }
     }

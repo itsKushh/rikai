@@ -1112,6 +1112,13 @@
   "書き出し · 要約のみ",
   "导出 · 仅摘要"
  ],
+ "Exporter": [
+  "Export",
+  "Exportar",
+  "Экспорт",
+  "エクスポート",
+  "导出"
+ ],
  "Exporter .{fmt}": [
   "Export .{0}",
   "Exportar .{0}",
@@ -1356,6 +1363,13 @@
   "Высокое качество",
   "高品質",
   "高质量"
+ ],
+ "Historique des versions": [
+  "Version history",
+  "Historial de versiones",
+  "История версий",
+  "バージョン履歴",
+  "版本历史"
  ],
  "Horodatage de périphérique incohérent. Capture interrompue.": [
   "Incoherent peripheral time-dating. capture interrupted.",
@@ -2190,6 +2204,13 @@
   "目的",
   "目的"
  ],
+ "Options de l’enregistrement": [
+  "Recording options",
+  "Opciones de la grabación",
+  "Параметры записи",
+  "録音のオプション",
+  "录音选项"
+ ],
  "Oui": [
   "Yes",
   "Sí",
@@ -2259,6 +2280,13 @@
   "Настройки",
   "設定",
   "设置"
+ ],
+ "Parcourir le résumé": [
+  "Scroll through the summary",
+  "Desplazarse por el resumen",
+  "Прокрутка сводки",
+  "要約をスクロール",
+  "滚动浏览摘要"
  ],
  "Parcourir les enregistrements": [
   "Browse recordings",
@@ -2672,6 +2700,13 @@
   "Локальная сводка",
   "ローカル要約",
   "本地摘要"
+ ],
+ "Résumé seul": [
+  "Summary only",
+  "Solo el resumen",
+  "Только сводка",
+  "要約のみ",
+  "仅摘要"
  ],
  "Révision du modèle invalide": [
   "Revision of the Invalid Model",

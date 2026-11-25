@@ -106,6 +106,11 @@ pub(super) const SESSION: &str = include_str!("../../../assets/nucleo/file-searc
 pub(super) const DESK: &str = include_str!("../../../assets/nucleo/folder-open.svg");
 pub(super) const LIBRARY: &str = include_str!("../../../assets/nucleo/archive.svg");
 pub(super) const VOICES: &str = include_str!("../../../assets/nucleo/users.svg");
+pub(super) const MORE: &str = include_str!("../../../assets/nucleo/dots-vertical.svg");
+pub(super) const EDIT: &str = include_str!("../../../assets/nucleo/pencil.svg");
+pub(super) const HISTORY: &str =
+    include_str!("../../../assets/nucleo/clock-rotate-anticlockwise.svg");
+pub(super) const REMOTE: &str = include_str!("../../../assets/nucleo/cloud-upload.svg");
 pub(super) const SLIDERS: &str = include_str!("../../../assets/nucleo/sliders-3-vertical.svg");
 pub(super) const WAVE: &str = include_str!("../../../assets/nucleo/waveform-lines.svg");
 pub(super) const CLOSE: &str = include_str!("../../../assets/nucleo/xmark.svg");

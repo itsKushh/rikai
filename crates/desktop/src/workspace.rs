@@ -810,7 +810,7 @@ impl Render for Desk {
         self.drawer_was_open = drawer;
         let page = self.workspace_page();
         let background_activity = !modal && (!drawer || self.confirmation.is_some());
-        let transcript = page == Page::Detail && self.tab == 1 && !self.metadata && !self.busy();
+        let reader = page == Page::Detail && self.tab <= 1 && !self.metadata && !self.busy();
         let home = page == Page::Home && !(self.busy() && background_activity);
         let mut left = col().min_h_0().flex_1().gap(px(16.));
         if home {
@@ -842,7 +842,11 @@ impl Render for Desk {
             left = left.child(
                 p.panel()
                     .flex_1()
-                    .child(header(title, p))
+                    .child(if detail {
+                        self.record_header(title, cx)
+                    } else {
+                        header(title, p)
+                    })
                     .when(detail, |d| {
                         d.child(
                             div()
@@ -852,7 +856,7 @@ impl Render for Desk {
                                 .child(self.detail_tabs(cx)),
                         )
                     })
-                    .child(if transcript {
+                    .child(if reader {
                         content.into_any_element()
                     } else {
                         scroll("workspace-content", content).into_any_element()
@@ -891,6 +895,11 @@ impl Render for Desk {
             .size_full()
             .relative()
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
+                if ev.keystroke.key == "escape" && s.record_menu.take().is_some() {
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
                 if ev.keystroke.key != "tab"
                     || ev.keystroke.modifiers.control
                     || ev.keystroke.modifiers.alt

@@ -239,6 +239,12 @@ struct Desk {
     hits: Vec<meeting_storage::Hit>,
     dialogues: ListState,
     playing: Option<PlayingSegment>,
+    report_list: ListState,
+    report_lines: Vec<String>,
+    summary_ids: Vec<i64>,
+    transcript_ids: Vec<i64>,
+    reading_version: [Option<i64>; 2],
+    record_menu: Option<RecordMenu>,
     scroll_grab: Option<Pixels>,
     tab_geometry: [std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>; 4],
     discard: bool,
@@ -404,6 +410,12 @@ impl Desk {
             hits: vec![],
             dialogues: ListState::new(0, ListAlignment::Top, px(180.)),
             playing: None,
+            report_list: ListState::new(0, ListAlignment::Top, px(180.)),
+            report_lines: Vec::new(),
+            summary_ids: Vec::new(),
+            transcript_ids: Vec::new(),
+            reading_version: [None, None],
+            record_menu: None,
             scroll_grab: None,
             tab_geometry: Default::default(),
             discard: false,
@@ -564,11 +576,25 @@ impl Desk {
         self.translations = self.db.translations(id)?;
         self.language_picker = None;
         self.dialogues
-            .reset_with_uniform_height(self.segments.len() + 1, px(99.));
-        self.summary = self.db.summary(id)?.unwrap_or_default();
+            .reset_with_uniform_height(self.segments.len(), px(99.));
+        self.summary_ids = self.db.summary_ids(id)?;
+        self.transcript_ids = self.db.transcript_versions(id)?;
+        self.reading_version = [
+            self.summary_ids.first().copied(),
+            self.transcript_ids.first().copied(),
+        ];
+        self.set_report(self.db.summary(id)?.unwrap_or_default());
+        self.record_menu = None;
+        self.scroll_grab = None;
         self.edit_id = None;
         self.page = Page::Detail;
         self.refresh("")
+    }
+    fn set_report(&mut self, text: String) {
+        self.report_lines = text.lines().map(str::to_owned).collect();
+        self.report_list
+            .reset_with_uniform_height(self.report_lines.len(), px(22.));
+        self.summary = text;
     }
     fn save_settings(&self) -> Result<()> {
         self.db.set_pref("settings", &self.settings.to_string())
@@ -1143,6 +1169,7 @@ impl Desk {
         Ok(())
     }
     fn go(&mut self, page: Page) -> Result<()> {
+        self.record_menu = None;
         self.language_picker = None;
         if self.busy() {
             return Ok(());
@@ -1321,7 +1348,7 @@ impl Desk {
         let segments = if self.summary_only {
             vec![]
         } else {
-            self.db.segments(self.id)?
+            self.segments.clone()
         };
         let text = match fmt {
             "json" => serde_json::to_string_pretty(
@@ -1366,6 +1393,12 @@ impl Desk {
     }
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum RecordMenu {
+    Export,
+    More,
+    History,
+}
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Inspector {
     Session,

@@ -20,7 +20,7 @@ Rikai est une application de bureau native qui enregistre le son des application
 
 ## Réaliser sa première capture
 
-1. **Installez Rikai.** Exécutez `Rikai-Setup-x64.exe` sous Windows x64 (build 20348 ou ultérieure, dont Windows 11). L’installation se fait pour l’utilisateur courant. Lors d’une mise à niveau, fermez l’ancienne application pour que Rikai puisse reprendre sa bibliothèque.
+1. **Installez Rikai.** Exécutez `Rikai-Setup-x64.exe` sous Windows x64 (build 20348 ou ultérieure, dont Windows 11). Choisissez le dossier de destination. L’installeur affiche la progression pour l’application, le moteur audio et les raccourcis de votre compte Windows. Lors d’une mise à niveau, fermez l’ancienne application pour que Rikai puisse reprendre sa bibliothèque.
 2. **Choisissez un modèle de transcription.** Dans **Paramètres → Modèles**, sélectionnez **Équilibré** pour commencer, puis **Télécharger**. La barre de progression indique le volume reçu. Vous pouvez aussi sélectionner un modèle Faster-Whisper déjà présent sur votre disque.
 3. **Réglez les sources.** Cliquez sur **Enregistrer**, saisissez un titre, choisissez les applications et, si nécessaire, un microphone. Si une application manque, faites-lui jouer un son. Avec **Tester les niveaux**, parlez et ajustez chaque source pour viser des crêtes entre −18 et −6 dBFS.
 4. **Enregistrez, puis relisez.** Informez les participants et cliquez sur **Démarrer l’enregistrement**. À l’arrêt, Rikai finalise les pistes et lance la transcription si un modèle est configuré. Dans **Transcription**, cliquez sur la lecture pour écouter un passage ou sur ses mots pour corriger le texte.
@@ -57,7 +57,7 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 
 **Emplacement des téléchargements.** Dans **Paramètres → Dépendances**, choisissez le dossier des modèles et du moteur NVIDIA. Cochez **Transférer les composants déjà installés** avant de choisir le dossier pour les déplacer. Si la case est décochée, seuls les prochains téléchargements utilisent le nouvel emplacement.
 
-**Résumé local.** Ouvrez un enregistrement déjà transcrit et cliquez sur **Générer le résumé local**. Rikai utilise les paroles dans l’ordre, avec les noms des voix et vos corrections. Si le texte tient dans le contexte du modèle, une seule lecture suffit. Pour un enregistrement plus long, le modèle prend des notes par bloc, puis rédige une synthèse commune. Les références § renvoient aux passages d’origine.
+**Résumé local.** Ouvrez un enregistrement déjà transcrit et cliquez sur **Générer le résumé local**. Rikai utilise les paroles dans l’ordre, avec les noms des voix et vos corrections. Si le texte tient dans le contexte du modèle, une seule lecture suffit. Pour un enregistrement plus long, le modèle prend des notes par bloc, puis rédige une synthèse commune. Les références § renvoient aux passages d’origine. Parcourez le résumé avec la même barre de défilement que la transcription. Les commandes d’édition et l’historique se trouvent au-dessus du texte. L’icône d’export à côté du titre donne accès aux formats Markdown, texte et JSON.
 
 Le moteur Windows de résumé utilise le CPU avec AVX2. Au premier usage, Rikai propose Qwen3 si aucun modèle n’est sélectionné. Si vous utilisiez déjà Qwen2.5 ou un GGUF personnel, vous pouvez garder votre sélection ou télécharger **Résumé contextualisé** dans les paramètres. Le fichier GGUF contient les poids et les métadonnées nécessaires au calcul hors ligne. [Modèle Qwen3](https://huggingface.co/Qwen/Qwen3-4B-Instruct-2507) · [Version GGUF distribuée](https://huggingface.co/bartowski/Qwen_Qwen3-4B-Instruct-2507-GGUF)
 
@@ -75,7 +75,7 @@ Depuis la version 0.2.1, Rikai consulte les versions publiques au démarrage san
 
 ## Compilation et tests
 
-L’interface est écrite en Rust avec GPUI-CE. La capture utilise WASAPI, la bibliothèque utilise SQLite et un processus Python séparé exécute les modèles. Pour construire l’installeur, ouvrez une **Developer PowerShell x64** à la racine du dépôt avec rustup, Visual Studio Build Tools (outils C++ et SDK Windows), uv, CMake et Inno Setup 6.
+L’interface est écrite en Rust avec GPUI-CE. La capture utilise WASAPI, la bibliothèque utilise SQLite et un processus Python séparé exécute les modèles. Pour construire l’installeur, ouvrez une **Developer PowerShell x64** à la racine du dépôt avec rustup, Visual Studio Build Tools (outils C++, SDK Windows, MSBuild et pack de ciblage .NET Framework 4.8 pour WPF), uv, CMake et Inno Setup 6.
 
 ```powershell
 .\scripts\build-windows.ps1
