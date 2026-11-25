@@ -3,11 +3,17 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
+    inputs:
+      package_run:
+        description: "Vérifier à nouveau l’installeur d’une compilation main (facultatif)"
+        type: string
+        required: false
   pull_request:
 permissions:
   contents: read
 jobs:
   package:
+    if: ${{ !inputs.package_run }}
     runs-on: windows-2022
     timeout-minutes: 90
     steps:
@@ -53,14 +59,39 @@ jobs:
 
   installer-test:
     needs: package
+    if: ${{ !cancelled() && (needs.package.result == 'success' || (needs.package.result == 'skipped' && inputs.package_run)) }}
+    permissions:
+      actions: read
+      contents: read
     runs-on: windows-2022
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Vérifier l’origine et les sources de l’installeur existant
+        if: inputs.package_run
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGE_RUN: ${{ inputs.package_run }}
+        run: |
+          if ($env:PACKAGE_RUN -notmatch '^[0-9]+$') { throw 'Identifiant de compilation invalide.' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:PACKAGE_RUN" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $run.head_branch -ne 'main' -or $run.event -notin 'push','workflow_dispatch' -or
+              $run.path -ne '.github/workflows/windows.yml' -or $run.head_repository.full_name -ne $env:GITHUB_REPOSITORY) {
+            throw 'Compilation main de Rikai requise.'
+          }
+          git merge-base --is-ancestor $run.head_sha HEAD
+          if ($LASTEXITCODE -ne 0) { throw 'Révision de compilation étrangère à cet historique.' }
+          git diff --quiet $run.head_sha HEAD -- . ':(exclude).github/workflows/windows.yml' ':(exclude)scripts/test-installer-ui.ps1' ':(exclude)scripts/TestInstallerWindow.cs'
+          if ($LASTEXITCODE -ne 0) { throw 'Les sources ont changé. Lancez une nouvelle compilation.' }
       - uses: actions/download-artifact@v4
         with:
           name: Rikai-Windows-x64
           path: dist
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run || github.run_id }}
       - name: Tester le parcours guidé, son annulation et sa reprise
         timeout-minutes: 10
         shell: powershell
@@ -73,9 +104,10 @@ jobs:
 
   release:
     needs: installer-test
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: ${{ !cancelled() && needs.installer-test.result == 'success' && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' }}
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: write
     concurrency:
       group: rikai-release
@@ -86,6 +118,8 @@ jobs:
         with:
           name: Rikai-Windows-x64
           path: dist
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.package_run || github.run_id }}
       - name: Publier la version
         env:
           GH_TOKEN: ${{ github.token }}
