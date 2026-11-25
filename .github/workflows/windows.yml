@@ -45,6 +45,22 @@ jobs:
       - name: Vérifier l’installation utilisateur et la version du binaire
         shell: pwsh
         run: ./scripts/test-install.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Rikai-Windows-x64
+          path: dist/Rikai-Setup-x64.exe
+          if-no-files-found: error
+
+  installer-test:
+    needs: package
+    runs-on: windows-2022
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Rikai-Windows-x64
+          path: dist
       - name: Tester le parcours guidé, son annulation et sa reprise
         timeout-minutes: 10
         shell: powershell
@@ -54,14 +70,9 @@ jobs:
           name: Rikai-Installer-Previews
           path: dist/installer-previews/*.png
           if-no-files-found: error
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Rikai-Windows-x64
-          path: dist/Rikai-Setup-x64.exe
-          if-no-files-found: error
 
   release:
-    needs: package
+    needs: installer-test
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
