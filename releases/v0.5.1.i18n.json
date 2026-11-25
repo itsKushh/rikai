@@ -1,0 +1,7 @@
+{
+  "en": "## Compact installer\nChoose your language and destination folder when setup opens. The same compact window shows progress and completion, with Rikai’s transparent icon and window controls. Primary and tertiary buttons use the app’s hover and press animations and respect the Windows animation setting.",
+  "es": "## Instalador compacto\nElige el idioma y la carpeta de destino al abrir el instalador. La misma ventana muestra el progreso y la finalización con el icono transparente y los controles de Rikai. Los botones principales y terciarios usan las animaciones de la aplicación y respetan la configuración de animaciones de Windows.",
+  "ru": "## Компактный установщик\nСразу после запуска можно выбрать язык и папку установки. Ход и завершение установки отображаются в том же окне с прозрачным значком и кнопками управления Rikai. Анимация кнопок при наведении и нажатии повторяет интерфейс приложения и учитывает настройки Windows.",
+  "ja": "## コンパクトなインストーラー\n起動時に言語とインストール先を選べます。同じウィンドウで進行状況と完了を確認でき、透明背景のアイコンとウィンドウ操作ボタンも Rikai と統一しました。ボタンにポインターを合わせたときや押したときの動きはアプリと共通で、Windows のアニメーション設定に従います。",
+  "zh": "## 紧凑型安装程序\n启动时即可选择语言和安装文件夹。在同一窗口中查看进度和完成状态。窗口采用 Rikai 的透明图标和窗口控件，按钮的悬停、按下动画与应用一致，并遵循 Windows 的动画设置。"
+}

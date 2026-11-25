@@ -22,7 +22,7 @@ namespace Rikai.Setup
                     using (var engine = new InstallEngine())
                         return engine.Run(args);
                 var app = new Application();
-                LoadStrings(app);
+                SetupTheme.LoadIcons(app);
                 var window = new SetupWindow(args);
                 app.Run(window);
                 return window.ExitCode;
@@ -35,9 +35,8 @@ namespace Rikai.Setup
             }
         }
 
-        internal static void LoadStrings(Application app)
+        internal static void LoadStrings(Application app, string language)
         {
-            string language = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
             string[] locales = { "fr", "en", "es", "ru", "ja", "zh" };
             int column = Array.IndexOf(locales, language);
             if (column < 0) column = 1;

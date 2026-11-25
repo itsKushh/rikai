@@ -48,6 +48,27 @@ internal static class TestInstallerWindow
         button.RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
     }
 
+    private static async Task CheckButtonMotion(string name, byte hoverRed)
+    {
+        var button = Element<Button>(name);
+        button.ApplyTemplate();
+        var surface = (FrameworkElement)button.Template.FindName("Face", button);
+        var hover = (Border)button.Template.FindName("HoverFill", button);
+        var inset = (Border)button.Template.FindName("Inset", button);
+        var shift = (TranslateTransform)surface.RenderTransform;
+        if (((SolidColorBrush)hover.Background).Color.R != hoverRed)
+            throw new Exception("Wrong hover colour for " + name);
+
+        // Exercise the same WPF pressed state as mouse and keyboard activation.
+        var setter = typeof(System.Windows.Controls.Primitives.ButtonBase).GetProperty("IsPressed").GetSetMethod(true);
+        setter.Invoke(button, new object[] { true });
+        await Task.Delay(180);
+        if (Math.Abs(shift.Y - .60) > .01 || inset.Opacity < .99) throw new Exception("Missing pressed state on " + name);
+        setter.Invoke(button, new object[] { false });
+        await Task.Delay(180);
+        if (Math.Abs(shift.Y) > .01 || inset.Opacity > .01) throw new Exception("Pressed state did not clear on " + name);
+    }
+
     private static void Snapshot(string name)
     {
         window.UpdateLayout();
@@ -62,11 +83,11 @@ internal static class TestInstallerWindow
     {
         var timer = Stopwatch.StartNew();
         bool observed = false;
-        while (!Element<Button>("CloseButton").IsVisible)
+        while (!(cancel && Element<Button>("InstallButton").IsVisible) && !Element<Button>("CloseButton").IsVisible)
         {
             if (timer.Elapsed > TimeSpan.FromMinutes(4)) throw new TimeoutException("Timed out while installing");
-            int percent = int.Parse(Element<TextBlock>("Percent").Text.Split(' ')[0], CultureInfo.InvariantCulture);
-            if (!observed && percent > 1 && percent < 99)
+            int percent = int.Parse(Element<TextBlock>("Percent").Text.Replace("%", "").Trim(), CultureInfo.InvariantCulture);
+            if (!observed && percent >= (cancel ? 3 : 45) && percent < 99)
             {
                 observed = true;
                 if (cancel) Click("MainButton"); else Snapshot("guided");
@@ -74,8 +95,9 @@ internal static class TestInstallerWindow
             await Task.Delay(40);
         }
         if (!observed) throw new InvalidOperationException("No intermediate progress from the payload");
+        if (cancel && Element<Button>("InstallButton").IsVisible) return;
         var heading = Element<TextBlock>("Heading").Text;
-        if (heading != (string)window.FindResource(cancel ? "Cancelled" : "Done"))
+        if (cancel || heading != (string)window.FindResource("Done"))
             throw new InvalidOperationException("Unexpected outcome: " + heading + " / " + Element<TextBlock>("Status").Text);
     }
 
@@ -84,20 +106,38 @@ internal static class TestInstallerWindow
         try
         {
             window = Application.Current.MainWindow;
+            var languages = Element<ComboBox>("LocalePicker");
+            if (languages.SelectedIndex != 0 || languages.Items.Count != 6) throw new Exception("System language was not selected");
+            var destination = Element<TextBox>("Destination").Text;
+            string[] titles = { "Installation de Rikai", "Rikai setup", "Instalación de Rikai", "Установка Rikai", "Rikai のセットアップ", "安装 Rikai" };
+            for (int i = 0; i < titles.Length; i++)
+            {
+                languages.SelectedIndex = i;
+                if (window.Title != titles[i] || Element<TextBox>("Destination").Text != destination)
+                    throw new Exception("Language selection did not update the window in place");
+            }
+            languages.SelectedIndex = 0;
+            window.UpdateLayout();
+            double width = window.ActualWidth, height = window.ActualHeight;
+            if (width != 392 || Math.Abs(height - 316) > 2) throw new Exception("Unexpected size: " + width + " x " + height);
+            await CheckButtonMotion("InstallButton", 0xCA);
             Snapshot("folder");
             var path = Element<TextBox>("Destination");
             path.Text = "relative";
             Click("InstallButton");
-            if (Element<TextBlock>("PathHint").Text != (string)window.FindResource("Invalid"))
+            if (!Element<TextBlock>("PathHint").IsVisible || Element<TextBlock>("PathHint").Text != (string)window.FindResource("Invalid"))
                 throw new InvalidOperationException("Relative path accepted");
             path.Text = folder;
             Click("InstallButton");
             await AwaitResult(true);
             if (File.Exists(Path.Combine(folder,"rikai.exe"))) throw new InvalidOperationException("Cancellation did not roll back copied files");
-            Click("MainButton");
+            if (path.Text != folder) throw new Exception("The selected folder was lost after cancellation");
             Click("InstallButton");
             await AwaitResult(false);
             if (!File.Exists(Path.Combine(folder, "worker", "rikai-worker.exe"))) throw new FileNotFoundException("Missing installed worker");
+            window.UpdateLayout();
+            if (window.ActualWidth != width || window.ActualHeight != height) throw new Exception("Window moved between steps");
+            await CheckButtonMotion("CloseButton", 0x2C);
             Snapshot("complete");
             Click("CloseButton");
             Console.WriteLine("Guided install, real progress, cancellation, rollback, retry and close verified.");

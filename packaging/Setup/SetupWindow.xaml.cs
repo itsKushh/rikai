@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -10,6 +11,7 @@ using System.Windows.Automation;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Interop;
+using System.Windows.Markup;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Shapes;
@@ -29,21 +31,49 @@ namespace Rikai.Setup
         private InstallEngine engine;
         private int phase = -1, percent;
         private string destination, log;
+        private bool closeAfterCancel;
+        private CultureInfo culture;
+        private static readonly string[] languageCodes = { "fr", "en", "es", "ru", "ja", "zh" };
+        private static readonly string[] engineLanguages = { "french", "english", "spanish", "russian", "japanese", "english" };
         internal int ExitCode { get; private set; } = 2;
 
         public SetupWindow(string[] args)
         {
             InitializeComponent();
             arguments = args;
-            Destination.Text = InstallEngine.DefaultDestination(args);
-            string version = Assembly.GetExecutingAssembly().GetName().Version.ToString(3);
-            VersionLabel.Text = "Rikai " + version + " · x64";
-            GuidedVersion.Text = "Rikai " + version + " · Windows x64";
+            string path = InstallEngine.DefaultDestination(args);
+            string standard = FilePath.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", "Rikai");
+            Destination.Text = string.Equals(path.TrimEnd('\\'), standard, StringComparison.OrdinalIgnoreCase)
+                ? @"%LOCALAPPDATA%\Programs\Rikai" : path;
+
+            int preferred = Array.IndexOf(languageCodes, CultureInfo.CurrentUICulture.TwoLetterISOLanguageName);
+            string requested = args.LastOrDefault(arg => arg.StartsWith("/LANG=", StringComparison.OrdinalIgnoreCase));
+            if (requested != null)
+            {
+                int mapped = Array.FindIndex(engineLanguages, name => string.Equals(name, requested.Substring(6), StringComparison.OrdinalIgnoreCase));
+                if (mapped >= 0) preferred = mapped;
+            }
+            LocalePicker.SelectedIndex = preferred < 0 ? 1 : preferred;
+            VersionLabel.Text = "Rikai " + Assembly.GetExecutingAssembly().GetName().Version.ToString(3) + " · x64";
             MaxWidth = SystemParameters.WorkArea.Width;
-            DrawWave();
             Track.SizeChanged += (s, e) => DrawProgress(false);
             poll.Tick += (s, e) => ReadProgress();
             Closing += OnClosing;
+        }
+
+        private void SelectLanguage(object sender, SelectionChangedEventArgs e)
+        {
+            var item = ((ComboBox)sender).SelectedItem as ComboBoxItem;
+            if (item == null) return;
+            string code = (string)item.Tag;
+            culture = CultureInfo.GetCultureInfo(code == "zh" ? "zh-CN" : code);
+            Language = XmlLanguage.GetLanguage(culture.Name);
+            Program.LoadStrings(Application.Current, code);
+        }
+
+        private void ClearPathError(object sender, TextChangedEventArgs e)
+        {
+            if (PathHint != null) PathHint.Visibility = Visibility.Collapsed;
         }
 
         private string T(string key) { return (string)FindResource(key); }
@@ -53,7 +83,7 @@ namespace Rikai.Setup
         private sealed class FolderDialogOwner : Forms.IWin32Window { public IntPtr Handle { get; set; } }
         private void BrowseFolder(object sender, RoutedEventArgs e)
         {
-            using (var dialog = new Forms.FolderBrowserDialog { Description = T("Folder"), SelectedPath = Destination.Text })
+            using (var dialog = new Forms.FolderBrowserDialog { Description = T("Folder"), SelectedPath = Environment.ExpandEnvironmentVariables(Destination.Text.Trim()) })
                 if (dialog.ShowDialog(new FolderDialogOwner { Handle = new WindowInteropHelper(this).Handle }) == Forms.DialogResult.OK)
                     Destination.Text = dialog.SelectedPath;
         }
@@ -62,14 +92,15 @@ namespace Rikai.Setup
         {
             WelcomePanel.Visibility = guided ? Visibility.Collapsed : Visibility.Visible;
             GuidedPanel.Visibility = guided ? Visibility.Visible : Visibility.Collapsed;
-            Rect screen = SystemParameters.WorkArea;
-            double center = Left + ActualWidth / 2;
-            Width = Math.Min(guided ? 860 : 596, screen.Width);
-            Left = Math.Max(screen.Left, Math.Min(center - Width / 2, screen.Right - Width));
+            InstallButton.Visibility = WelcomePanel.Visibility;
+            MainButton.Visibility = GuidedPanel.Visibility;
+            if (!guided) CloseButton.Visibility = LogButton.Visibility = Visibility.Collapsed;
             var panel = guided ? (UIElement)GuidedPanel : WelcomePanel;
             if (SystemParameters.ClientAreaAnimation)
-                panel.BeginAnimation(OpacityProperty, new DoubleAnimation(.2, 1, TimeSpan.FromMilliseconds(260))
-                { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+            {
+                panel.Opacity = .4;
+                SetupTheme.Move(panel, OpacityProperty, 1, 150);
+            }
         }
 
         private async void StartInstall(object sender, RoutedEventArgs e)
@@ -84,11 +115,11 @@ namespace Rikai.Setup
                 if (destination.Length <= FilePath.GetPathRoot(value).TrimEnd('\\').Length || File.Exists(destination))
                     throw new ArgumentException();
             }
-            catch (Exception) { PathHint.Text = T("Invalid"); Destination.Focus(); return; }
+            catch (Exception) { PathHint.Visibility = Visibility.Visible; Destination.Focus(); return; }
 
             page = Page.Running;
-            Heading.Text = T("Installing"); Status.Text = T("LocalFiles"); MainButton.Content = T("Cancel");
-            MainButton.Style = (Style)FindResource(typeof(Button));
+            Heading.Text = T("Installing"); Status.Text = ""; MainButton.Content = T("Cancel");
+            MainButton.Tone = ButtonTone.Secondary;
             AutomationProperties.SetAutomationId(MainButton, "CancelInstallation");
             MainButton.IsEnabled = true;
             CloseButton.Visibility = LogButton.Visibility = Visibility.Collapsed;
@@ -98,16 +129,16 @@ namespace Rikai.Setup
             {
                 log = FilePath.Combine(FilePath.GetTempPath(), "Rikai-Setup-" + Guid.NewGuid().ToString("N") + ".log");
                 engine = new InstallEngine();
-                var options = arguments.Where(arg => !new[] { "/DIR=", "/RIKAI_GUIDED=", "/RIKAI_RESTART=", "/LOG=" }
+                var options = arguments.Where(arg => !new[] { "/DIR=", "/LANG=", "/RIKAI_GUIDED=", "/RIKAI_RESTART=", "/LOG=" }
                     .Any(prefix => arg.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)))
                     .Concat(new[] { "/SP-", "/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART", "/NORESTARTAPPLICATIONS",
-                        "/RIKAI_GUIDED=1", "/DIR=" + destination, "/LOG=" + log }).ToArray();
+                        "/RIKAI_GUIDED=1", "/LANG=" + engineLanguages[LocalePicker.SelectedIndex], "/DIR=" + destination, "/LOG=" + log }).ToArray();
                 poll.Start();
                 ExitCode = await Task.Run(() => engine.Run(options));
                 ReadProgress();
                 bool cancelled = page == Page.Stopping && (ExitCode == 2 || ExitCode == 5);
                 page = ExitCode == 0 ? Page.Finished : cancelled ? Page.Cancelled : Page.Failed;
-                Status.Text = page == Page.Finished ? T("Ready") : page == Page.Failed ? T("ErrorCode") + " " + ExitCode : "";
+                Status.Text = page == Page.Failed ? T("ErrorCode") + " " + ExitCode : "";
             }
             catch (Exception ex) { page = Page.Failed; ExitCode = 1; Status.Text = ex.GetBaseException().Message; }
             finally
@@ -115,17 +146,24 @@ namespace Rikai.Setup
                 poll.Stop();
                 if (engine != null) { engine.Dispose(); engine = null; }
             }
+            if (page != Page.Failed && File.Exists(log))
+                try { File.Delete(log); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            if (page == Page.Cancelled)
+            {
+                if (closeAfterCancel) { Close(); return; }
+                ReturnToFolder();
+                return;
+            }
+            closeAfterCancel = false;
             if (page == Page.Finished) SetProgress(3, 100);
             else DrawSteps();
-            Heading.Text = T(page == Page.Finished ? "Done" : page == Page.Cancelled ? "Cancelled" : "Failed");
+            Heading.Text = T(page == Page.Finished ? "Done" : "Failed");
             MainButton.IsEnabled = true;
             MainButton.Content = T(page == Page.Finished ? "Open" : "Retry");
-            MainButton.Style = (Style)FindResource("Primary");
+            MainButton.Tone = ButtonTone.Primary;
             AutomationProperties.SetAutomationId(MainButton, page == Page.Finished ? "Open" : "Retry");
             CloseButton.Visibility = Visibility.Visible;
             if (page == Page.Failed && File.Exists(log)) LogButton.Visibility = Visibility.Visible;
-            if (page != Page.Failed && File.Exists(log))
-                try { File.Delete(log); } catch (IOException) { } catch (UnauthorizedAccessException) { }
         }
 
         private void ReadProgress()
@@ -151,16 +189,13 @@ namespace Rikai.Setup
         {
             if (stage != phase) { phase = stage; DrawSteps(); }
             percent = value;
-            Percent.Text = value + " %";
+            Percent.Text = (value / 100d).ToString("P0", culture);
             DrawProgress(true);
         }
         private void DrawProgress(bool animate)
         {
             double target = Track.ActualWidth * percent / 100;
-            if (animate && SystemParameters.ClientAreaAnimation)
-                Fill.BeginAnimation(WidthProperty, new DoubleAnimation(target, TimeSpan.FromMilliseconds(170))
-                    { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
-            else { Fill.BeginAnimation(WidthProperty, null); Fill.Width = target; }
+            SetupTheme.Move(Fill, WidthProperty, target, animate ? 170 : 0);
         }
 
         private void DrawSteps()
@@ -168,52 +203,44 @@ namespace Rikai.Setup
             Steps.Children.Clear();
             for (int i = 0; i < stages.Length; i++)
             {
-                var row = new StackPanel { Orientation = Orientation.Horizontal, MinHeight = 34 };
+                var row = new StackPanel { Orientation = Orientation.Horizontal, MinHeight = 23, Margin = new Thickness(0,i == 0 ? 0 : 5,0,0) };
                 bool done = i < phase, current = i == phase && page == Page.Running;
-                var gray = new SolidColorBrush(Color.FromRgb(158, 158, 169));
-                var badge = new Grid { Width = 16, Height = 16, Margin = new Thickness(0,0,11,0), VerticalAlignment = VerticalAlignment.Center };
-                badge.Children.Add(new Ellipse { Stroke = done ? Brushes.LightGray : gray, StrokeThickness = 1.3,
-                    Fill = done ? Brushes.LightGray : Brushes.Transparent });
-                if (done) badge.Children.Add(new System.Windows.Shapes.Path { Data = Geometry.Parse("M3,8 L6.5,11.5 L13,4.5"),
-                        Stroke = Brushes.Black, StrokeThickness = 1.5 });
+                var gray = new SolidColorBrush(Color.FromRgb(165, 165, 173));
+                var badge = new Grid { Width = 14, Height = 14, Margin = new Thickness(0,0,9,0), VerticalAlignment = VerticalAlignment.Center };
+                var complete = new SolidColorBrush(Color.FromRgb(210,210,217));
+                badge.Children.Add(new Ellipse { Stroke = done ? complete : new SolidColorBrush(Color.FromRgb(89,89,96)),
+                    StrokeThickness = 1, Fill = done ? complete : Brushes.Transparent });
+                if (done) badge.Children.Add(new System.Windows.Shapes.Rectangle { Width = 10, Height = 10,
+                    Fill = new SolidColorBrush(Color.FromRgb(32,32,36)), OpacityMask = (Brush)FindResource("Glyph.check") });
                 if (current)
                 {
-                    var arc = new System.Windows.Shapes.Path { Data = Geometry.Parse("M8,1 A7,7 0 0 1 15,8"), Stroke = Brushes.White,
-                        StrokeThickness = 2, RenderTransformOrigin = new Point(.5,.5), RenderTransform = new RotateTransform() };
+                    var arc = new System.Windows.Shapes.Path { Data = Geometry.Parse("M7,1 A6,6 0 0 1 13,7"), Stroke = Brushes.White,
+                        StrokeThickness = 1.4, RenderTransformOrigin = new Point(.5,.5), RenderTransform = new RotateTransform() };
                     if (SystemParameters.ClientAreaAnimation)
-                        arc.RenderTransform.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0,360,TimeSpan.FromSeconds(1.1))
+                        arc.RenderTransform.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0,360,TimeSpan.FromSeconds(.9))
                             { RepeatBehavior = RepeatBehavior.Forever });
                     badge.Children.Add(arc);
                 }
                 row.Children.Add(badge);
-                row.Children.Add(new TextBlock { Text = T(stages[i]), VerticalAlignment = VerticalAlignment.Center,
+                row.Children.Add(new TextBlock { Text = T(stages[i]), FontSize = 12, VerticalAlignment = VerticalAlignment.Center,
                     Foreground = done || current ? Foreground : gray });
                 Steps.Children.Add(row);
             }
         }
 
-        private void DrawWave()
+        private void ReturnToFolder()
         {
-            var wave = new StreamGeometry();
-            using (var ctx = wave.Open())
-                for (int x = 0; x <= 330; x += 3)
-                {
-                    double h = 2 + 14 * Bell(x,84,33) + 47 * Bell(x,149,18) + 19 * Bell(x,208,27) + 10 * Bell(x,278,16);
-                    h *= .35 + .65 * Math.Abs(Math.Sin(.11*x) + .2*Math.Sin(.33*x));
-                    ctx.BeginFigure(new Point(x,50-h), false, false); ctx.LineTo(new Point(x,50+h), true, false);
-                }
-            wave.Freeze();
-            var brush = new LinearGradientBrush { StartPoint = new Point(0,0), EndPoint = new Point(1,0) };
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(49,49,56),0));
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(211,211,221),.46));
-            brush.GradientStops.Add(new GradientStop(Color.FromRgb(49,49,56),1));
-            Wave.Children.Add(new System.Windows.Shapes.Path { Data = wave, Stroke = brush, StrokeThickness = 1.4 });
+            page = Page.Welcome;
+            phase = -1;
+            closeAfterCancel = false;
+            PathHint.Visibility = Visibility.Collapsed;
+            ShowPage(false);
+            InstallButton.Focus();
         }
-        private static double Bell(int x, double center, double spread) { return Math.Exp(-Math.Pow((x-center)/spread,2)); }
 
         private void OnClosing(object sender, CancelEventArgs e)
         {
-            if (page == Page.Running || page == Page.Stopping) { e.Cancel = true; StopInstall(); }
+            if (page == Page.Running || page == Page.Stopping) { e.Cancel = true; closeAfterCancel = true; StopInstall(); }
         }
         private void StopInstall()
         {
@@ -231,11 +258,7 @@ namespace Rikai.Setup
                 try { Process.Start(new ProcessStartInfo(FilePath.Combine(destination,"rikai.exe")) { WorkingDirectory = destination }); Close(); }
                 catch (Exception ex) { Status.Text = ex.GetBaseException().Message; }
             }
-            if (page == Page.Cancelled || page == Page.Failed)
-            {
-                page = Page.Welcome; phase = -1; PathHint.Text = T("UserOnly");
-                ShowPage(false); Destination.Focus();
-            }
+            if (page == Page.Failed) ReturnToFolder();
         }
         private void OpenLog(object sender, RoutedEventArgs e)
         {

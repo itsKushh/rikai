@@ -1,107 +1,147 @@
 <Window x:Class="Rikai.Setup.SetupWindow"
  xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
- xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
- Title="{DynamicResource Title}" Width="596" SizeToContent="Height" WindowStartupLocation="CenterScreen"
+ xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:Rikai.Setup"
+ Title="{DynamicResource Title}" Width="392" SizeToContent="Height" WindowStartupLocation="CenterScreen"
  WindowStyle="None" AllowsTransparency="True" Background="Transparent" ResizeMode="CanMinimize"
  FontFamily="./Fonts/#Inter, Segoe UI" FontSize="13" Foreground="#EDEDF0"
  UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
-  <Window.Resources>
-    <Style TargetType="Button">
-      <Setter Property="Padding" Value="14,7"/><Setter Property="MinHeight" Value="32"/>
-      <Setter Property="Cursor" Value="Hand"/><Setter Property="Background" Value="#303034"/>
-      <Setter Property="BorderBrush" Value="#4B4B50"/><Setter Property="Foreground" Value="#EDEDF0"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-        <Border x:Name="Edge" CornerRadius="11" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
-          <Grid><Border x:Name="Light" CornerRadius="10" Background="White" Opacity="0"/>
-            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
-        </Border>
-        <ControlTemplate.Triggers>
-          <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Edge" Property="BorderBrush" Value="#CCCCD4"/></Trigger>
-          <Trigger Property="IsMouseOver" Value="True"><Trigger.EnterActions><BeginStoryboard><Storyboard>
-            <DoubleAnimation Storyboard.TargetName="Light" Storyboard.TargetProperty="Opacity" To=".075" Duration="0:0:0.12"/>
-          </Storyboard></BeginStoryboard></Trigger.EnterActions><Trigger.ExitActions><BeginStoryboard><Storyboard>
-            <DoubleAnimation Storyboard.TargetName="Light" Storyboard.TargetProperty="Opacity" To="0" Duration="0:0:0.14"/>
-          </Storyboard></BeginStoryboard></Trigger.ExitActions></Trigger>
-          <Trigger Property="IsPressed" Value="True"><Setter TargetName="Edge" Property="RenderTransform"><Setter.Value><TranslateTransform Y="0.6"/></Setter.Value></Setter></Trigger>
-          <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Edge" Property="Opacity" Value=".5"/></Trigger>
-        </ControlTemplate.Triggers>
-      </ControlTemplate></Setter.Value></Setter>
-    </Style>
-    <Style TargetType="ToolTip">
-      <Setter Property="Foreground" Value="#EDEDF0"/>
-      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToolTip">
-        <Border Background="#29292D" BorderBrush="#49494F" BorderThickness="1" CornerRadius="9" Padding="10,6"><ContentPresenter/></Border>
-      </ControlTemplate></Setter.Value></Setter>
-    </Style>
-    <Style x:Key="Quiet" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="Padding" Value="7"/><Setter Property="Background" Value="Transparent"/><Setter Property="BorderBrush" Value="Transparent"/><Setter Property="Foreground" Value="#ACACB5"/>
-    </Style>
-    <Style x:Key="Primary" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-      <Setter Property="Background" Value="#E5E5E9"/><Setter Property="Foreground" Value="#1C1C20"/><Setter Property="BorderBrush" Value="#F4F4F6"/>
-    </Style>
-    <Style x:Key="Muted" TargetType="TextBlock"><Setter Property="Foreground" Value="#ADADB6"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
-  </Window.Resources>
-  <Border CornerRadius="16" BorderThickness="1" BorderBrush="#48484E">
-    <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,1"><GradientStop Color="#27272B"/><GradientStop Color="#1D1D20" Offset="1"/></LinearGradientBrush></Border.Background>
-    <Grid><Grid.RowDefinitions><RowDefinition Height="46"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-      <Grid Background="Transparent" MouseLeftButtonDown="DragTitle" Margin="18,0,10,0">
-        <TextBlock Text="{DynamicResource Title}" FontSize="12" Foreground="#D1D1D7" VerticalAlignment="Center"/>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
-          <Button Style="{StaticResource Quiet}" AutomationProperties.Name="{DynamicResource Minimize}" ToolTip="{DynamicResource Minimize}" Width="32" Click="MinimizeWindow"><Path StrokeThickness="1.4" Stroke="#A5A5AD" Data="M0,5 L10,5"/></Button>
-          <Button Style="{StaticResource Quiet}" AutomationProperties.Name="{DynamicResource Close}" ToolTip="{DynamicResource Close}" Width="32" Click="CloseWindow"><Path StrokeThickness="1.4" Stroke="#A5A5AD" Data="M1,1 L10,10 M10,1 L1,10"/></Button>
-        </StackPanel>
+ <Window.Resources>
+  <LinearGradientBrush x:Key="Rim" StartPoint="0,0" EndPoint="0,1">
+   <GradientStop Color="#21FFFFFF"/><GradientStop Color="#0BFFFFFF" Offset=".12"/>
+   <GradientStop Color="#0BFFFFFF" Offset=".86"/><GradientStop Color="#44000000" Offset="1"/>
+  </LinearGradientBrush>
+  <LinearGradientBrush x:Key="InsetShadow" StartPoint="0,0" EndPoint="0,1">
+   <GradientStop Color="#57000000"/><GradientStop Color="#14000000" Offset=".06"/><GradientStop Color="#00000000" Offset=".12"/>
+  </LinearGradientBrush>
+  <Style TargetType="{x:Type local:SetupButton}">
+   <Setter Property="Padding" Value="13,5"/><Setter Property="MinHeight" Value="32"/>
+   <Setter Property="Cursor" Value="Hand"/><Setter Property="Foreground" Value="#EDEDF0"/>
+   <Setter Property="FontWeight" Value="Medium"/><Setter Property="FontSize" Value="12"/>
+   <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+   <Setter Property="Template"><Setter.Value>
+    <ControlTemplate TargetType="{x:Type local:SetupButton}">
+     <Grid Background="Transparent">
+      <Grid x:Name="Face">
+       <Border x:Name="BaseFill" CornerRadius="{TemplateBinding Radius}" Background="#2C2C30"><Border.Effect>
+        <DropShadowEffect Color="Black" BlurRadius="2" ShadowDepth="1" Direction="270" Opacity=".27"/>
+       </Border.Effect></Border>
+       <Border x:Name="HoverFill" CornerRadius="{TemplateBinding Radius}" Background="#36363A" Opacity="0"/>
+       <Border x:Name="Rim" CornerRadius="{TemplateBinding Radius}" BorderBrush="{StaticResource Rim}" BorderThickness="1"/>
+       <Border x:Name="Inset" CornerRadius="{TemplateBinding Radius}" Background="{StaticResource InsetShadow}" Opacity="0"/>
+       <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+       <Border x:Name="FocusRing" CornerRadius="{TemplateBinding Radius}" BorderThickness="1" BorderBrush="#CCCCD4" IsHitTestVisible="False" Opacity="0"/>
       </Grid>
-      <StackPanel x:Name="WelcomePanel" Grid.Row="1">
-        <StackPanel Margin="38,12,38,30">
-          <Grid Margin="0,0,0,28"><Grid.ColumnDefinitions><ColumnDefinition Width="80"/><ColumnDefinition/></Grid.ColumnDefinitions>
-            <Image Source="Images/rikai.png" Stretch="Uniform" Width="80" Height="80"/>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="21,0,0,0">
-              <TextBlock Text="{DynamicResource Welcome}" FontWeight="SemiBold" FontSize="36" TextWrapping="Wrap"/>
-              <TextBlock Text="{DynamicResource Intro}" Style="{StaticResource Muted}" Margin="0,4,0,0"/>
-            </StackPanel>
-          </Grid>
-          <TextBlock Text="{DynamicResource Folder}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,7"/>
-          <Border x:Name="PathBorder" Background="#141416" BorderThickness="1" CornerRadius="10" Padding="4,2">
-            <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="#18181B"/>
-              <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#9B9BA6"/></Trigger></Style.Triggers>
-            </Style></Border.Style>
-            <DockPanel><Button DockPanel.Dock="Right" Style="{StaticResource Quiet}" Click="BrowseFolder" AutomationProperties.Name="{DynamicResource Browse}" ToolTip="{DynamicResource Browse}">
-                <Path Stroke="#CDCDD5" StrokeThickness="1.4" Data="M1,4 L6,4 8,6 16,6 16,8 M1,4 L1,15 14,15 17,8 4,8 1,15"/>
-              </Button>
-              <TextBox x:Name="Destination" AutomationProperties.AutomationId="Destination" AutomationProperties.Name="{DynamicResource Folder}" Background="Transparent" Foreground="#EDEDF0" BorderThickness="0" CaretBrush="White" Padding="8,4" VerticalContentAlignment="Center"/>
-            </DockPanel>
-          </Border>
-          <TextBlock x:Name="PathHint" Text="{DynamicResource UserOnly}" Style="{StaticResource Muted}" FontSize="12" Margin="0,9,0,0"/>
-        </StackPanel>
-        <Border Background="#19191B" CornerRadius="0,0,15,15" Padding="26,13" BorderBrush="#323236" BorderThickness="0,1,0,0"><Grid>
-          <TextBlock x:Name="VersionLabel" FontSize="12" Style="{StaticResource Muted}" VerticalAlignment="Center"/>
-          <Button x:Name="InstallButton" AutomationProperties.AutomationId="Install" IsDefault="True" Style="{StaticResource Primary}" HorizontalAlignment="Right" Click="StartInstall">
-            <StackPanel Orientation="Horizontal"><TextBlock Text="{DynamicResource Install}"/><Path Margin="8,0,0,0" VerticalAlignment="Center" Stroke="#252529" StrokeThickness="1.5" Data="M1,6 L13,6 M8,1 L13,6 8,11"/></StackPanel>
-          </Button>
-        </Grid></Border>
+     </Grid>
+     <ControlTemplate.Triggers>
+      <Trigger Property="Tone" Value="Primary"><Setter TargetName="BaseFill" Property="Background" Value="#E5E5E9"/><Setter TargetName="HoverFill" Property="Background" Value="#CACACE"/><Setter Property="Foreground" Value="#1C1C20"/></Trigger>
+      <Trigger Property="Tone" Value="Quiet"><Setter TargetName="BaseFill" Property="Background" Value="Transparent"/><Setter TargetName="HoverFill" Property="Background" Value="#2C2C30"/><Setter TargetName="Rim" Property="Visibility" Value="Hidden"/><Setter Property="Foreground" Value="#A5A5AD"/></Trigger>
+      <Trigger Property="Tone" Value="Caption"><Setter TargetName="BaseFill" Property="Background" Value="Transparent"/><Setter TargetName="Rim" Property="Visibility" Value="Hidden"/></Trigger>
+      <Trigger Property="IsEnabled" Value="False"><Setter Property="Cursor" Value="No"/></Trigger>
+     </ControlTemplate.Triggers>
+    </ControlTemplate>
+   </Setter.Value></Setter>
+  </Style>
+  <Style TargetType="ToolTip">
+   <Setter Property="Foreground" Value="#EDEDF0"/><Setter Property="FontFamily" Value="./Fonts/#Inter, Segoe UI"/><Setter Property="FontSize" Value="11"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToolTip">
+    <Border Background="#29292D" BorderBrush="#49494F" BorderThickness="1" CornerRadius="8" Padding="9,5"><ContentPresenter/></Border>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <Style x:Key="FieldLabel" TargetType="TextBlock"><Setter Property="FontSize" Value="12"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Margin" Value="0,0,0,7"/></Style>
+  <Style x:Key="Hint" TargetType="TextBlock"><Setter Property="Foreground" Value="#A5A5AD"/><Setter Property="FontSize" Value="11.5"/><Setter Property="TextWrapping" Value="Wrap"/></Style>
+  <Style TargetType="ComboBoxItem">
+   <Setter Property="MinHeight" Value="27"/><Setter Property="Foreground" Value="#EDEDF0"/>
+   <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ComboBoxItem">
+    <Border x:Name="Item" CornerRadius="10" Padding="9,4" Background="Transparent">
+     <DockPanel><Rectangle x:Name="Tick" DockPanel.Dock="Right" Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.check}" Visibility="Hidden"/><ContentPresenter/></DockPanel>
+    </Border>
+    <ControlTemplate.Triggers>
+     <Trigger Property="IsHighlighted" Value="True"><Setter TargetName="Item" Property="Background" Value="#333337"/></Trigger>
+     <Trigger Property="IsSelected" Value="True"><Setter TargetName="Item" Property="Background" Value="#36363B"/><Setter TargetName="Tick" Property="Visibility" Value="Visible"/></Trigger>
+    </ControlTemplate.Triggers>
+   </ControlTemplate></Setter.Value></Setter>
+  </Style>
+  <ControlTemplate x:Key="LanguageField" TargetType="ComboBox">
+   <Grid>
+    <Border x:Name="FieldFace" CornerRadius="12" Background="#2C2C30" BorderBrush="{StaticResource Rim}" BorderThickness="1"/>
+    <DockPanel Margin="11,0" IsHitTestVisible="False">
+     <Rectangle DockPanel.Dock="Left" Width="16" Height="16" Margin="0,0,9,0" Fill="#A5A5AD" OpacityMask="{StaticResource Glyph.language}"/>
+     <Rectangle x:Name="Chevron" DockPanel.Dock="Right" Width="12" Height="12" Fill="#A5A5AD" OpacityMask="{StaticResource Glyph.chevron-down}" RenderTransformOrigin=".5,.5"/>
+     <ContentPresenter VerticalAlignment="Center" Content="{TemplateBinding SelectionBoxItem}"/>
+    </DockPanel>
+    <ToggleButton Focusable="False" Cursor="Hand" ClickMode="Press" IsChecked="{Binding IsDropDownOpen, RelativeSource={RelativeSource TemplatedParent}, Mode=TwoWay}">
+     <ToggleButton.Template><ControlTemplate TargetType="ToggleButton"><Border Background="Transparent"/></ControlTemplate></ToggleButton.Template>
+    </ToggleButton>
+    <Popup x:Name="PART_Popup" IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True" VerticalOffset="4" PopupAnimation="Fade" Focusable="False">
+     <Border Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}" Background="#28282B" CornerRadius="14" Padding="4">
+      <ScrollViewer MaxHeight="190" VerticalScrollBarVisibility="Auto"><ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained"/></ScrollViewer>
+     </Border>
+    </Popup>
+   </Grid>
+   <ControlTemplate.Triggers>
+    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="FieldFace" Property="Background" Value="#353539"/></Trigger>
+    <Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter TargetName="FieldFace" Property="BorderBrush" Value="#93939C"/></Trigger>
+    <Trigger Property="IsDropDownOpen" Value="True"><Setter TargetName="Chevron" Property="RenderTransform"><Setter.Value><RotateTransform Angle="180"/></Setter.Value></Setter></Trigger>
+   </ControlTemplate.Triggers>
+  </ControlTemplate>
+ </Window.Resources>
+ <Grid>
+  <Border CornerRadius="16">
+   <Border.Background><LinearGradientBrush StartPoint=".15,0" EndPoint=".85,1"><GradientStop Color="#242427"/><GradientStop Color="#1D1D20" Offset=".78"/></LinearGradientBrush></Border.Background>
+   <Grid>
+    <Grid.RowDefinitions><RowDefinition Height="54"/><RowDefinition Height="Auto" MinHeight="204"/><RowDefinition Height="Auto" MinHeight="58"/></Grid.RowDefinitions>
+    <Border Background="Transparent" BorderBrush="#0BFFFFFF" BorderThickness="0,0,0,1" Padding="16,6,8,6" MouseLeftButtonDown="DragTitle">
+     <DockPanel>
+      <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
+       <local:SetupButton Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Minimize}" AutomationProperties.Name="{DynamicResource Minimize}" Click="MinimizeWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.minus}"/></local:SetupButton>
+       <local:SetupButton Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Close}" AutomationProperties.Name="{DynamicResource Close}" Click="CloseWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.xmark}"/></local:SetupButton>
       </StackPanel>
-      <Border x:Name="GuidedPanel" Grid.Row="1" BorderBrush="#353539" BorderThickness="0,1,0,0" Visibility="Collapsed"><Grid MinHeight="347">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="0.36*"/><ColumnDefinition Width="0.64*"/></Grid.ColumnDefinitions>
-        <Border Background="#151517" CornerRadius="0,0,0,15"><Grid ClipToBounds="True">
-          <StackPanel Orientation="Horizontal" Margin="25,28" VerticalAlignment="Top"><Image Width="28" Height="28" Source="Images/wave.png"/><TextBlock Text="Rikai" Margin="9,0,0,0" FontSize="31" FontWeight="SemiBold"/></StackPanel>
-          <Viewbox Stretch="Fill" Height="100"><Canvas x:Name="Wave" Width="330" Height="100"/></Viewbox>
-          <TextBlock x:Name="GuidedVersion" Margin="25,16" FontSize="12" Style="{StaticResource Muted}" VerticalAlignment="Bottom"/>
-        </Grid></Border>
-        <Grid Grid.Column="1" Margin="31,28,31,22">
-          <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-          <DockPanel><TextBlock x:Name="Percent" DockPanel.Dock="Right" FontSize="18" Margin="10,4,0,0" Text="0 %"/>
-            <TextBlock x:Name="Heading" Text="{DynamicResource Installing}" FontSize="25" FontWeight="SemiBold" TextWrapping="Wrap"/></DockPanel>
-          <TextBlock x:Name="Status" Grid.Row="1" Text="{DynamicResource LocalFiles}" Style="{StaticResource Muted}" Margin="0,6,0,0"/>
-          <Border x:Name="Track" Grid.Row="2" Height="5" CornerRadius="3" Background="#37373B" Margin="0,17"><Border x:Name="Fill" HorizontalAlignment="Left" Width="0" CornerRadius="3" Background="#E6E6EB"/></Border>
-          <StackPanel x:Name="Steps" Grid.Row="3"/>
-          <WrapPanel Grid.Row="5" HorizontalAlignment="Right" Margin="0,19,0,0">
-            <Button x:Name="LogButton" Content="{DynamicResource Log}" Margin="0,0,7,0" Visibility="Collapsed" Click="OpenLog"/>
-            <Button x:Name="CloseButton" AutomationProperties.AutomationId="FinishClose" Content="{DynamicResource Close}" Margin="0,0,7,0" Visibility="Collapsed" Click="CloseWindow"/>
-            <Button x:Name="MainButton" AutomationProperties.AutomationId="MainAction" Content="{DynamicResource Cancel}" Click="GuidedAction"/>
-          </WrapPanel>
-        </Grid>
-      </Grid></Border>
-    </Grid>
+      <Image DockPanel.Dock="Left" Width="24" Height="24" Margin="0,0,10,0" Source="Images/rikai-mini-icon.png" RenderOptions.BitmapScalingMode="HighQuality"/>
+      <TextBlock Text="{DynamicResource Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
+     </DockPanel>
+    </Border>
+    <StackPanel x:Name="WelcomePanel" Grid.Row="1" Margin="20">
+     <TextBlock Text="{DynamicResource Language}" Style="{StaticResource FieldLabel}"/>
+     <ComboBox x:Name="LocalePicker" Height="36" Foreground="#EDEDF0" Template="{StaticResource LanguageField}" AutomationProperties.Name="{DynamicResource Language}" SelectionChanged="SelectLanguage">
+      <ComboBoxItem Tag="fr" Content="Français"/><ComboBoxItem Tag="en" Content="English"/><ComboBoxItem Tag="es" Content="Español"/>
+      <ComboBoxItem Tag="ru" Content="Русский"/><ComboBoxItem Tag="ja" Content="日本語"/><ComboBoxItem Tag="zh" Content="简体中文"/>
+     </ComboBox>
+     <TextBlock Text="{DynamicResource Folder}" Style="{StaticResource FieldLabel}" Margin="0,17,0,7"/>
+     <Border Background="#141416" BorderThickness="1" CornerRadius="12" Padding="3" MinHeight="36">
+      <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="#18181B"/><Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#93939C"/></Trigger></Style.Triggers></Style></Border.Style>
+      <DockPanel>
+       <local:SetupButton Tone="Quiet" DockPanel.Dock="Right" Width="30" Height="28" MinHeight="28" Radius="8" Padding="0" Click="BrowseFolder" ToolTip="{DynamicResource Browse}" AutomationProperties.Name="{DynamicResource Browse}"><Rectangle Width="16" Height="16" Fill="#A5A5AD" OpacityMask="{StaticResource Glyph.folder-open}"/></local:SetupButton>
+       <TextBox x:Name="Destination" AutomationProperties.AutomationId="Destination" AutomationProperties.Name="{DynamicResource Folder}" Background="Transparent" Foreground="#EDEDF0" BorderThickness="0" FontSize="12" CaretBrush="White" Padding="7,0,5,0" VerticalContentAlignment="Center" TextChanged="ClearPathError"/>
+      </DockPanel>
+     </Border>
+     <TextBlock Text="{DynamicResource UserOnly}" Style="{StaticResource Hint}" Margin="0,7,0,0"/>
+     <TextBlock x:Name="PathHint" Text="{DynamicResource Invalid}" Style="{StaticResource Hint}" Foreground="#F1B4B4" Margin="0,5,0,0" Visibility="Collapsed"/>
+    </StackPanel>
+    <StackPanel x:Name="GuidedPanel" Grid.Row="1" Margin="20" Visibility="Collapsed">
+     <DockPanel><TextBlock x:Name="Percent" DockPanel.Dock="Right" VerticalAlignment="Center" FontSize="12" Foreground="#C5C5CC" Margin="8,0,0,0"/>
+      <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
+     </DockPanel>
+     <Border x:Name="Track" Height="5" CornerRadius="3" Background="#36363A" Margin="0,12,0,13"><Border x:Name="Fill" HorizontalAlignment="Left" Width="0" CornerRadius="3">
+      <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#BCBCC5"/><GradientStop Color="#EDEDF0" Offset="1"/></LinearGradientBrush></Border.Background>
+     </Border></Border>
+     <StackPanel x:Name="Steps"/>
+     <TextBlock x:Name="Status" Margin="0,7,0,0"><TextBlock.Style><Style TargetType="TextBlock" BasedOn="{StaticResource Hint}"><Style.Triggers><Trigger Property="Text" Value=""><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></TextBlock.Style></TextBlock>
+    </StackPanel>
+    <Border Grid.Row="2" Background="#19191C" CornerRadius="0,0,16,16" BorderBrush="#0DFFFFFF" BorderThickness="0,1,0,0" Padding="16,12">
+     <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition/></Grid.ColumnDefinitions>
+      <TextBlock x:Name="VersionLabel" Foreground="#A5A5AD" FontSize="11" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+       <local:SetupButton x:Name="InstallButton" Tone="Primary" AutomationProperties.AutomationId="Install" IsDefault="True" Content="{DynamicResource Install}" Click="StartInstall"/>
+       <local:SetupButton x:Name="LogButton" Tone="Quiet" Margin="0,0,8,0" Content="{DynamicResource Log}" Visibility="Collapsed" Click="OpenLog"/>
+       <local:SetupButton x:Name="CloseButton" Tone="Quiet" Margin="0,0,8,0" AutomationProperties.AutomationId="FinishClose" Content="{DynamicResource Close}" Visibility="Collapsed" Click="CloseWindow"/>
+       <local:SetupButton x:Name="MainButton" AutomationProperties.AutomationId="MainAction" Visibility="Collapsed" Click="GuidedAction"/>
+      </WrapPanel>
+     </Grid>
+    </Border>
+   </Grid>
   </Border>
+  <Border CornerRadius="16" BorderThickness="1" IsHitTestVisible="False">
+   <Border.BorderBrush><LinearGradientBrush StartPoint="0,0" EndPoint="0,1"><GradientStop Color="#49494E"/><GradientStop Color="#39393D" Offset=".22"/><GradientStop Color="#303034" Offset="1"/></LinearGradientBrush></Border.BorderBrush>
+  </Border>
+ </Grid>
 </Window>

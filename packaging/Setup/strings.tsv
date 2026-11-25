@@ -23,3 +23,4 @@ Retry	Réessayer	Try again	Reintentar	Повторить	再試行	重试
 Invalid	Sélectionnez un dossier avec un chemin absolu.	Choose a folder with an absolute path.	Elige una carpeta con una ruta absoluta.	Выберите папку с абсолютным путём.	絶対パスでフォルダーを指定してください。	请选择具有绝对路径的文件夹。
 Log	Ouvrir le journal	Open log	Abrir registro	Открыть журнал	ログを開く	打开日志
 ErrorCode	Code de sortie	Exit code	Código de salida	Код завершения	終了コード	退出代码
+Language	Langue de l’installeur	Installer language	Idioma del instalador	Язык установщика	インストーラーの言語	安装程序语言

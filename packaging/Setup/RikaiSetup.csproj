@@ -10,6 +10,7 @@
     <OutputPath>..\..\dist\setup-build\</OutputPath>
     <IntermediateOutputPath>..\..\dist\setup-obj\</IntermediateOutputPath>
     <Optimize>true</Optimize>
+    <IncludePackageReferencesDuringMarkupCompilation>false</IncludePackageReferencesDuringMarkupCompilation>
     <ApplicationIcon>..\..\assets\rikai.ico</ApplicationIcon>
     <ApplicationManifest>setup.manifest</ApplicationManifest>
   </PropertyGroup>
@@ -18,11 +19,13 @@
     <Reference Include="System.Drawing"/><Reference Include="System.Windows.Forms"/><Reference Include="WindowsBase"/>
     <Reference Include="PresentationFramework"/><Reference Include="PresentationCore"/>
     <Page Include="SetupWindow.xaml"/>
-    <Compile Include="Program.cs"/><Compile Include="SetupWindow.xaml.cs"/>
+    <Compile Include="Program.cs"/><Compile Include="SetupTheme.cs"/><Compile Include="SetupWindow.xaml.cs"/>
     <Compile Include="..\..\dist\setup-version.cs"/>
     <Resource Include="..\..\assets\inter\Inter.ttf"><Link>Fonts\Inter.ttf</Link></Resource>
-    <Resource Include="..\..\docs\images\rikai.png"><Link>Images\rikai.png</Link></Resource>
-    <Resource Include="..\..\assets\rikai-mini-icon.png"><Link>Images\wave.png</Link></Resource>
+    <Resource Include="..\..\assets\rikai-mini-icon.png"><Link>Images\rikai-mini-icon.png</Link></Resource>
+    <EmbeddedResource Include="..\..\assets\nucleo\minus.svg;..\..\assets\nucleo\xmark.svg;..\..\assets\nucleo\language.svg;..\..\assets\nucleo\chevron-down.svg;..\..\assets\nucleo\folder-open.svg;..\..\assets\nucleo\check.svg">
+      <LogicalName>Rikai.Icon.%(Filename)%(Extension)</LogicalName>
+    </EmbeddedResource>
     <EmbeddedResource Include="..\..\dist\installer-engine\Rikai-Payload.exe"><LogicalName>Rikai.Payload</LogicalName></EmbeddedResource>
     <EmbeddedResource Include="strings.tsv"><LogicalName>Rikai.Strings</LogicalName></EmbeddedResource>
   </ItemGroup>
