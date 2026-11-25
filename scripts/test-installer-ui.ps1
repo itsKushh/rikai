@@ -10,6 +10,8 @@ $assembly.GetType('Rikai.Setup.Program').GetMethod('LoadStrings', [Reflection.Bi
 $argsForWindow = New-Object 'object[]' 1
 $argsForWindow[0] = [string[]]@()
 $window = [Activator]::CreateInstance($assembly.GetType('Rikai.Setup.SetupWindow'), $argsForWindow)
+# Drive clicks from the same dispatcher context that real input uses.
+[Threading.SynchronizationContext]::SetSynchronizationContext([Windows.Threading.DispatcherSynchronizationContext]::new($window.Dispatcher))
 $folder = Join-Path $env:RUNNER_TEMP 'Rikai guided install'
 $preview = New-Item -Force -ItemType Directory dist/installer-previews
 function Tick {

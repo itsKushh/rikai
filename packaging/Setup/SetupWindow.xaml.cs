@@ -50,11 +50,11 @@ namespace Rikai.Setup
         private void DragTitle(object sender, MouseButtonEventArgs e) { if (e.LeftButton == MouseButtonState.Pressed) DragMove(); }
         private void MinimizeWindow(object sender, RoutedEventArgs e) { WindowState = WindowState.Minimized; }
         private void CloseWindow(object sender, RoutedEventArgs e) { Close(); }
-        private sealed class Owner : Forms.IWin32Window { public IntPtr Handle { get; set; } }
+        private sealed class FolderDialogOwner : Forms.IWin32Window { public IntPtr Handle { get; set; } }
         private void BrowseFolder(object sender, RoutedEventArgs e)
         {
             using (var dialog = new Forms.FolderBrowserDialog { Description = T("Folder"), SelectedPath = Destination.Text })
-                if (dialog.ShowDialog(new Owner { Handle = new WindowInteropHelper(this).Handle }) == Forms.DialogResult.OK)
+                if (dialog.ShowDialog(new FolderDialogOwner { Handle = new WindowInteropHelper(this).Handle }) == Forms.DialogResult.OK)
                     Destination.Text = dialog.SelectedPath;
         }
 
@@ -139,7 +139,8 @@ namespace Rikai.Setup
                     var parts = reader.ReadToEnd().Trim().Split(' ');
                     int nextPhase, nextPercent;
                     if (parts.Length == 2 && int.TryParse(parts[0], out nextPhase) && int.TryParse(parts[1], out nextPercent)
-                            && nextPhase >= 0 && nextPhase <= 2 && nextPercent >= 0 && nextPercent <= 100)
+                            && nextPhase >= 0 && nextPhase <= 2 && nextPercent >= 0 && nextPercent <= 100
+                            && (nextPhase != phase || Math.Min(99, nextPercent) != percent))
                         SetProgress(nextPhase, Math.Min(99, nextPercent));
                 }
             }

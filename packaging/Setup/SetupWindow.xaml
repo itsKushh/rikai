@@ -12,10 +12,9 @@
       <Setter Property="BorderBrush" Value="#4B4B50"/><Setter Property="Foreground" Value="#EDEDF0"/>
       <Setter Property="FontWeight" Value="SemiBold"/>
       <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button">
-        <Border x:Name="Edge" CornerRadius="11" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1"
-            Padding="{TemplateBinding Padding}">
-          <Grid><Border x:Name="Light" Margin="-2,-1" CornerRadius="8" Background="White" Opacity="0"/>
-            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
+        <Border x:Name="Edge" CornerRadius="11" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="1">
+          <Grid><Border x:Name="Light" CornerRadius="10" Background="White" Opacity="0"/>
+            <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Grid>
         </Border>
         <ControlTemplate.Triggers>
           <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Edge" Property="BorderBrush" Value="#CCCCD4"/></Trigger>
@@ -27,6 +26,12 @@
           <Trigger Property="IsPressed" Value="True"><Setter TargetName="Edge" Property="RenderTransform"><Setter.Value><TranslateTransform Y="0.6"/></Setter.Value></Setter></Trigger>
           <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Edge" Property="Opacity" Value=".5"/></Trigger>
         </ControlTemplate.Triggers>
+      </ControlTemplate></Setter.Value></Setter>
+    </Style>
+    <Style TargetType="ToolTip">
+      <Setter Property="Foreground" Value="#EDEDF0"/>
+      <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ToolTip">
+        <Border Background="#29292D" BorderBrush="#49494F" BorderThickness="1" CornerRadius="9" Padding="10,6"><ContentPresenter/></Border>
       </ControlTemplate></Setter.Value></Setter>
     </Style>
     <Style x:Key="Quiet" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
@@ -57,7 +62,10 @@
             </StackPanel>
           </Grid>
           <TextBlock Text="{DynamicResource Folder}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,7"/>
-          <Border x:Name="PathBorder" Background="#141416" BorderThickness="1" BorderBrush="#18181B" CornerRadius="10" Padding="4,2">
+          <Border x:Name="PathBorder" Background="#141416" BorderThickness="1" CornerRadius="10" Padding="4,2">
+            <Border.Style><Style TargetType="Border"><Setter Property="BorderBrush" Value="#18181B"/>
+              <Style.Triggers><Trigger Property="IsKeyboardFocusWithin" Value="True"><Setter Property="BorderBrush" Value="#9B9BA6"/></Trigger></Style.Triggers>
+            </Style></Border.Style>
             <DockPanel><Button DockPanel.Dock="Right" Style="{StaticResource Quiet}" Click="BrowseFolder" AutomationProperties.Name="{DynamicResource Browse}" ToolTip="{DynamicResource Browse}">
                 <Path Stroke="#CDCDD5" StrokeThickness="1.4" Data="M1,4 L6,4 8,6 16,6 16,8 M1,4 L1,15 14,15 17,8 4,8 1,15"/>
               </Button>
