@@ -223,8 +223,14 @@ impl Desk {
                         None,
                         false,
                         cx,
-                        move |s, _| {
+                        move |s, cx| {
                             crate::i18n::select(Some(code));
+                            if let Some(live) = s.live_window {
+                                let _ = live.update(cx, |_, window, cx| {
+                                    window.set_window_title(&live::Live::window_title());
+                                    cx.notify();
+                                });
+                            }
                             s.settings["locale"] = json!(code);
                             s.menu = None;
                             s.save_settings()

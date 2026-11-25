@@ -776,6 +776,7 @@ impl Desk {
                         }
                         if pref == Preference::Theme {
                             cx.set_global(Palette::new(index == 1));
+                            cx.refresh_windows();
                         }
                         s.save_settings()
                     },
@@ -1381,6 +1382,8 @@ impl Desk {
 
 #[path = "live.rs"]
 pub(super) mod live;
+#[path = "window_frame.rs"]
+pub(super) mod window_frame;
 #[path = "workspace.rs"]
 mod workspace;
 

@@ -1,0 +1,7 @@
+{
+  "en": "## Live translation\nThe Translation window now uses Rikai’s title bar, logo and window controls. The Record button stays at the top while you scroll through audio sources.",
+  "es": "## Traducción en directo\nLa ventana de traducción ahora usa la barra de título, el logotipo y los controles de ventana de Rikai. El botón Grabar permanece en la parte superior al desplazarte por las fuentes de audio.",
+  "ru": "## Перевод в реальном времени\nВ окне перевода теперь такая же строка заголовка, как в основном окне Rikai, с логотипом и кнопками управления окном. Кнопка записи остаётся вверху при прокрутке списка источников звука.",
+  "ja": "## リアルタイム翻訳\n翻訳ウィンドウに、Rikai のメインウィンドウと共通のタイトルバー、ロゴ、ウィンドウ操作ボタンを採用しました。音声ソースの一覧をスクロールしても、録音ボタンは上部に表示されます。",
+  "zh": "## 实时翻译\n翻译窗口现在使用与 Rikai 主窗口相同的标题栏、标志和窗口控制按钮。滚动音频源列表时，录音按钮始终位于窗口顶部。"
+}

@@ -75,34 +75,18 @@ pub fn run() -> Result<()> {
                 )),
             ]);
             cx.bind_keys(default_bindings().as_keybindings(Some(DEFAULT_INPUT_CONTEXT)));
-            let bounds = Bounds::centered(None, size(px(1120.), px(740.)), cx);
-            let opt = WindowOptions {
-                window_bounds: Some(WindowBounds::Windowed(bounds)),
-                titlebar: Some(TitlebarOptions {
-                    title: Some("Rikai".into()),
-                    appears_transparent: true,
-                    ..Default::default()
-                }),
-                window_min_size: Some(size(px(640.), px(440.))),
-                ..Default::default()
-            };
+            let opt = view::window_frame::options(
+                "Rikai",
+                size(px(1120.), px(740.)),
+                size(px(640.), px(440.)),
+                cx,
+            );
             cx.open_window(opt, move |w, cx| {
                 let button = taskbar::DownloadButton::attach(w);
                 let desk = cx.new(move |cx| Desk::new(root, db, button, cx));
                 let weak = desk.downgrade();
                 w.on_window_should_close(cx, move |_, cx| {
-                    weak.update(cx, |s, cx| {
-                        if s.busy() {
-                            s.message =
-                                "Arrêtez la capture ou annulez le traitement avant de fermer."
-                                    .into();
-                            cx.notify();
-                            false
-                        } else {
-                            true
-                        }
-                    })
-                    .unwrap_or(true)
+                    weak.update(cx, Desk::can_close).unwrap_or(true)
                 });
                 desk
             })
@@ -257,6 +241,15 @@ struct Desk {
     stage: String,
 }
 impl Desk {
+    fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        if self.busy() {
+            self.message = "Arrêtez la capture ou annulez le traitement avant de fermer.".into();
+            cx.notify();
+            return false;
+        }
+        true
+    }
+
     fn new(
         root: PathBuf,
         db: Library,

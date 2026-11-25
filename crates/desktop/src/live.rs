@@ -50,36 +50,17 @@ impl Desk {
             .downcast::<Desk>()
             .context("Fenêtre Rikai introuvable")?;
         let selected = self.chosen.clone();
-        let opt = WindowOptions {
-            window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
-                None,
-                size(px(800.), px(580.)),
-                cx,
-            ))),
-            window_min_size: Some(size(px(480.), px(340.))),
-            titlebar: Some(TitlebarOptions {
-                title: Some(format!("Rikai · {}", tr("Traduction")).into()),
-                ..Default::default()
-            }),
-            ..Default::default()
-        };
+        let opt = window_frame::options(
+            Live::window_title(),
+            size(px(800.), px(580.)),
+            size(px(480.), px(340.)),
+            cx,
+        );
         self.live_window = Some(cx.open_window(opt, |w, cx| {
             let view = cx.new(|cx| Live::new(owner, selected, cx));
             let weak = view.downgrade();
             w.on_window_should_close(cx, move |_, cx| {
-                weak.update(cx, |s, cx| {
-                    if s.cancel.is_none() {
-                        return true;
-                    }
-                    s.closing = true;
-                    s.stop();
-                    if let Some(cancel) = &s.cancel {
-                        cancel.store(true, Ordering::Release);
-                    }
-                    cx.notify();
-                    false
-                })
-                .unwrap_or(true)
+                weak.update(cx, Live::can_close).unwrap_or(true)
             });
             view
         })?);
@@ -88,6 +69,21 @@ impl Desk {
 }
 
 impl Live {
+    pub(super) fn window_title() -> String {
+        format!("Rikai · {}", tr("Traduction"))
+    }
+
+    fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
+        let Some(cancel) = self.cancel.clone() else {
+            return true;
+        };
+        self.closing = true;
+        self.stop();
+        cancel.store(true, Ordering::Release);
+        cx.notify();
+        false
+    }
+
     fn new(owner: WindowHandle<Desk>, selected: HashSet<Source>, cx: &mut Context<Self>) -> Self {
         let (tx, rx) = mpsc::channel();
         let search = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
@@ -575,24 +571,44 @@ impl Render for Live {
                     .child(phrase_text(phrase, p, w, cx)),
             );
         }
-        col()
-            .size_full()
-            .p_3()
-            .bg(rgb(p.base))
-            .font(interface_font())
-            .text_size(px(12.))
-            .text_color(rgb(p.text))
+        let title = div()
+            .flex()
+            .h_full()
+            .min_w_0()
+            .items_center()
+            .gap(px(6.))
+            .window_control_area(WindowControlArea::Drag)
+            .child(glyph(TRANSLATE, 15., p.muted))
+            .child(label("Traduction en direct").truncate());
+        let header =
+            window_frame::header(p, title, true)
+                .child(primary)
+                .child(window_frame::controls(
+                    w,
+                    p,
+                    true,
+                    cx.listener(|s, _, w, cx| {
+                        if s.can_close(cx) {
+                            w.remove_window();
+                        }
+                    }),
+                ));
+        let content = col()
+            .min_h_0()
+            .flex_1()
+            .gap(px(16.))
+            .px(px(13.))
+            .pt(px(8.))
+            .pb(px(12.))
             .child(
-                row()
-                    .justify_between()
-                    .child(
-                        row()
-                            .child(glyph(TRANSLATE, 17., p.muted))
-                            .child(label("Traduction en direct")),
-                    )
-                    .child(primary),
+                p.panel().flex_shrink_0().max_h(relative(0.62)).child(
+                    div()
+                        .id("live-configuration")
+                        .min_h_0()
+                        .overflow_y_scroll()
+                        .child(panel),
+                ),
             )
-            .child(p.panel().flex_shrink_0().child(panel))
             .child(p.panel().flex_1().min_h_0().child(captions))
             .when(!self.status.is_empty(), |d| {
                 d.child(
@@ -600,6 +616,22 @@ impl Render for Live {
                         .text_color(rgb(p.muted))
                         .child(crate::i18n::message(&self.status)),
                 )
+            });
+        window_frame::surface(p)
+            .capture_key_down(|ev: &KeyDownEvent, w, cx| {
+                if ev.keystroke.key == "tab"
+                    && !ev.keystroke.modifiers.control
+                    && !ev.keystroke.modifiers.alt
+                {
+                    if ev.keystroke.modifiers.shift {
+                        w.focus_prev(cx);
+                    } else {
+                        w.focus_next(cx);
+                    }
+                    cx.stop_propagation();
+                }
             })
+            .child(header)
+            .child(content)
     }
 }

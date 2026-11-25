@@ -169,29 +169,10 @@ impl Desk {
         }
     }
 
-    fn toolbar(&self, compact: bool, maximized: bool, cx: &Context<Self>) -> Div {
+    fn toolbar(&self, window: &Window, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
+        let compact = window_frame::compact(window);
         let locked = self.busy();
-        let mut bar = div()
-            .flex()
-            .items_center()
-            .h(px(54.))
-            .py(px(6.))
-            .flex_shrink_0()
-            .gap(px(10.))
-            .pl(px(16.))
-            .child(
-                div()
-                    .h_full()
-                    .flex()
-                    .items_center()
-                    .when(!self.drawer_open() && !self.release_was_open, |s| {
-                        s.window_control_area(WindowControlArea::Drag)
-                    })
-                    .pr_2()
-                    .child(brand()),
-            )
-            .child(div().w(px(1.)).h(px(15.)).bg(rgb(p.edge).opacity(0.53)));
         let page = self.workspace_page();
         let mut nav = strip(
             p,
@@ -233,14 +214,7 @@ impl Desk {
                 ));
             }
         }
-        bar = bar.child(nav).child(
-            div()
-                .flex_1()
-                .h_full()
-                .when(!self.drawer_open() && !self.release_was_open, |s| {
-                    s.window_control_area(WindowControlArea::Drag)
-                }),
-        );
+        let mut bar = window_frame::header(p, nav, !self.drawer_open() && !self.release_was_open);
         if !locked {
             bar = bar
                 .child(button(
@@ -268,57 +242,16 @@ impl Desk {
                     |s, _| s.go(Page::New),
                 ));
         }
-        let mut controls = div().flex().h_full().items_center();
-        for (name, icon, area) in [
-            ("Réduire", WINDOW_MIN, WindowControlArea::Min),
-            (
-                if maximized { "Restaurer" } else { "Agrandir" },
-                if maximized {
-                    WINDOW_RESTORE
-                } else {
-                    WINDOW_MAX
-                },
-                WindowControlArea::Max,
-            ),
-            ("Fermer", CLOSE, WindowControlArea::Close),
-        ] {
-            controls = controls.child(
-                div()
-                    .id(name)
-                    .aria_label(tr(name))
-                    .role(Role::Button)
-                    .focusable()
-                    .tab_stop(true)
-                    .h_full()
-                    .w(px(if compact { 32. } else { 40. }))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .when(!self.drawer_open(), |s| s.window_control_area(area))
-                    .opacity(0.60)
-                    .hover(|s| s.opacity(1.))
-                    .focus_visible(|s| s.opacity(1.))
-                    .transitions(|t| t.opacity(motion(115)))
-                    .child(glyph(
-                        icon,
-                        if icon == WINDOW_MAX { 12. } else { 14. },
-                        p.text,
-                    ))
-                    .on_click(cx.listener(move |s, _, w, cx| match area {
-                        WindowControlArea::Min => w.minimize_window(),
-                        WindowControlArea::Max => w.zoom_window(),
-                        WindowControlArea::Close if s.busy() => {
-                            s.message =
-                                "Arrêtez la capture ou annulez le traitement avant de fermer."
-                                    .into();
-                            cx.notify();
-                        }
-                        WindowControlArea::Close => w.remove_window(),
-                        _ => {}
-                    })),
-            );
-        }
-        bar.child(controls)
+        bar.child(window_frame::controls(
+            window,
+            p,
+            !self.drawer_open(),
+            cx.listener(|s, _, w, cx| {
+                if s.can_close(cx) {
+                    w.remove_window();
+                }
+            }),
+        ))
     }
 
     fn breadcrumb(&self, page: Page, cx: &Context<Self>) -> Div {
@@ -891,9 +824,7 @@ impl Render for Desk {
                 .child(inspector.w(relative(0.323)).min_w(px(272.)).flex_shrink_0())
                 .into_any_element()
         };
-        div()
-            .size_full()
-            .relative()
+        window_frame::surface(p)
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
                 if ev.keystroke.key == "escape" && s.record_menu.take().is_some() {
                     cx.stop_propagation();
@@ -929,17 +860,7 @@ impl Render for Desk {
                 }
                 cx.stop_propagation();
             }))
-            .flex()
-            .flex_col()
-            .bg(rgb(p.base))
-            .text_color(rgb(p.text))
-            .font(interface_font())
-            .text_size(px(12.))
-            .child(self.toolbar(
-                window.viewport_size().width < px(900.),
-                window.is_maximized(),
-                cx,
-            ))
+            .child(self.toolbar(window, cx))
             .child(self.breadcrumb(page, cx))
             .child(
                 div()
