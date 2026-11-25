@@ -95,11 +95,11 @@ namespace Rikai.Setup
             InstallButton.Visibility = WelcomePanel.Visibility;
             MainButton.Visibility = GuidedPanel.Visibility;
             if (!guided) CloseButton.Visibility = LogButton.Visibility = Visibility.Collapsed;
-            var panel = guided ? (UIElement)GuidedPanel : WelcomePanel;
             if (SystemParameters.ClientAreaAnimation)
             {
-                panel.Opacity = .4;
-                SetupTheme.Move(panel, OpacityProperty, 1, 150);
+                var offset = new TranslateTransform(0, 2);
+                (guided ? GuidedPanel : WelcomePanel).RenderTransform = offset;
+                SetupTheme.Move(offset, TranslateTransform.YProperty, 0, 150);
             }
         }
 
@@ -156,7 +156,7 @@ namespace Rikai.Setup
             }
             closeAfterCancel = false;
             if (page == Page.Finished) SetProgress(3, 100);
-            else DrawSteps();
+            else { DrawSteps(); DrawProgress(false); }
             Heading.Text = T(page == Page.Finished ? "Done" : "Failed");
             MainButton.IsEnabled = true;
             MainButton.Content = T(page == Page.Finished ? "Open" : "Retry");
@@ -188,14 +188,27 @@ namespace Rikai.Setup
         private void SetProgress(int stage, int value)
         {
             if (stage != phase) { phase = stage; DrawSteps(); }
+            bool interpolate = percent > 0 && value > percent && value < 100;
             percent = value;
             Percent.Text = (value / 100d).ToString("P0", culture);
-            DrawProgress(true);
+            DrawProgress(interpolate);
         }
         private void DrawProgress(bool animate)
         {
-            double target = Track.ActualWidth * percent / 100;
-            SetupTheme.Move(Fill, WidthProperty, target, animate ? 170 : 0);
+            double width = Track.ActualWidth;
+            if (width <= 0 || GuidedPanel.Visibility != Visibility.Visible) return;
+            if (percent == 0 && (page == Page.Running || page == Page.Stopping))
+            {
+                double marker = width * .18;
+                SetupTheme.Move(Fill, WidthProperty, marker, 0);
+                var travel = SystemParameters.ClientAreaAnimation
+                    ? new DoubleAnimation(0, width - marker, TimeSpan.FromSeconds(1.1))
+                        { AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever } : null;
+                PreparationOffset.BeginAnimation(TranslateTransform.XProperty, travel);
+                return;
+            }
+            if (PreparationOffset.HasAnimatedProperties) PreparationOffset.BeginAnimation(TranslateTransform.XProperty, null);
+            SetupTheme.Move(Fill, WidthProperty, width * percent / 100, animate ? 170 : 0);
         }
 
         private void DrawSteps()
@@ -231,6 +244,7 @@ namespace Rikai.Setup
         private void ReturnToFolder()
         {
             page = Page.Welcome;
+            PreparationOffset.BeginAnimation(TranslateTransform.XProperty, null);
             phase = -1;
             closeAfterCancel = false;
             PathHint.Visibility = Visibility.Collapsed;

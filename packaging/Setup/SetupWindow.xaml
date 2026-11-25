@@ -21,7 +21,7 @@
    <Setter Property="Template"><Setter.Value>
     <ControlTemplate TargetType="{x:Type local:SetupButton}">
      <Grid Background="Transparent">
-      <Grid x:Name="Face">
+      <Grid x:Name="Face" IsHitTestVisible="False">
        <Border x:Name="BaseFill" CornerRadius="{TemplateBinding Radius}" Background="#2C2C30"><Border.Effect>
         <DropShadowEffect Color="Black" BlurRadius="2" ShadowDepth="1" Direction="270" Opacity=".27"/>
        </Border.Effect></Border>
@@ -93,8 +93,8 @@
     <Border Background="Transparent" BorderBrush="#0BFFFFFF" BorderThickness="0,0,0,1" Padding="16,6,8,6" MouseLeftButtonDown="DragTitle">
      <DockPanel>
       <StackPanel Orientation="Horizontal" DockPanel.Dock="Right">
-       <local:SetupButton Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Minimize}" AutomationProperties.Name="{DynamicResource Minimize}" Click="MinimizeWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.minus}"/></local:SetupButton>
-       <local:SetupButton Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Close}" AutomationProperties.Name="{DynamicResource Close}" Click="CloseWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.xmark}"/></local:SetupButton>
+       <local:SetupButton x:Name="MinimizeButton" Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Minimize}" AutomationProperties.Name="{DynamicResource Minimize}" Click="MinimizeWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.minus}"/></local:SetupButton>
+       <local:SetupButton x:Name="TitleCloseButton" Tone="Caption" Padding="0" Radius="8" Width="32" ToolTip="{DynamicResource Close}" AutomationProperties.Name="{DynamicResource Close}" Click="CloseWindow"><Rectangle Width="14" Height="14" Fill="#EDEDF0" OpacityMask="{StaticResource Glyph.xmark}"/></local:SetupButton>
       </StackPanel>
       <Image DockPanel.Dock="Left" Width="24" Height="24" Margin="0,0,10,0" Source="Images/rikai-mini-icon.png" RenderOptions.BitmapScalingMode="HighQuality"/>
       <TextBlock Text="{DynamicResource Title}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"/>
@@ -122,6 +122,7 @@
       <TextBlock x:Name="Heading" FontSize="18" FontWeight="SemiBold" TextWrapping="Wrap"/>
      </DockPanel>
      <Border x:Name="Track" Height="5" CornerRadius="3" Background="#36363A" Margin="0,12,0,13"><Border x:Name="Fill" HorizontalAlignment="Left" Width="0" CornerRadius="3">
+      <Border.RenderTransform><TranslateTransform x:Name="PreparationOffset"/></Border.RenderTransform>
       <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0"><GradientStop Color="#BCBCC5"/><GradientStop Color="#EDEDF0" Offset="1"/></LinearGradientBrush></Border.Background>
      </Border></Border>
      <StackPanel x:Name="Steps"/>

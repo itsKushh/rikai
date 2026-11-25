@@ -2,6 +2,7 @@ using System;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Xml;
@@ -31,11 +32,13 @@ namespace Rikai.Setup
             var animatable = (IAnimatable)element;
             double from = (double)element.GetValue(property);
             if ((double)animatable.GetAnimationBaseValue(property) == to && (ms > 0 || from == to)) return;
-            element.SetCurrentValue(property, to);
+            // These properties belong to our template. Commit the destination as the
+            // base value so WPF keeps it when the transition clock stops.
+            element.SetValue(property, to);
             var animation = SystemParameters.ClientAreaAnimation && ms > 0 && from != to
                 ? new DoubleAnimation(from, to, TimeSpan.FromMilliseconds(ms))
                     { EasingFunction = glide, FillBehavior = FillBehavior.Stop } : null;
-            animatable.BeginAnimation(property, animation);
+            animatable.BeginAnimation(property, animation, HandoffBehavior.SnapshotAndReplace);
         }
 
         internal static void LoadIcons(Application app)
@@ -84,22 +87,33 @@ namespace Rikai.Setup
         protected override void OnPropertyChanged(DependencyPropertyChangedEventArgs e)
         {
             base.OnPropertyChanged(e);
-            if (e.Property == IsMouseOverProperty || e.Property == IsKeyboardFocusedProperty ||
+            if (e.Property == IsKeyboardFocusedProperty ||
                 e.Property == IsPressedProperty || e.Property == IsEnabledProperty || e.Property == ToneProperty)
                 Refresh(true);
+        }
+        protected override void OnMouseEnter(MouseEventArgs e)
+        {
+            base.OnMouseEnter(e);
+            Refresh(true);
+        }
+        protected override void OnMouseLeave(MouseEventArgs e)
+        {
+            base.OnMouseLeave(e);
+            Refresh(true);
         }
         private void Refresh(bool animate)
         {
             if (face == null || hover == null || pressed == null || focus == null) return;
             bool caption = Tone == ButtonTone.Caption;
             bool over = IsEnabled && IsMouseOver;
-            bool down = IsEnabled && IsPressed && !caption;
+            bool down = IsEnabled && IsPressed;
             bool move = animate && IsEnabled;
-            SetupTheme.Move(face, OpacityProperty, !IsEnabled ? .48 : caption && !over && !IsKeyboardFocused ? .60 : 1, move ? 115 : 0);
+            bool keyboardFocus = IsKeyboardFocused && InputManager.Current.MostRecentInputDevice is KeyboardDevice;
+            SetupTheme.Move(face, OpacityProperty, !IsEnabled ? .48 : caption && !over && !keyboardFocus ? .60 : 1, move ? 115 : 0);
             SetupTheme.Move(hover, OpacityProperty, over && !caption ? 1 : 0, move ? 120 : 0);
-            SetupTheme.Move(pressed, OpacityProperty, down ? 1 : 0, move ? 90 : 0);
+            SetupTheme.Move(pressed, OpacityProperty, down && !caption ? 1 : 0, move ? 90 : 0);
             SetupTheme.Move(face.RenderTransform, TranslateTransform.YProperty, down ? .60 : 0, move ? 90 : 0);
-            SetupTheme.Move(focus, OpacityProperty, IsEnabled && IsKeyboardFocused && System.Windows.Input.InputManager.Current.MostRecentInputDevice is System.Windows.Input.KeyboardDevice ? 1 : 0, move ? 100 : 0);
+            SetupTheme.Move(focus, OpacityProperty, IsEnabled && keyboardFocus ? 1 : 0, move ? 100 : 0);
         }
     }
 }
