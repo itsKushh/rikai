@@ -50,7 +50,10 @@ class SpeakerMemory:
             if slot in scores:
                 ranked = {i + 1: score for score, i in scores[slot]}
                 score = ranked.get(identity, -1)
-                if score < self.match - self.margin or max(ranked.values()) - score > self.margin:
+                if (
+                    score < self.match - self.margin
+                    or max(ranked.values()) - score > self.margin
+                ):
                     continue
             result[slot] = identity
             used.add(identity - 1)
@@ -77,7 +80,8 @@ class SpeakerMemory:
                 if (
                     best < self.match + (self.margin / 2 if slot in short else 0)
                     or ranks[0][0] - best > self.margin
-                    or len(available) > 1 and best - available[1][0] < self.margin
+                    or len(available) > 1
+                    and best - available[1][0] < self.margin
                 ):
                     continue
             used.add(identity)
@@ -172,9 +176,11 @@ class LiveVoices:
                 duration = counts[speaker]
                 if duration >= max(0.24 * RATE, 0.88 * sum(counts.values())):
                     matches[slot] = speaker
-        return {s: n for s, n in matches.items() if list(matches.values()).count(n) == 1}
+        return {
+            s: n for s, n in matches.items() if list(matches.values()).count(n) == 1
+        }
 
-    def turns(self, audio, offset=0, track=None, origin=0):
+    def features(self, audio, offset):
         length = len(audio)
         padded = np.zeros((1, 1, self.size), dtype=np.float32)
         padded[0, 0, :length] = audio
@@ -214,7 +220,58 @@ class LiveVoices:
                 ranges[-1] = (ranges[-1][0], end)
             else:
                 ranges.append((start, end))
-        anchors = self.anchors(spans, track, origin, offset) if track is not None else {}
+        return spans, clean, durations
+
+    def context(self, audio):
+        spans, clean, durations = self.features(audio, 0)
+        vectors = {}
+        for slot, ranges in clean.items():
+            if durations[slot] >= 0.38 * RATE:
+                try:
+                    vectors[slot] = self.vector(audio, ranges, 0)
+                except ValueError:
+                    continue
+        return spans, vectors
+
+    def context_labels(self, context):
+        spans, vectors = context
+        # Use established voices without enrolling the same audio again.
+        candidates = []
+        for slot, vec in vectors.items():
+            ranks = sorted(
+                ((float(vec @ c), i + 1) for i, c in enumerate(self.memory.centres)),
+                reverse=True,
+            )
+            if not ranks:
+                continue
+            score, speaker = ranks[0]
+            margin = self.memory.margin
+            if score >= self.memory.match and (
+                len(ranks) == 1 or score - ranks[1][0] >= margin
+            ):
+                candidates.append((score, slot, speaker))
+        labels = {}
+        used = set()
+        for _, slot, speaker in sorted(candidates, reverse=True):
+            if speaker not in used:
+                labels[slot] = speaker
+                used.add(speaker)
+        return [
+            (
+                a / RATE,
+                b / RATE,
+                OVERLAP if len(slots) > 1 else labels.get(slots[0], UNKNOWN),
+            )
+            for a, b, slots in spans
+            if slots
+        ]
+
+    def turns(self, audio, offset=0, track=None, origin=0):
+        length = len(audio)
+        spans, clean, durations = self.features(audio, offset)
+        anchors = (
+            self.anchors(spans, track, origin, offset) if track is not None else {}
+        )
         vectors, fresh, short = {}, {}, set()
         for slot, ranges in clean.items():
             if durations[slot] < 0.36 * RATE:
@@ -270,7 +327,11 @@ def word_speaker(start, end, turns):
         # Bridge only a short internal alignment gap bounded by the same voice.
         left = next((s for a, b, s in reversed(turns) if 0 <= start - b <= 0.12), None)
         right = next((s for a, b, s in turns if 0 <= a - end <= 0.12), None)
-        return left if end - start <= 0.16 and isinstance(left, int) and left == right else UNKNOWN
+        return (
+            left
+            if end - start <= 0.16 and isinstance(left, int) and left == right
+            else UNKNOWN
+        )
     if durations.get(OVERLAP, 0) >= 0.25 * max(0.001, end - start):
         return OVERLAP
     winner = max(durations, key=durations.get)
@@ -281,11 +342,115 @@ def word_speaker(start, end, turns):
     )
 
 
+def timed_phrases(words, turns, original):
+    chunks = []
+    for speaker, tokens in groupby(words, lambda w: word_speaker(w[0], w[1], turns)):
+        group = list(tokens)
+        text = "".join(w[2] for w in group).strip()
+        if text:
+            chunks.append((speaker, text, group[0][0], group[-1][1]))
+    if len(chunks) == 1:
+        speaker, _, a, b = chunks[0]
+        return [(speaker, original, a, b)]
+    return chunks or [(UNKNOWN, original, 0, 0)]
+
+
 def speaker_phrases(words, turns, original):
-    chunks = [
-        (speaker, "".join(w[2] for w in group).strip())
-        for speaker, group in groupby(words, lambda w: word_speaker(w[0], w[1], turns))
+    return [
+        (speaker, text) for speaker, text, _, _ in timed_phrases(words, turns, original)
     ]
-    if len(chunks) <= 1:
-        return [(chunks[0][0] if chunks else UNKNOWN, original)]
-    return [(speaker, text) for speaker, text in chunks if text]
+
+
+class VoiceReview:
+    """Resolve recent uncertain captions with surrounding audio on the same track."""
+
+    def __init__(self):
+        self.pending = {}
+        self.windows = {}
+        self.job = None
+        self.checked = -1
+
+    def remember(self, frame, part, a, b, window, previous=UNKNOWN):
+        if b <= a:
+            return
+        left, right = frame + round(a * RATE), frame + round(b * RATE)
+        # Staggered contexts can capture a clearer sample from the same talker
+        # before or after a brief reply. Adjacent captions share these windows.
+        stride = window // 2
+        last = ((left + right) // 2 // stride) * stride
+        origins = tuple(sorted({max(0, last - stride), last}))
+        self.pending[(frame, part)] = (left, right, origins, previous)
+
+    def advance(self, track, frame, voices, pool, read, report, flush=False):
+        if not self.pending:
+            return
+        ready = self.job is not None and (flush or self.job[1].done())
+        if self.checked == frame and not ready and not flush:
+            return
+        self.checked = frame
+        if ready:
+            origin, job = self.job
+            self.windows[origin] = job.result()
+            self.job = None
+        self.pending = {
+            k: v for k, v in self.pending.items() if frame - v[1] <= 45 * RATE
+        }
+        origins = sorted(
+            {origin for _, _, keys, _ in self.pending.values() for origin in keys}
+        )
+        self.windows = {k: v for k, v in self.windows.items() if k in origins}
+        for origin in origins:
+            if origin in self.windows or self.job is not None:
+                continue
+            count = min(voices.size, frame - origin)
+            if count < (RATE if flush else voices.size):
+                continue
+            data = read(origin, count)
+            if data is None or len(data) < count:
+                continue
+            task = pool.submit(voices.context, data.astype("float32") / 32768)
+            if flush:
+                self.windows[origin] = task.result()
+            else:
+                self.job = (origin, task)
+        turns = {k: voices.context_labels(v) for k, v in self.windows.items()}
+        for key, (a, b, keys, previous) in list(self.pending.items()):
+            available = [k for k in keys if k in turns]
+            if not available or (not flush and len(available) != len(keys)):
+                continue
+            votes = []
+            for k in available:
+                left, right = (a - k) / RATE, (b - k) / RATE
+                spans = turns[k]
+                vote = word_speaker(left, right, spans)
+                # Do not replace a genuine transition or overlapping voices
+                # with the most talkative person in a long ASR timestamp.
+                others = sum(
+                    max(0, min(right, y) - max(left, x))
+                    for x, y, label in spans
+                    if label == OVERLAP or isinstance(label, int) and label != vote
+                )
+                if others > 0.13 * (right - left):
+                    votes.append(OVERLAP)
+                else:
+                    votes.append(vote)
+            known = {v for v in votes if isinstance(v, int)}
+            if len(known) != 1 or OVERLAP in votes:
+                continue
+            if previous == OVERLAP and (len(keys) < 2 or len(available) != len(keys)):
+                continue
+            speaker = known.pop()
+            start, part = key
+            report(
+                "Écoute en direct",
+                live={
+                    "voice_update": dict(
+                        start=start,
+                        part=part,
+                        track=track,
+                        speaker=speaker,
+                        suggestion=voices.memory.suggestion(speaker),
+                    )
+                },
+            )
+            del self.pending[key]

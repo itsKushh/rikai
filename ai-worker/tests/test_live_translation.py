@@ -83,7 +83,64 @@ class LiveTranslation(unittest.TestCase):
             turns = [(0, 0.48, 1), (0.58, 1, right)]
             self.assertEqual(word_speaker(0.5, 0.55, turns), expected)
 
-    def test_speech_retry_requires_acoustic_evidence_and_preserves_the_sample_clock(self):
+    def test_voice_review_shares_windows_and_only_revises_the_matching_caption(self):
+        import numpy as np
+        from concurrent.futures import ThreadPoolExecutor
+        from unittest.mock import Mock
+        from live_voices import RATE, VoiceReview, UNKNOWN, OVERLAP
+
+        review = VoiceReview()
+        voices = Mock(size=10 * RATE)
+        voices.context.side_effect = lambda data: len(data)
+        voices.memory.suggestion.return_value = None
+        voices.context_labels.return_value = [(0.0, 10.0, 2)]
+        read = Mock(side_effect=lambda _, count: np.zeros(count, dtype=np.int16))
+        events = []
+        report = lambda _, live: events.append(live["voice_update"])
+        review.remember(10 * RATE, 2, 1, 2, voices.size, UNKNOWN)
+        review.remember(10 * RATE, 3, 2, 3, voices.size, OVERLAP)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            review.advance(5, 14 * RATE, voices, pool, read, report)
+            self.assertEqual(events, [])
+            review.advance(5, 21 * RATE, voices, pool, read, report, flush=True)
+            review.advance(5, 22 * RATE, voices, pool, read, report, flush=True)
+        self.assertEqual(
+            [(r["track"], r["start"], r["part"], r["speaker"]) for r in events],
+            [(5, 10 * RATE, 2, 2), (5, 10 * RATE, 3, 2)],
+        )
+        self.assertEqual(voices.context.call_count, 2)
+        self.assertEqual(voices.memory.assign.call_count, 0)
+
+    def test_voice_review_preserves_overlap_and_conflicting_windows(self):
+        from live_voices import RATE, VoiceReview, OVERLAP
+        from unittest.mock import Mock
+        from concurrent.futures import ThreadPoolExecutor
+        import numpy as np
+
+        for pair in [(1, 2), (OVERLAP, 2)]:
+            review = VoiceReview()
+            voices = Mock(size=10 * RATE)
+            voices.context.side_effect = [0, 1]
+            voices.context_labels.side_effect = lambda window: [
+                (0.0, 10.0, pair[window])
+            ]
+            review.remember(10 * RATE, 0, 1, 2, voices.size, OVERLAP)
+            report = Mock()
+            with ThreadPoolExecutor(1) as pool:
+                review.advance(
+                    0,
+                    20 * RATE,
+                    voices,
+                    pool,
+                    lambda start, n: np.zeros(n, dtype=np.int16),
+                    report,
+                    True,
+                )
+            report.assert_not_called()
+
+    def test_speech_retry_requires_acoustic_evidence_and_preserves_the_sample_clock(
+        self,
+    ):
         from types import SimpleNamespace as Item
         from unittest.mock import patch
         from live import RATE, recover_speech

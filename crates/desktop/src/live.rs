@@ -49,6 +49,30 @@ pub(in crate::ui) struct Live {
     rx: mpsc::Receiver<LiveEvent>,
 }
 
+fn speaker_label(source: Option<&String>, v: &Value) -> String {
+    let source = source.map(String::as_str).unwrap_or("");
+    let label = match &v["speaker"] {
+        id if id.is_u64() => Some(format!("{} {}", tr("Intervenant"), id)),
+        s if s == "uncertain" => Some(tr("Intervenant incertain").to_owned()),
+        s if s == "overlap" => Some(tr("Voix superposées").to_owned()),
+        _ => None,
+    };
+    let mut title = label.map_or_else(
+        || source.to_owned(),
+        |name| {
+            [source, &name]
+                .into_iter()
+                .filter(|s| !s.is_empty())
+                .collect::<Vec<_>>()
+                .join(" · ")
+        },
+    );
+    if let Some(name) = v["suggestion"].as_str() {
+        title.push_str(&format!(" · {name} ?"));
+    }
+    title
+}
+
 impl Desk {
     pub(super) fn open_live(&mut self, w: &Window, cx: &mut Context<Self>) -> Result<()> {
         if self
@@ -331,6 +355,20 @@ impl Live {
                     self.status = update.stage;
                 }
                 let Some(v) = update.live else { return };
+                if let Some(edit) = v.get("voice_update") {
+                    if let (Some(start), Some(track), Some(part)) = (
+                        edit["start"].as_u64(),
+                        edit["track"].as_u64(),
+                        edit["part"].as_u64(),
+                    ) && let Some(row) = self
+                        .phrases
+                        .iter_mut()
+                        .find(|p| p.confirmed && p.key == (start, track as usize, part))
+                    {
+                        row.speaker = speaker_label(self.names.get(track as usize), edit);
+                    }
+                    return;
+                }
                 let (Some(track), Some(start), Some(text)) =
                     (v["track"].as_u64(), v["start"].as_u64(), v["text"].as_str())
                 else {
@@ -364,26 +402,7 @@ impl Live {
                     pos
                 });
                 let phrase = &mut self.phrases[i];
-                let source = self.names.get(track).map(String::as_str).unwrap_or("");
-                let speaker = match &v["speaker"] {
-                    id if id.is_u64() => Some(format!("{} {}", tr("Intervenant"), id)),
-                    s if s == "uncertain" => Some(tr("Intervenant incertain").to_owned()),
-                    s if s == "overlap" => Some(tr("Voix superposées").to_owned()),
-                    _ => None,
-                };
-                phrase.speaker = speaker.map_or_else(
-                    || source.to_owned(),
-                    |name| {
-                        [source, &name]
-                            .into_iter()
-                            .filter(|s| !s.is_empty())
-                            .collect::<Vec<_>>()
-                            .join(" · ")
-                    },
-                );
-                if let Some(name) = v["suggestion"].as_str() {
-                    phrase.speaker.push_str(&format!(" · {name} ?"));
-                }
+                phrase.speaker = speaker_label(self.names.get(track), &v);
                 phrase.confirmed = v["final"] == true;
                 if phrase.confirmed
                     && let (Some(start), Some(frame)) =

@@ -108,7 +108,10 @@ def recover_speech(engine, data, config, spans):
     sample = level_detected_speech(data[start:stop])
     parts, source = decode(engine, sample, config, True, vad=False)
     clear = [
-        part for part in parts if part.words and part.no_speech_prob < 0.65
+        part
+        for part in parts
+        if part.words
+        and part.no_speech_prob < 0.65
         and part.avg_logprob > -1.0
         and sum(w.probability for w in part.words) / len(part.words) >= 0.5
     ]
@@ -117,6 +120,7 @@ def recover_speech(engine, data, config, spans):
         offset = start / RATE
         return text, [(a + offset, b + offset, w) for a, b, w in words], source
     return None
+
 
 @dataclass
 class Preview:
@@ -140,6 +144,7 @@ class Track:
         self.preview = None
         self.voice_tail = np.empty(0, dtype="float32")
         self.voice_end = 0
+        self.review = None
         self.preview_gate = Lock()
         self.last_audio = time.monotonic()
 
@@ -372,7 +377,7 @@ class Track:
             turns = self.voice_turns(data[:end], config)
         groups = [(None, text)]
         if turns is not None:
-            from live_voices import speaker_phrases
+            from live_voices import OVERLAP, UNKNOWN, VoiceReview, timed_phrases
 
             spans = turns.result()
             if not text:
@@ -380,7 +385,15 @@ class Track:
                 if recovered:
                     text, timed_words, source = recovered
                     payload["text"] = text
-            groups = speaker_phrases(timed_words, spans, text)
+            phrases = timed_phrases(timed_words, spans, text)
+            groups = [(speaker, phrase) for speaker, phrase, _, _ in phrases]
+            for part, (speaker, phrase, a, b) in enumerate(phrases):
+                if phrase and speaker in (UNKNOWN, OVERLAP):
+                    if self.review is None:
+                        self.review = VoiceReview()
+                    self.review.remember(
+                        self.start, part, a, b, config["voices"].size, speaker
+                    )
         last_voiced = int(active[gaps[0]] if len(gaps) else active[-1])
         speech_end = self.start + min(end, (last_voiced + 1) * BLOCK)
         self.confirm(payload, groups, source, speech_end, config, report)
@@ -478,7 +491,19 @@ def run_tracks(root, count, engine, config, report):
     while True:
         finished = (root / "finalise").exists()
         worked = [track.step(engine, config, finished, report) for track in tracks]
-        if finished and not any(worked):
+        drained = finished and not any(worked)
+        for track in tracks:
+            if track.review is not None:
+                track.review.advance(
+                    track.index,
+                    track.start,
+                    config["voices"],
+                    config["voice_pool"],
+                    lambda start, count: read_frames(track.path, start, count),
+                    report,
+                    drained,
+                )
+        if drained:
             return {}
         if not any(worked):
             time.sleep(0.025)
