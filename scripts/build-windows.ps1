@@ -29,6 +29,7 @@ if ($Stage -in 'All','PythonTests') {
 }
 if ($Stage -in 'All','RustTests') {
     Run-Checked cargo @('test','--locked','--release','--workspace')
+    Run-Checked cargo @('test','--locked','--release','-p','gpui_ce_windows','--test','software_device')
 }
 if ($Stage -in 'All','Binaries') {
     Run-Checked cargo @('build','--locked','--release','--workspace')

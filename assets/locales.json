@@ -3743,5 +3743,33 @@
   "Перевод на ЦП · распознавание речи на ГП",
   "翻訳はCPU · 文字起こしはGPU",
   "CPU 翻译 · GPU 转写"
+ ],
+ "Sélectionner": [
+  "Select",
+  "Seleccionar",
+  "Выбрать",
+  "選択",
+  "选择"
+ ],
+ "Parcourir les paramètres": [
+  "Scroll settings",
+  "Desplazarse por los ajustes",
+  "Прокрутить настройки",
+  "設定をスクロール",
+  "滚动设置"
+ ],
+ "Accélération graphique": [
+  "Hardware graphics acceleration",
+  "Aceleración gráfica por hardware",
+  "Аппаратное ускорение графики",
+  "グラフィックスのハードウェア アクセラレーション",
+  "图形硬件加速"
+ ],
+ "Utiliser le GPU pour afficher les fenêtres. Le changement prend effet au prochain démarrage.": [
+  "Use the GPU to render windows. Changes take effect the next time you open Rikai.",
+  "Utiliza la GPU para dibujar las ventanas. El cambio se aplica al volver a abrir Rikai.",
+  "Использовать видеокарту для отрисовки окон. Изменение вступит в силу при следующем запуске Rikai.",
+  "GPU でウィンドウを描画します。変更は次回の Rikai 起動時に反映されます。",
+  "使用 GPU 渲染窗口。更改将在下次启动 Rikai 时生效。"
  ]
 }

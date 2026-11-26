@@ -3,7 +3,7 @@ resolver = "3"
 members = ["crates/audio-capture", "crates/meeting-storage", "crates/desktop"]
 [workspace.package]
 edition = "2024"
-version = "0.6.0"
+version = "0.7.0"
 [workspace.dependencies]
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
@@ -11,3 +11,6 @@ serde_json = "1"
 hound = "3.5.1"
 [profile.dev]
 debug = 0
+
+[patch.crates-io]
+gpui_ce_windows = { path = "vendor/gpui_ce_windows" }

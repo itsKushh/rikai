@@ -78,7 +78,6 @@ impl Desk {
                 .gap(px(2.))
                 .w(px(264.))
                 .max_h(px(220.))
-                .overflow_y_scroll()
                 .rounded(px(16.))
                 .border_1()
                 .border_color(rgb(p.edge))
@@ -94,7 +93,10 @@ impl Desk {
                         cx.notify();
                     }
                 }))
-                .child(options)
+                .child(
+                    super::scroller::ScrollArea::new("record-action-options", options)
+                        .limited(206.),
+                )
                 .with_animation("record-options-open", reveal(cx, 140), |d, t| {
                     d.relative().top(px(-3. * (1. - t))).opacity(t)
                 });
@@ -403,7 +405,7 @@ impl Desk {
                         self.report_list.clone(),
                         cx.processor(|s, i: usize, _, _| {
                             let line = &s.report_lines[i];
-                            if let Some(title) = line.strip_prefix("## ") {
+                            let body = if let Some(title) = line.strip_prefix("## ") {
                                 raw_label(title.to_owned()).pb(px(3.))
                             } else if let Some(text) = line.strip_prefix("- ") {
                                 div()
@@ -416,8 +418,10 @@ impl Desk {
                                 div().h(px(6.))
                             } else {
                                 div().pb(px(3.)).child(line.to_owned())
-                            }
-                            .into_any_element()
+                            };
+                            s.wheel[0]
+                                .listen(scroller::Axis::Rows(s.report_list.clone()), body)
+                                .into_any_element()
                         }),
                     )
                     .flex_1()

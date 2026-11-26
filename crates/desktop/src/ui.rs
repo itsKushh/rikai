@@ -65,6 +65,11 @@ pub fn run() -> Result<()> {
     tracing::info!(build, "Ouverture de la bibliothèque");
     let db = Library::open(&root.join("reunions.sqlite3"))?;
     db.recover()?;
+    let hardware = db
+        .pref("settings")?
+        .and_then(|v| serde_json::from_str::<Value>(&v).ok())
+        .is_none_or(|prefs| prefs["hardware_rendering"] != false);
+    gpui_ce_windows::set_software_rendering(!hardware);
     gpui_platform::application()
         .with_quit_mode(QuitMode::LastWindowClosed)
         .run(move |cx| {
@@ -178,6 +183,10 @@ struct Desk {
     root: PathBuf,
     db: Library,
     page: Page,
+    source_menu: Option<view::preferences_panel::SourceMenu>,
+    settings_nav: view::preferences_panel::Sidebar,
+    settings_scroll: ScrollHandle,
+    wheel: [view::scroller::Wheel; 2],
     settings_origin: Page,
     drawer_focus: FocusHandle,
     drawer_was_open: bool,
@@ -229,8 +238,8 @@ struct Desk {
     transcript_ids: Vec<i64>,
     reading_version: [Option<i64>; 2],
     record_menu: Option<RecordMenu>,
-    scroll_grab: Option<Pixels>,
-    tab_geometry: [std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>; 4],
+    scroll_grab: std::rc::Rc<std::cell::Cell<Option<Pixels>>>,
+    tab_geometry: [std::rc::Rc<std::cell::Cell<Bounds<Pixels>>>; 3],
     discard: bool,
     library: Vec<Meeting>,
     segments: Vec<Segment>,
@@ -358,6 +367,10 @@ impl Desk {
             root,
             db,
             page: Page::Home,
+            source_menu: None,
+            settings_nav: Default::default(),
+            settings_scroll: Default::default(),
+            wheel: Default::default(),
             settings_origin: Page::Home,
             drawer_focus: cx.focus_handle(),
             drawer_was_open: false,
@@ -409,7 +422,7 @@ impl Desk {
             transcript_ids: Vec::new(),
             reading_version: [None, None],
             record_menu: None,
-            scroll_grab: None,
+            scroll_grab: Default::default(),
             tab_geometry: Default::default(),
             discard: false,
             library: vec![],
@@ -578,7 +591,10 @@ impl Desk {
         ];
         self.set_report(self.db.summary(id)?.unwrap_or_default());
         self.record_menu = None;
-        self.scroll_grab = None;
+        self.scroll_grab.set(None);
+        for wheel in &self.wheel {
+            wheel.stop();
+        }
         self.edit_id = None;
         self.page = Page::Detail;
         self.refresh("")
@@ -1170,6 +1186,7 @@ impl Desk {
         Ok(())
     }
     fn go(&mut self, page: Page) -> Result<()> {
+        self.source_menu = None;
         self.record_menu = None;
         self.language_picker = None;
         if self.busy() {

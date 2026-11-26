@@ -56,6 +56,53 @@ class LiveTranslation(unittest.TestCase):
         self.assertEqual(memory.assign({0: (a + b) / 2**0.5}), {})
         self.assertEqual(len(memory.centres), 2)
 
+    def test_short_replies_cannot_enroll_or_name_a_speaker(self):
+        import numpy as np
+        from live_voices import SpeakerMemory, LiveVoices, RATE
+
+        a, b = np.eye(2)
+        memory = SpeakerMemory([dict(id=9, name="Camille", embedding=a)])
+        self.assertEqual(memory.assign({0: a}, short={0}), {})
+        memory.assign({0: a})
+        self.assertEqual(memory.assign({1: a, 0: b}, short={0, 1}), {1: 1})
+        self.assertIsNone(memory.suggestion(1))
+        self.assertEqual(memory.observations, [1])
+
+        voices = LiveVoices.__new__(LiveVoices)
+        voices.history = {0: [(0, RATE, 1), (RATE, 2 * RATE, 2)]}
+        span = [(0, RATE, (2,))]
+        self.assertEqual(voices.anchors(span, 0, RATE, RATE), {2: 2})
+        self.assertEqual(voices.anchors(span, 1, RATE, RATE), {})
+        self.assertEqual(voices.anchors(span, 0, RATE // 2, RATE), {})
+
+    def test_short_word_alignment_gaps_need_an_agreeing_neighbor_on_both_sides(self):
+        from live_voices import word_speaker, UNKNOWN
+
+        self.assertEqual(word_speaker(0.5, 0.5, [(0, 1, 2)]), 2)
+        for right, expected in [(1, 1), (2, UNKNOWN), (UNKNOWN, UNKNOWN)]:
+            turns = [(0, 0.48, 1), (0.58, 1, right)]
+            self.assertEqual(word_speaker(0.5, 0.55, turns), expected)
+
+    def test_speech_retry_requires_acoustic_evidence_and_preserves_the_sample_clock(self):
+        from types import SimpleNamespace as Item
+        from unittest.mock import patch
+        from live import RATE, recover_speech
+        import numpy as np
+
+        audio = np.zeros(2 * RATE, dtype=np.float32)
+        word = Item(start=0.12, end=0.51, word=" Oui", probability=0.9)
+        part = Item(words=[word], text=" Oui", no_speech_prob=0.2, avg_logprob=-0.2)
+        with patch("live.decode", return_value=([part], "fr")) as decode:
+            self.assertIsNone(recover_speech(None, audio, {}, []))
+            self.assertIsNone(recover_speech(None, audio, {}, [(0, 2, "overlap")]))
+            decode.assert_not_called()
+            text, words, lang = recover_speech(None, audio, {}, [(0.8, 1.2, 1)])
+            self.assertEqual((text, lang), ("Oui", "fr"))
+            self.assertAlmostEqual(words[0][0], 0.8)
+            self.assertFalse(decode.call_args.kwargs["vad"])
+            word.probability = 0.1
+            self.assertIsNone(recover_speech(None, audio, {}, [(0.8, 1.2, 1)]))
+
     def test_word_attribution_preserves_text_order_marks_overlap_and_uncertainty(self):
         from live_voices import speaker_phrases, OVERLAP, UNKNOWN
 

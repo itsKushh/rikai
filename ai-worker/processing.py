@@ -108,6 +108,8 @@ class TurnIndex:
 
 
 def attribution(start, end, turns):
+    if end <= start:
+        start, end = max(0, start - 35), start + 35
     if isinstance(turns, TurnIndex):
         turns = turns.between(start, end)
     overlaps = [

@@ -50,7 +50,7 @@ def read_frames(path, start, limit=RATE * 8):
         return None
 
 
-def decode(engine, inference_audio, config, quality):
+def decode(engine, inference_audio, config, quality, vad=True):
     with gpu_timeslice(config["duty"]):
         segments, info = engine.transcribe(
             inference_audio,
@@ -59,7 +59,7 @@ def decode(engine, inference_audio, config, quality):
             temperature=0,
             word_timestamps=quality,
             without_timestamps=not quality,
-            vad_filter=True,
+            vad_filter=vad,
             vad_parameters={"min_silence_duration_ms": 350},
             condition_on_previous_text=False,
         )
@@ -94,6 +94,29 @@ def decoded_text(parts, end, forced):
             )
     return text, words, end
 
+
+def recover_speech(engine, data, config, spans):
+    # Retry once if the independent speaker segmenter found speech that the
+    # first pass missed. Exclude leading/trailing soundtrack from this decode.
+    solo = [(a, b) for a, b, who in spans if who != "overlap"]
+    if sum(b - a for a, b in solo) < 0.35:
+        return None
+    start = max(0, round((solo[0][0] - 0.12) * RATE))
+    stop = min(len(data), round((solo[-1][1] + 0.12) * RATE))
+    from live_voices import level_detected_speech
+
+    sample = level_detected_speech(data[start:stop])
+    parts, source = decode(engine, sample, config, True, vad=False)
+    clear = [
+        part for part in parts if part.words and part.no_speech_prob < 0.65
+        and part.avg_logprob > -1.0
+        and sum(w.probability for w in part.words) / len(part.words) >= 0.5
+    ]
+    text, words, _ = decoded_text(clear, stop - start, False)
+    if text:
+        offset = start / RATE
+        return text, [(a + offset, b + offset, w) for a, b, w in words], source
+    return None
 
 @dataclass
 class Preview:
@@ -202,7 +225,9 @@ class Track:
         window = np.concatenate((history, data))
         self.voice_tail = window[-RATE * 2 :].copy()
         self.voice_end = self.start + len(data)
-        return config["voice_pool"].submit(voices.turns, window, len(history))
+        return config["voice_pool"].submit(
+            voices.turns, window, len(history), self.index, self.start - len(history)
+        )
 
     def confirm(self, payload, groups, source, speech_end, config, report):
         previous = self.take_preview()
@@ -350,6 +375,11 @@ class Track:
             from live_voices import speaker_phrases
 
             spans = turns.result()
+            if not text:
+                recovered = recover_speech(engine, data[:end], config, spans)
+                if recovered:
+                    text, timed_words, source = recovered
+                    payload["text"] = text
             groups = speaker_phrases(timed_words, spans, text)
         last_voiced = int(active[gaps[0]] if len(gaps) else active[-1])
         speech_end = self.start + min(end, (last_voiced + 1) * BLOCK)

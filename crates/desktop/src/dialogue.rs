@@ -20,7 +20,12 @@ impl Desk {
                 list(
                     state,
                     cx.processor(|s, ix, _, cx| {
-                        s.segment_card(ix, &s.segments[ix], cx).into_any_element()
+                        s.wheel[1]
+                            .listen(
+                                scroller::Axis::Rows(s.dialogues.clone()),
+                                s.segment_card(ix, &s.segments[ix], cx),
+                            )
+                            .into_any_element()
                     }),
                 )
                 .flex_1()
@@ -294,13 +299,7 @@ impl Desk {
                             "filter-language",
                             "Rechercher une langue",
                         ))
-                        .child(
-                            div()
-                                .id("language-results")
-                                .max_h(px(208.))
-                                .overflow_y_scroll()
-                                .child(rows),
-                        )
+                        .child(ScrollArea::new("language-results", rows).limited(208.))
                         .with_animation("language-picker", reveal(cx, 140), |d, t| {
                             d.relative().top(px(-3. * (1. - t))).opacity(t)
                         });
@@ -372,123 +371,15 @@ impl Desk {
         }
     }
     pub(super) fn reading_scrollbar(&self, cx: &Context<Self>) -> Stateful<Div> {
-        let list = self.reading_list().clone();
-        let p = *cx.global::<Palette>();
-        let release = |s: &mut Desk, _: &MouseUpEvent, _: &mut Window, cx: &mut Context<Desk>| {
-            if s.scroll_grab.take().is_some() {
-                s.reading_list().scrollbar_drag_ended();
-                cx.notify();
-            }
-        };
-        let drag = cx.listener(|s, e: &MouseMoveEvent, _, cx| {
-            if let Some(grab) = s.scroll_grab {
-                s.drag_scroll(
-                    e.position.y - s.reading_list().viewport_bounds().origin.y,
-                    grab,
-                );
-                cx.notify();
-            }
-        });
-        div()
-            .id("record-scrollbar")
-            .role(Role::ScrollBar)
-            .aria_label(tr(if self.tab == 0 {
+        scroller::rail(
+            scroller::Axis::Rows(self.reading_list().clone()),
+            if self.tab == 0 {
                 "Parcourir le résumé"
             } else {
                 "Parcourir les passages"
-            }))
-            .focusable()
-            .tab_stop(true)
-            .relative()
-            .w(px(12.))
-            .h_full()
-            .flex_shrink_0()
-            .rounded_full()
-            .opacity(if self.scroll_grab.is_some() {
-                0.95
-            } else {
-                0.53
-            })
-            .hover(|d| d.opacity(0.85))
-            .focus_visible(|d| d.opacity(1.0))
-            .transitions(|t| t.opacity(motion(115)))
-            .child(
-                canvas(
-                    |_, _, _| (),
-                    move |bounds, _, w, _| {
-                        if let Some((top, height, _)) = thumb(&list, bounds.size.height) {
-                            let rect = Bounds::new(
-                                point(bounds.center().x - px(2.5), bounds.origin.y + top),
-                                size(px(5.), height),
-                            );
-                            w.paint_quad(
-                                PaintQuad::new(rect)
-                                    .background(rgb(p.muted))
-                                    .corner_radii(px(2.5)),
-                            );
-                        }
-                    },
-                )
-                .size_full(),
-            )
-            .on_mouse_down(
-                MouseButton::Left,
-                cx.listener(|s, e: &MouseDownEvent, _, cx| {
-                    let b = s.reading_list().viewport_bounds();
-                    if let Some((top, height, _)) = thumb(s.reading_list(), b.size.height) {
-                        let y = e.position.y - b.origin.y;
-                        let grab = if y >= top && y <= top + height {
-                            y - top
-                        } else {
-                            height * 0.5
-                        };
-                        s.scroll_grab = Some(grab);
-                        s.reading_list().scrollbar_drag_started();
-                        s.drag_scroll(y, grab);
-                        cx.notify();
-                    }
-                }),
-            )
-            .on_mouse_move_all(move |event, phase, _, w, cx| {
-                if phase.bubble() {
-                    drag(event, w, cx);
-                }
-            })
-            .on_mouse_up(MouseButton::Left, cx.listener(release))
-            .on_mouse_up_out(MouseButton::Left, cx.listener(release))
-            .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
-                let page = s.reading_list().viewport_bounds().size.height;
-                let y = s.reading_list().scroll_px_offset_for_scrollbar().y;
-                let target = match e.keystroke.key.as_str() {
-                    "home" => px(0.),
-                    "end" => -s.reading_list().max_offset_for_scrollbar().y,
-                    "pageup" => y + page,
-                    "pagedown" => y - page,
-                    "up" => y + px(32.),
-                    "down" => y - px(32.),
-                    _ => return,
-                };
-                s.reading_list()
-                    .set_offset_from_scrollbar(point(px(0.), target));
-                cx.stop_propagation();
-                cx.notify();
-            }))
+            },
+            self.scroll_grab.clone(),
+            *cx.global::<Palette>(),
+        )
     }
-    fn drag_scroll(&self, y: Pixels, grab: Pixels) {
-        let h = self.reading_list().viewport_bounds().size.height;
-        if let Some((_, handle, max)) = thumb(self.reading_list(), h) {
-            let fraction = ((y - grab) / (h - handle).max(px(1.))).clamp(0., 1.);
-            self.reading_list()
-                .set_offset_from_scrollbar(point(px(0.), -max * fraction));
-        }
-    }
-}
-fn thumb(list: &ListState, h: Pixels) -> Option<(Pixels, Pixels, Pixels)> {
-    let max = list.max_offset_for_scrollbar().y;
-    if max <= px(0.) || h <= px(0.) {
-        return None;
-    }
-    let handle = (h * (h / (max + h))).max(px(24.)).min(h);
-    let frac = (-list.scroll_px_offset_for_scrollbar().y / max).clamp(0., 1.);
-    Some(((h - handle) * frac, handle, max))
 }

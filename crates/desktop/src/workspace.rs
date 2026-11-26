@@ -90,14 +90,14 @@ fn header(title: impl Into<SharedString>, p: Palette) -> Div {
         .child(label(title))
 }
 
-fn scroll(id: &'static str, content: Div) -> Stateful<Div> {
+fn scroll(id: &'static str, content: Div) -> Div {
     div()
-        .id(id)
+        .flex()
+        .flex_col()
         .flex_1()
         .min_h_0()
         .min_w_0()
-        .overflow_y_scroll()
-        .child(content)
+        .child(ScrollArea::new(id, content))
 }
 
 fn fact(name: &'static str, value: impl Into<String>, p: Palette) -> Div {
@@ -563,7 +563,7 @@ impl Desk {
             .child(scroll("inspector-body", content))
     }
 
-    fn settings_drawer(&self, visibility: f32, cx: &Context<Self>) -> Div {
+    fn settings_drawer(&self, visibility: f32, w: &Window, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let (title, fields) = if let Some(prompt) = &self.confirmation {
             (
@@ -613,86 +613,43 @@ impl Desk {
             .flex_shrink_0();
         let body = col()
             .gap(px(16.))
-            .p_4()
             .when(!self.message.is_empty(), |s| {
                 s.child(notice(&self.message, p))
             })
             .child(fields);
-        let sheet = p
-            .panel()
-            .id("settings-sheet")
-            .h_full()
-            .w(px(434.))
-            .max_w(relative(0.92))
-            .occlude()
-            .track_focus(&self.drawer_focus)
-            .role(Role::Dialog)
-            .aria_modal(true)
-            .aria_label(title.clone())
-            .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
-                if e.keystroke.key == "escape" {
-                    if s.menu.take().is_none() {
-                        s.dismiss_drawer();
-                    }
-                    cx.stop_propagation();
-                    cx.notify();
+        let side = (self.page == Page::Settings && self.confirmation.is_none() && !self.busy())
+            .then(|| self.settings_sidebar(w, cx));
+        let sheet = preferences_panel::sheet(
+            title,
+            (!self.busy() || self.confirmation.is_some()).then_some(close),
+            side,
+            body,
+            self.settings_scroll.clone(),
+            p,
+        )
+        .when(self.confirmation.is_some(), |s| {
+            s.max_w(px(440.)).max_h(px(220.))
+        })
+        .track_focus(&self.drawer_focus)
+        .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
+            if e.keystroke.key == "escape" {
+                if s.menu.take().is_none() {
+                    s.dismiss_drawer();
                 }
-            }))
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .min_h(px(40.))
-                    .flex_shrink_0()
-                    .px_4()
-                    .border_b_1()
-                    .border_color(rgb(p.edge))
-                    .child(label(title))
-                    .when(!self.busy() || self.confirmation.is_some(), |s| {
-                        s.child(close)
-                    }),
-            )
-            .when(
-                self.page == Page::Settings && self.confirmation.is_none() && !self.busy(),
-                |d| d.child(self.settings_tabs(cx)),
-            )
-            .child(scroll("drawer-fields", body))
-            .child(
-                div()
-                    .flex_shrink_0()
-                    .px_4()
-                    .py_2()
-                    .text_right()
-                    .text_size(px(11.))
-                    .text_color(rgb(p.muted))
-                    .child(concat!("Rikai v", env!("CARGO_PKG_VERSION"))),
-            );
-        div()
-            .absolute()
-            .inset_0()
-            .flex()
-            .justify_end()
-            .p(px(12.))
-            .child(
-                div()
-                    .id("drawer-backdrop")
-                    .absolute()
-                    .inset_0()
-                    .occlude()
-                    .bg(black().opacity(visibility * 0.67))
-                    .backdrop_blur(px(4. * visibility))
-                    .on_click(cx.listener(|s, _, _, cx| {
-                        s.dismiss_drawer();
-                        cx.notify();
-                    })),
-            )
-            .child(
-                sheet
-                    .relative()
-                    .left(px(24. * (1. - visibility)))
-                    .opacity(visibility),
-            )
+                cx.stop_propagation();
+                cx.notify();
+            }
+        }));
+        preferences_panel::overlay(
+            visibility,
+            sheet,
+            div()
+                .id("drawer-backdrop")
+                .on_click(cx.listener(|s, _, _, cx| {
+                    s.dismiss_drawer();
+                    cx.notify();
+                })),
+        )
     }
 }
 
@@ -726,17 +683,7 @@ impl Render for Desk {
         }
         self.release_was_open = modal;
         let drawer = self.drawer_open();
-        let goal = if drawer { 1.0 } else { 0.0 };
-        let transition =
-            window.use_keyed_transition("drawer-visibility", cx, motion(290), |_, _| 0.0_f32);
-        if *transition.read_goal(cx) != goal {
-            transition.update(cx, |v, _| *v = goal);
-        }
-        let visibility = if cx.reduce_motion() {
-            goal
-        } else {
-            *transition.evaluate(window, cx)
-        };
+        let visibility = preferences_panel::visibility(drawer, window, cx);
         if drawer && !self.drawer_was_open && !update {
             self.drawer_focus.focus(window, cx);
         }
@@ -798,23 +745,20 @@ impl Render for Desk {
         }
         let inspector = self.inspector_panel(page, drawer, cx);
         let layout = if narrow {
-            div()
-                .id("compact-workspace")
-                .size_full()
-                .overflow_y_scroll()
-                .child(
-                    col()
-                        .gap_3()
-                        .child(
-                            left.min_h(px(320.))
-                                .when(page == Page::Detail || home, |d| {
-                                    d.h((window.viewport_size().height - px(105.)).max(px(320.)))
-                                        .flex_shrink_0()
-                                }),
-                        )
-                        .child(inspector.min_h(px(225.))),
-                )
-                .into_any_element()
+            ScrollArea::new(
+                "compact-workspace",
+                col()
+                    .gap_3()
+                    .child(
+                        left.min_h(px(320.))
+                            .when(page == Page::Detail || home, |d| {
+                                d.h((window.viewport_size().height - px(105.)).max(px(320.)))
+                                    .flex_shrink_0()
+                            }),
+                    )
+                    .child(inspector.min_h(px(225.))),
+            )
+            .into_any_element()
         } else {
             div()
                 .size_full()
@@ -826,7 +770,9 @@ impl Render for Desk {
         };
         window_frame::surface(p)
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
-                if ev.keystroke.key == "escape" && s.record_menu.take().is_some() {
+                if ev.keystroke.key == "escape"
+                    && (s.source_menu.take().is_some() || s.record_menu.take().is_some())
+                {
                     cx.stop_propagation();
                     cx.notify();
                     return;
@@ -878,7 +824,7 @@ impl Render for Desk {
                     .child(div().flex_1().min_h_0().child(layout)),
             )
             .when(!package && (drawer || visibility > 0.001), |s| {
-                s.child(self.settings_drawer(visibility, cx))
+                s.child(self.settings_drawer(visibility, window, cx))
             })
             .when(package, |s| s.child(self.package_modal(cx)))
             .when(update, |s| s.child(self.release_modal(cx)))

@@ -1,47 +1,21 @@
 use super::*;
 
 impl Desk {
-    pub(super) fn settings_tabs(&self, cx: &Context<Self>) -> Div {
-        let p = *cx.global::<Palette>();
-        let mut tabs =
-            workspace::strip(p, "settings-pill", self.section, &self.tab_geometry[3]).w_full();
-        for (i, name) in [
+    pub(super) fn settings_sidebar(&self, w: &Window, cx: &Context<Self>) -> Div {
+        const NAMES: &[&str] = &[
             "Modèles",
             "Dépendances",
             "Interface",
             "Calcul",
             "Mises à jour",
-        ]
-        .into_iter()
-        .enumerate()
-        {
-            tabs = tabs.child(
-                button(
-                    name,
-                    if i == self.section {
-                        Button::Tab
-                    } else {
-                        Button::IdleTab
-                    },
-                    None,
-                    false,
-                    cx,
-                    move |s, _| {
-                        s.section = i;
-                        s.menu = None;
-                        Ok(())
-                    },
-                )
-                .flex_grow(1.)
-                .whitespace_nowrap()
-                .h(px(28.))
-                .py_0()
-                .rounded(px(11.))
-                .px(px(4.))
-                .text_size(px(11.)),
-            );
-        }
-        div().px(px(8.)).py(px(7.)).child(tabs)
+        ];
+        self.settings_nav
+            .render(NAMES, self.section, w, cx, |s, i| {
+                s.settings_nav.select(s.section, i, NAMES.len());
+                s.section = i;
+                s.menu = None;
+                s.settings_scroll.set_offset(Point::default());
+            })
     }
     pub(super) fn storage_settings(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
@@ -112,13 +86,7 @@ impl Desk {
                     .when(!self.message.is_empty(), |d| {
                         d.child(crate::i18n::message(&self.message))
                     })
-                    .child(
-                        div()
-                            .id("package-modal-content")
-                            .min_h_0()
-                            .overflow_y_scroll()
-                            .child(body),
-                    )
+                    .child(ScrollArea::new("package-modal-content", body).limited(380.))
                     .with_animation("package-reveal", reveal(cx, 190), |d, t| {
                         d.relative().top(px(6. * (1. - t))).opacity(t)
                     }),
@@ -144,33 +112,38 @@ impl Desk {
             .child(div().text_color(rgb(p.muted)).child(tr(description)))
             .child(if self.available(preset) {
                 disabled_button("Téléchargé", p)
+                    .id(SharedString::from(format!("download-{preset}")))
             } else {
                 action("Télécharger", false, cx, move |s, _| {
                     s.page = Page::ConfirmDownload(preset);
                     Ok(())
                 })
+                .id(SharedString::from(format!("download-{preset}")))
             })
             .when(self.available(preset), |d| {
                 let path = self.installed[preset]["path"].as_str().unwrap_or_default();
                 let installed_path = PathBuf::from(path);
-                d.child(button(
-                    "Ouvrir le dossier",
-                    Button::Quiet,
-                    None,
-                    false,
-                    cx,
-                    move |_, _| {
-                        let dir = if installed_path.is_file() {
-                            installed_path.parent().unwrap_or(&installed_path)
-                        } else {
-                            &installed_path
-                        };
-                        std::process::Command::new("explorer.exe")
-                            .arg(dir)
-                            .spawn()?;
-                        Ok(())
-                    },
-                ))
+                d.child(
+                    button(
+                        "Ouvrir le dossier",
+                        Button::Quiet,
+                        None,
+                        false,
+                        cx,
+                        move |_, _| {
+                            let dir = if installed_path.is_file() {
+                                installed_path.parent().unwrap_or(&installed_path)
+                            } else {
+                                &installed_path
+                            };
+                            std::process::Command::new("explorer.exe")
+                                .arg(dir)
+                                .spawn()?;
+                            Ok(())
+                        },
+                    )
+                    .id(SharedString::from(format!("open-{preset}"))),
+                )
             })
             .when(
                 self.available(preset)
@@ -178,12 +151,15 @@ impl Desk {
                         .iter()
                         .any(|&(key, field)| self.settings[key] != self.installed[preset][field]),
                 |d| {
-                    d.child(action("Utiliser ce modèle", false, cx, move |s, _| {
-                        for &(key, field) in keys {
-                            s.settings[key] = s.installed[preset][field].clone();
-                        }
-                        s.save_settings()
-                    }))
+                    d.child(
+                        action("Utiliser ce modèle", false, cx, move |s, _| {
+                            for &(key, field) in keys {
+                                s.settings[key] = s.installed[preset][field].clone();
+                            }
+                            s.save_settings()
+                        })
+                        .id(SharedString::from(format!("use-{preset}"))),
+                    )
                 },
             )
     }
@@ -363,13 +339,7 @@ impl Desk {
                 };
             }
             content = content
-                .child(
-                    div()
-                        .id("release-notes")
-                        .max_h(px(260.))
-                        .overflow_y_scroll()
-                        .child(notes),
-                )
+                .child(ScrollArea::new("release-notes", notes).limited(260.))
                 .child(
                     row()
                         .child(action("Mettre à jour", true, cx, |s, _| {

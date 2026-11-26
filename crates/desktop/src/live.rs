@@ -28,6 +28,12 @@ pub(in crate::ui) struct Live {
     recognize: bool,
     search: Field,
     picker: bool,
+    settings_open: bool,
+    settings_focus: FocusHandle,
+    section: usize,
+    sidebar: Sidebar,
+    settings_scroll: ScrollHandle,
+    source_menu: Option<SourceMenu>,
     scanning: bool,
     status: String,
     control: Option<Control>,
@@ -111,6 +117,12 @@ impl Live {
             target: crate::i18n::code().into(),
             search,
             picker: false,
+            settings_open: false,
+            settings_focus: cx.focus_handle(),
+            section: 0,
+            sidebar: Default::default(),
+            settings_scroll: Default::default(),
+            source_menu: None,
             scanning: false,
             status: String::new(),
             control: None,
@@ -213,6 +225,7 @@ impl Live {
         self.control = None;
         self.stopping = false;
         self.picker = false;
+        self.settings_open = false;
         self.phrases.clear();
         self.latency = None;
         self.capture_start = None;
@@ -277,7 +290,11 @@ impl Live {
             LiveEvent::Sources(r) => {
                 self.scanning = false;
                 match r {
-                    Ok(v) => self.inputs = v,
+                    Ok(v) => {
+                        self.selected
+                            .retain(|s| v.iter().any(|input| &input.source == s));
+                        self.inputs = v;
+                    }
                     Err(e) => self.status = e.to_string(),
                 }
             }
@@ -301,7 +318,10 @@ impl Live {
                     {
                         "Traitement annulé".into()
                     }
-                    Err(e) => e.to_string(),
+                    Err(e) => {
+                        self.settings_open = true;
+                        e.to_string()
+                    }
                 };
                 self.cancel = None;
                 self.stopping = false;
@@ -486,82 +506,79 @@ fn phrase_text(phrase: &Phrase, p: Palette, w: &Window, cx: &App) -> AnyElement 
         .into_any_element()
 }
 
-impl Render for Live {
-    fn render(&mut self, w: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+impl Live {
+    fn dismiss_preferences(&mut self) {
+        self.settings_open = false;
+        self.source_menu = None;
+        self.picker = false;
+    }
+    fn preferences(&self, visibility: f32, w: &Window, cx: &Context<Self>) -> Div {
+        const TABS: &[&str] = &["Audio", "Traduction", "Voix"];
         let p = *cx.global::<Palette>();
         let busy = self.cancel.is_some();
-        if self.closing && !busy {
-            w.defer(cx, |w, _| w.remove_window());
-        }
         let action = |title: &str, style, icon| control(title, style, icon, false, cx);
-        let mut panel = col().min_h_0().p_4();
-        if !busy {
-            let mut sources = row();
-            for (i, input) in self.inputs.iter().enumerate() {
-                let key = input.source.clone();
-                sources = sources.child(
-                    checkbox(input.name.clone(), self.selected.contains(&key), false, p)
-                        .id(("live-source", i))
-                        .on_click(cx.listener(move |s, _, _, cx| {
-                            if !s.selected.remove(&key) {
-                                s.selected.insert(key.clone());
+        let mut panel = col();
+        if self.section == 0 {
+            panel = panel.child(row().justify_between().child(label("Sources audio")).when(
+                !busy,
+                |d| {
+                    d.child(
+                        action("Actualiser", Button::Quiet, None).on_click(cx.listener(
+                            |s, _, _, cx| {
+                                s.scan();
+                                cx.notify();
+                            },
+                        )),
+                    )
+                },
+            ));
+            for kind in [SourceMenu::Apps, SourceMenu::Mic] {
+                panel = panel.child(preferences_panel::source_field(
+                    kind,
+                    self.source_menu == Some(kind),
+                    &self.inputs,
+                    &self.selected,
+                    self.scanning,
+                    busy,
+                    |_, _| None,
+                    cx,
+                    |s, k| {
+                        s.source_menu = if s.source_menu == Some(k) {
+                            None
+                        } else {
+                            Some(k)
+                        }
+                    },
+                    |s, k, src| {
+                        if s.cancel.is_none() && s.inputs.iter().any(|i| i.source == src) {
+                            k.toggle(&mut s.selected, src);
+                            if k == SourceMenu::Mic {
+                                s.source_menu = None;
+                            }
+                        }
+                    },
+                ));
+            }
+        } else if self.section == 1 {
+            panel = panel.child(label("Langue cible"));
+            let lang = crate::i18n::language_name(&self.target);
+            panel = if busy {
+                panel.child(lang.to_owned())
+            } else {
+                panel.child(
+                    action(lang, Button::Secondary, None)
+                        .justify_between()
+                        .child(glyph(CHEVRON, 14., p.muted))
+                        .on_click(cx.listener(|s, _, _, cx| {
+                            s.picker = !s.picker;
+                            if s.picker {
+                                s.search.update(cx, |field, cx| field.emplace("", cx));
                             }
                             cx.notify();
                         })),
-                );
-            }
-            panel = panel
-                .child(row().justify_between().child(label("Sources audio")).child(
-                    action("Actualiser", Button::Quiet, None).on_click(cx.listener(
-                        |s, _, _, cx| {
-                            s.scan();
-                            cx.notify();
-                        },
-                    )),
-                ))
-                .child(sources)
-                .child(
-                    checkbox(
-                        tr("Identifier les intervenants").to_owned(),
-                        self.identify,
-                        false,
-                        p,
-                    )
-                    .id("live-identify")
-                    .on_click(cx.listener(|s, _, _, cx| {
-                        s.identify = !s.identify;
-                        cx.notify();
-                    })),
                 )
-                .when(self.identify, |d| {
-                    d.child(
-                        checkbox(
-                            tr("Proposer les voix connues").to_owned(),
-                            self.recognize,
-                            false,
-                            p,
-                        )
-                        .id("live-recognize")
-                        .on_click(cx.listener(|s, _, _, cx| {
-                            s.recognize = !s.recognize;
-                            cx.notify();
-                        })),
-                    )
-                })
-                .child(
-                    row().child(label("Langue cible")).child(
-                        action(
-                            crate::i18n::language_name(&self.target),
-                            Button::Secondary,
-                            Some(CHEVRON),
-                        )
-                        .on_click(cx.listener(|s, _, _, cx| {
-                            s.picker = !s.picker;
-                            cx.notify();
-                        })),
-                    ),
-                );
-            if self.picker {
+            };
+            if self.picker && !busy {
                 let q = self.search.read(cx).as_str().trim().to_lowercase();
                 let mut options = col().gap_0();
                 for r in crate::i18n::languages()
@@ -586,25 +603,43 @@ impl Render for Live {
                         "live-language-search",
                         "Rechercher une langue",
                     ))
-                    .child(
-                        div()
-                            .id("live-targets")
-                            .h(px(110.))
-                            .overflow_y_scroll()
-                            .child(options),
-                    );
+                    .child(ScrollArea::new("live-targets", options).limited(170.));
+            }
+        } else {
+            panel = panel.child(
+                checkbox(
+                    tr("Identifier les intervenants").to_owned(),
+                    self.identify,
+                    busy,
+                    p,
+                )
+                .id("live-identify")
+                .when(!busy, |d| {
+                    d.on_click(cx.listener(|s, _, _, cx| {
+                        s.identify = !s.identify;
+                        cx.notify();
+                    }))
+                }),
+            );
+            if self.identify {
+                panel = panel.child(
+                    checkbox(
+                        tr("Proposer les voix connues").to_owned(),
+                        self.recognize,
+                        busy,
+                        p,
+                    )
+                    .id("live-recognize")
+                    .when(!busy, |d| {
+                        d.on_click(cx.listener(|s, _, _, cx| {
+                            s.recognize = !s.recognize;
+                            cx.notify();
+                        }))
+                    }),
+                );
             }
         }
-        if busy {
-            panel = panel
-                .child(
-                    row()
-                        .justify_between()
-                        .child(label("Langue cible"))
-                        .child(crate::i18n::language_name(&self.target).to_owned()),
-                )
-                .child(div().text_color(rgb(p.muted)).child(self.names.join(" · ")));
-        } else if let Ok(owner) = self.owner.read(cx) {
+        if !busy && let Ok(owner) = self.owner.read(cx) {
             let missing_whisper = owner.settings["whisper"]
                 .as_str()
                 .is_none_or(|v| !std::path::Path::new(v).join("model.bin").is_file());
@@ -612,7 +647,10 @@ impl Render for Live {
                 .as_str()
                 .is_none_or(|v| !std::path::Path::new(v).join("model.bin").is_file());
             let missing_voices = self.identify && !voice_models_ready(&owner.settings);
-            if missing_whisper || missing_translation || missing_voices {
+            if (self.section == 1 && (missing_whisper || missing_translation))
+                || (self.section == 2 && missing_voices)
+            {
+                let voice_tab = self.section == 2;
                 panel = panel.child(
                     action("Configurer les modèles", Button::Secondary, None).on_click(
                         cx.listener(move |s, _, _, cx| {
@@ -622,9 +660,10 @@ impl Render for Live {
                                     if desk.page != Page::Settings {
                                         let _ = desk.go(Page::Settings);
                                     }
-                                    desk.section = if missing_whisper { 0 } else { 1 };
-                                    if !missing_whisper {
-                                        desk.page = Page::ConfirmDownload(if missing_translation {
+                                    desk.section =
+                                        if !voice_tab && missing_whisper { 0 } else { 1 };
+                                    if voice_tab || !missing_whisper {
+                                        desk.page = Page::ConfirmDownload(if !voice_tab {
                                             "Traduction locale"
                                         } else {
                                             "Identification des voix"
@@ -638,6 +677,78 @@ impl Render for Live {
                 );
             }
         }
+
+        if !self.status.is_empty() {
+            panel = panel.child(
+                div()
+                    .text_color(rgb(p.muted))
+                    .child(crate::i18n::message(&self.status)),
+            );
+        }
+        if let Some(l) = self.latency {
+            panel = panel.child(format!(
+                "{} · {} ms",
+                tr("Délai après la parole"),
+                l.as_millis()
+            ));
+        }
+        let sidebar = self.sidebar.render(TABS, self.section, w, cx, |s, i| {
+            s.sidebar.select(s.section, i, TABS.len());
+            s.section = i;
+            s.picker = false;
+            s.source_menu = None;
+            s.settings_scroll.set_offset(Point::default());
+        });
+        let close = control("Fermer le panneau", Button::Quiet, Some(CLOSE), true, cx)
+            .size(px(28.))
+            .p_0()
+            .flex_shrink_0()
+            .on_click(cx.listener(|s, _, _, cx| {
+                s.dismiss_preferences();
+                cx.notify();
+            }));
+        let sheet = preferences_panel::sheet(
+            tr("Paramètres").into(),
+            Some(close),
+            Some(sidebar),
+            panel,
+            self.settings_scroll.clone(),
+            p,
+        )
+        .track_focus(&self.settings_focus)
+        .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
+            if e.keystroke.key == "escape" {
+                if s.picker {
+                    s.picker = false;
+                } else if s.source_menu.take().is_none() {
+                    s.dismiss_preferences();
+                }
+                cx.stop_propagation();
+                cx.notify();
+            }
+        }));
+        preferences_panel::overlay(
+            visibility,
+            sheet,
+            div()
+                .id("drawer-backdrop")
+                .on_click(cx.listener(|s, _, _, cx| {
+                    s.dismiss_preferences();
+                    cx.notify();
+                })),
+        )
+    }
+}
+
+impl Render for Live {
+    fn render(&mut self, w: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let p = *cx.global::<Palette>();
+        let busy = self.cancel.is_some();
+        if self.closing && !busy {
+            w.defer(cx, |w, _| w.remove_window());
+        }
+        let showing = preferences_panel::visibility(self.settings_open, w, cx);
+        let action = |title: &str, style, icon| control(title, style, icon, false, cx);
         let primary = if busy && self.stopping {
             disabled_button("Finalisation", p)
         } else if busy {
@@ -645,32 +756,32 @@ impl Render for Live {
                 s.stop();
                 cx.notify();
             }))
-        } else if self
-            .inputs
-            .iter()
-            .any(|i| self.selected.contains(&i.source))
-        {
+        } else {
             action("Enregistrer", Button::Primary, Some(WAVE)).on_click(cx.listener(
-                |s, _, _, cx| {
-                    if let Err(e) = s.start(cx) {
+                |s, _, w, cx| {
+                    if !s.inputs.iter().any(|i| s.selected.contains(&i.source)) {
+                        s.section = 0;
+                        s.settings_open = true;
+                        s.settings_focus.focus(w, cx);
+                    } else if let Err(e) = s.start(cx) {
                         s.status = e.to_string();
+                        s.section = if s.identify
+                            && s.owner
+                                .read(cx)
+                                .is_ok_and(|owner| !voice_models_ready(&owner.settings))
+                        {
+                            2
+                        } else {
+                            1
+                        };
+                        s.settings_open = true;
+                        s.settings_focus.focus(w, cx);
                     }
                     cx.notify();
                 },
             ))
-        } else {
-            disabled_button("Enregistrer", p)
         };
-        let mut captions = div()
-            .flex()
-            .flex_col()
-            .id("live-captions")
-            .track_scroll(&self.scroll)
-            .flex_1()
-            .min_h_0()
-            .overflow_y_scroll()
-            .p_3()
-            .gap_3();
+        let mut captions = col().p_3().gap_3();
         for phrase in &self.phrases {
             captions = captions.child(
                 div()
@@ -696,66 +807,65 @@ impl Render for Live {
             .window_control_area(WindowControlArea::Drag)
             .child(glyph(TRANSLATE, 15., p.muted))
             .child(label("Traduction en direct").truncate());
-        let header =
-            window_frame::header(p, title, true)
-                .child(primary)
-                .child(window_frame::controls(
-                    w,
-                    p,
-                    true,
+        let header = window_frame::header(p, title, !self.settings_open)
+            .child(
+                control("Paramètres", Button::Secondary, Some(SLIDERS), true, cx).on_click(
                     cx.listener(|s, _, w, cx| {
-                        if s.can_close(cx) {
-                            w.remove_window();
-                        }
+                        s.settings_open = true;
+                        s.settings_focus.focus(w, cx);
+                        cx.notify();
                     }),
-                ));
+                ),
+            )
+            .child(primary)
+            .child(window_frame::controls(
+                w,
+                p,
+                true,
+                cx.listener(|s, _, w, cx| {
+                    if s.can_close(cx) {
+                        w.remove_window();
+                    }
+                }),
+            ));
+        let mut stream = ScrollArea::new("live-captions", captions);
+        stream.handle = Some(self.scroll.clone());
         let content = col()
             .min_h_0()
             .flex_1()
-            .gap(px(16.))
             .px(px(13.))
             .pt(px(8.))
             .pb(px(12.))
-            .child(
-                p.panel().flex_shrink_0().max_h(relative(0.62)).child(
-                    div()
-                        .id("live-configuration")
-                        .min_h_0()
-                        .overflow_y_scroll()
-                        .child(panel),
-                ),
-            )
-            .child(p.panel().flex_1().min_h_0().child(captions))
-            .when(!self.status.is_empty(), |d| {
-                d.child(
-                    row()
-                        .justify_between()
-                        .text_color(rgb(p.muted))
-                        .child(crate::i18n::message(&self.status))
-                        .when_some(self.latency, |d, latency| {
-                            d.child(format!(
-                                "{} · {} ms",
-                                tr("Délai après la parole"),
-                                latency.as_millis()
-                            ))
-                        }),
-                )
-            });
+            .child(p.panel().flex_1().min_h_0().child(stream));
+        let overlay =
+            (self.settings_open || showing > 0.001).then(|| self.preferences(showing, w, cx));
         window_frame::surface(p)
-            .capture_key_down(|ev: &KeyDownEvent, w, cx| {
+            .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
                 if ev.keystroke.key == "tab"
                     && !ev.keystroke.modifiers.control
                     && !ev.keystroke.modifiers.alt
                 {
-                    if ev.keystroke.modifiers.shift {
-                        w.focus_prev(cx);
+                    let step = if ev.keystroke.modifiers.shift {
+                        Window::focus_prev
                     } else {
-                        w.focus_next(cx);
+                        Window::focus_next
+                    };
+                    step(w, cx);
+                    if s.settings_open {
+                        let first = w.focused(cx);
+                        while !s.settings_focus.contains_focused(w, cx) {
+                            step(w, cx);
+                            if w.focused(cx) == first {
+                                s.settings_focus.focus(w, cx);
+                                break;
+                            }
+                        }
                     }
                     cx.stop_propagation();
                 }
-            })
+            }))
             .child(header)
             .child(content)
+            .children(overlay)
     }
 }

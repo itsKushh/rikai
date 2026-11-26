@@ -1,6 +1,12 @@
 use super::appearance::*;
 use super::*;
 use gpui::Div;
+#[path = "preferences_panel.rs"]
+pub(in crate::ui) mod preferences_panel;
+#[path = "scroller.rs"]
+pub(in crate::ui) mod scroller;
+use preferences_panel::{Sidebar, SourceMenu};
+use scroller::ScrollArea;
 #[path = "budgets.rs"]
 pub(super) mod budgets;
 #[path = "dialogue.rs"]
@@ -369,69 +375,38 @@ impl Desk {
                     "Facultatif",
                 ))),
         );
-        for mic in [false, true] {
-            body = body.child(label(if mic { "Microphone" } else { "Applications" }).mt_3());
-            let mut found = false;
-            for (index, i) in self
-                .inputs
-                .iter()
-                .enumerate()
-                .filter(|(_, i)| matches!(i.source, Source::Microphone { .. }) == mic)
-            {
-                found = true;
-                let src = i.source.clone();
-                let pid = match &src {
-                    Source::Application { pid, .. } => format!(" · PID {pid}"),
-                    _ => String::new(),
-                };
-                let selected = self.chosen.contains(&src);
-                let name = format!("{}{pid}", i.name);
-                let p = *cx.global::<Palette>();
-                let testing = self.preview.is_some();
-                let control = checkbox(name, selected, testing, p)
-                    .id(("source", index))
-                    .justify_between()
-                    .px_2()
-                    .min_h(px(36.))
-                    .child(div().flex_1())
-                    .when(selected, |d| {
-                        d.child(div().text_color(rgb(p.muted)).child(crate::i18n::message(
-                            &format!("Gain {:+} dB", self.gain_db(&src)),
-                        )))
-                    })
-                    .when(!testing && !selected, |d| {
-                        d.child(
-                            div()
-                                .text_color(rgb(p.muted))
-                                .child(crate::i18n::message(&format!("{:.0} %", i.peak * 100.))),
-                        )
-                    })
-                    .aria_disabled(testing)
-                    .tab_stop(!testing)
-                    .when(!testing, |d| {
-                        d.on_click(cx.listener(move |s, _, _, cx| {
-                            if s.inputs.get(index).is_some_and(|i| i.source == src)
-                                && !s.chosen.remove(&src)
-                            {
-                                if mic {
-                                    s.chosen.retain(|v| !matches!(v, Source::Microphone { .. }));
-                                }
-                                s.chosen.insert(src.clone());
-                            }
-                            cx.notify();
-                        }))
-                    });
-                body = body.child(control);
-            }
-            if !found {
-                body = body.child(tr(if self.scanning {
-                    "Détection en cours…"
-                } else if mic {
-                    "Aucune entrée disponible."
-                } else {
-                    "Aucune session détectée. Lancez un son dans l’application."
-                }));
-            }
+        for kind in [SourceMenu::Apps, SourceMenu::Mic] {
+            body = body.child(preferences_panel::source_field(
+                kind,
+                self.source_menu == Some(kind),
+                &self.inputs,
+                &self.chosen,
+                self.scanning,
+                self.preview.is_some(),
+                |input, selected| {
+                    Some(crate::i18n::message(&if selected {
+                        format!("Gain {:+} dB", self.gain_db(&input.source))
+                    } else {
+                        format!("{:.0} %", input.peak * 100.)
+                    }))
+                },
+                cx,
+                |s, kind| {
+                    s.source_menu = if s.source_menu == Some(kind) {
+                        None
+                    } else {
+                        Some(kind)
+                    }
+                },
+                |s, kind, src| {
+                    if s.preview.is_none() && s.inputs.iter().any(|i| i.source == src) {
+                        kind.toggle(&mut s.chosen, src);
+                        if kind == SourceMenu::Mic {
+                            s.source_menu = None;
+                        }
+                    }
+                },
+            ));
         }
         if !self.chosen.is_empty() {
             body = body.child(self.level_setup(cx));
@@ -550,7 +525,7 @@ impl Desk {
                             s.record_menu = None;
                             s.metadata = false;
                             s.language_picker = None;
-                            s.scroll_grab = None;
+                            s.scroll_grab.set(None);
                             s.tab = i as u8;
                             s.edit_id = None;
                             Ok(())
@@ -838,10 +813,63 @@ impl Desk {
             2 => col()
                 .gap(px(18.))
                 .child(self.locale_control(cx))
-                .child(self.preference(Preference::Theme, cx)),
+                .child(self.preference(Preference::Theme, cx))
+                .child(self.graphics_toggle(cx)),
             3 => self.compute_settings(cx),
             _ => self.update_settings(cx),
         }
+    }
+    fn graphics_toggle(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let on = self.settings["hardware_rendering"] != false;
+        let title = tr("Accélération graphique");
+        let switch = div()
+            .id("hardware-rendering")
+            .role(Role::Switch)
+            .aria_label(title)
+            .aria_toggled(on.into())
+            .focusable()
+            .tab_stop(true)
+            .cursor_pointer()
+            .flex()
+            .items_center()
+            .gap_2()
+            .min_h(px(28.))
+            .rounded(px(6.))
+            .focus_visible(move |s| s.bg(rgb(p.selected)))
+            .child(
+                div()
+                    .id("graphics-track")
+                    .relative()
+                    .flex_shrink_0()
+                    .w(px(30.))
+                    .h(px(18.))
+                    .rounded_full()
+                    .shadow(p.bevel())
+                    .bg(rgb(if on { p.primary } else { p.control }))
+                    .transitions(|t| t.bg(motion(150)))
+                    .child(
+                        div()
+                            .id("graphics-thumb")
+                            .absolute()
+                            .top(px(3.))
+                            .left(px(if on { 15. } else { 3. }))
+                            .size(px(12.))
+                            .rounded_full()
+                            .bg(rgb(if on { p.on_primary } else { p.muted }))
+                            .transitions(|t| t.left(motion(150)).bg(motion(150))),
+                    ),
+            )
+            .child(title)
+            .on_click(cx.listener(move |s, _, _, cx| {
+                s.settings["hardware_rendering"] = json!(!on);
+                if let Err(e) = s.save_settings() {
+                    s.message = e.to_string();
+                }
+                cx.notify();
+            }));
+        col().gap(px(4.)).child(switch).child(div().text_size(px(12.)).text_color(rgb(p.muted))
+            .child(tr("Utiliser le GPU pour afficher les fenêtres. Le changement prend effet au prochain démarrage.")))
     }
     fn models_settings(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
