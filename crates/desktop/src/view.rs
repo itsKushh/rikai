@@ -821,6 +821,7 @@ impl Desk {
             1 => col()
                 .gap(px(18.))
                 .child(self.storage_settings(cx))
+                .child(self.package_row("Identification des voix", "pyannote · CAM++ · 36 Mo", cx))
                 .child(self.package_row("Traduction locale", "M2M100 · 100 langues · 496 Mo", cx))
                 .child(
                     col()
@@ -1369,7 +1370,7 @@ impl Desk {
                 Page::ConfirmDownload(preset) => (
                     if preset=="NVIDIA CUDA" {"Installer le moteur NVIDIA ?".into()} else {format!("{} · {}",tr("Télécharger"),tr(preset))},
                     col()
-                        .child(tr(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else if preset=="Résumé contextualisé" {"Télécharger Qwen3 Instruct (2,50 Go) et l’utiliser pour les prochains résumés locaux ?"} else if preset=="Résumé local" {"Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?"} else if preset=="Traduction locale" {"La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?"} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."}))
+                        .child(tr(if preset=="NVIDIA CUDA" {"Téléchargement de 641 Mo depuis les distributions officielles NVIDIA sur PyPI. Prévoyez 2,5 Gio libres. Le pilote NVIDIA doit être installé."} else if preset=="Identification des voix" {"Télécharger les deux modèles de voix pour identifier les intervenants sur cet appareil ?"} else if preset=="Résumé contextualisé" {"Télécharger Qwen3 Instruct (2,50 Go) et l’utiliser pour les prochains résumés locaux ?"} else if preset=="Résumé local" {"Le résumé local utilise Qwen2.5. Télécharger le fichier GGUF de 2,10 Go sur cet ordinateur ?"} else if preset=="Traduction locale" {"La traduction de ce passage nécessite M2M100. Télécharger le modèle de 496 Mo pour traduire hors ligne ?"} else {"Le modèle de transcription sera téléchargé depuis Hugging Face et conservé sur cet ordinateur."}))
                         .child(row()
                             .child(action("Annuler", false, cx, |s, _| s.answer_download(false)))
                             .child(action("Télécharger", true, cx, |s, _| s.answer_download(true)))),

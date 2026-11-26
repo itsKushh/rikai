@@ -156,14 +156,22 @@ pub struct TrackWriter {
     output: WavWriter<BufWriter<File>>,
     frames: u64,
     checkpoint: u64,
+    checkpoint_frames: u64,
 }
 impl TrackWriter {
     pub fn create(path: &Path) -> Result<Self> {
+        Self::with_checkpoint(path, u64::from(RATE))
+    }
+    pub fn create_live(path: &Path) -> Result<Self> {
+        Self::with_checkpoint(path, u64::from(RATE) * 80 / 1000)
+    }
+    fn with_checkpoint(path: &Path, checkpoint_frames: u64) -> Result<Self> {
         let file = OpenOptions::new().write(true).create_new(true).open(path)?;
         Ok(Self {
             output: WavWriter::new(BufWriter::new(file), spec())?,
             frames: 0,
             checkpoint: 0,
+            checkpoint_frames,
         })
     }
     fn sample(&mut self, sample: i16) -> Result<()> {
@@ -196,7 +204,13 @@ impl TrackWriter {
             self.silence_to(frame)?;
             self.sample(i16::from_le_bytes([pair[0], pair[1]]))?;
         }
-        if self.frames - self.checkpoint >= RATE as u64 {
+        if self.frames - self.checkpoint >= self.checkpoint_frames {
+            self.commit_pending()?;
+        }
+        Ok(())
+    }
+    fn commit_pending(&mut self) -> Result<()> {
+        if self.frames > self.checkpoint {
             self.output.flush()?;
             self.checkpoint = self.frames;
         }
@@ -290,6 +304,21 @@ mod tests {
         let mut attenuated = original;
         assert_eq!(apply_gain(&mut attenuated, 0.5), 12000. / 32768.);
         assert_eq!(apply_gain(&mut [0; 16], 12.), 0.);
+    }
+
+    #[test]
+    fn live_audio_is_readable_before_stop_and_keeps_the_tail() -> Result<()> {
+        let dir = tempfile::tempdir()?;
+        let path = dir.path().join("live.wav");
+        let mut writer = TrackWriter::create_live(&path)?;
+        let clock = Timeline::new(0);
+        let period = RATE as usize * 80 / 1000;
+        writer.packet(0, &vec![0; period * 2], &clock)?;
+        assert_eq!(WavReader::open(&path)?.duration() as usize, period);
+        writer.packet(TICKS * 80 / 1000, &7i16.to_le_bytes(), &clock)?;
+        writer.commit_pending()?;
+        assert_eq!(WavReader::open(&path)?.samples::<i16>().last().unwrap()?, 7);
+        writer.finish(period as u64 + 1)
     }
 
     #[test]

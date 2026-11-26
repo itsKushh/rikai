@@ -18,3 +18,6 @@ Durant un travail, Rust garde stdin ouvert. Après la réponse terminale, Rust f
 
 
 Le bouton de vérification envoie `test_cuda` avec les mêmes `settings` que la transcription. Le worker exécute un encodeur et un décodeur en CUDA et renvoie `device` et `compute_type`. `install_cuda` requiert `consent: true` et émet le volume transféré pour les bibliothèques NVIDIA. En transcription, `strict_cuda` exige le GPU, `cpu_threads` limite les threads du moteur, `ram_gib` borne la mémoire engagée du processus Windows et `gpu_duty` règle la part de temps de calcul. Le champ facultatif `vocabulary` complète les termes de la seconde écoute française.
+
+
+Pour `listen`, les modèles se chargent avant le signal `live.ready` qui déclenche la capture. Une ligne est identifiée par `(track, start, part)`. `start` est un indice d’échantillon à 16 kHz. `part` vaut zéro par défaut. Les événements `final: false` révisent le texte source ou sa traduction provisoire. Les événements finaux contiennent la traduction confirmée et `speech_end`, la fin de l’activité vocale du bloc sur la même horloge. Lorsque la diarisation est activée, `speaker` contient un numéro propre à la session, `uncertain` ou `overlap`. Le champ facultatif `suggestion` contient un nom proposé à partir des profils autorisés.

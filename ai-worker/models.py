@@ -4,6 +4,7 @@ import json
 import hashlib
 import os
 import re
+from dataclasses import dataclass
 from package_storage import configuration, locations
 from transfers import download_large
 from pathlib import Path
@@ -46,6 +47,43 @@ PACKAGES = {
 }
 
 
+@dataclass(frozen=True)
+class ModelFile:
+    rfilename: str
+    size: int
+    url: str
+    digest: str
+    git_blob: bool = False
+
+
+VOICE_PRESET = "Identification des voix"
+VOICE_FILES = (
+    ModelFile(
+        "segmentation.onnx",
+        5992913,
+        "https://huggingface.co/csukuangfj/sherpa-onnx-pyannote-segmentation-3-0/resolve/9403a6902bb58e3d5ae8c7e77c3422de279db2e0/model.onnx",
+        "220ad67ca923bef2fa91f2390c786097bf305bceb5e261d4af67b38e938e1079",
+    ),
+    ModelFile(
+        "embedding.onnx",
+        29596979,
+        "https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-recongition-models/3dspeaker_speech_campplus_sv_en_voxceleb_16k.onnx",
+        "98daf9bcf1c8abf3db374fec4c27a5eda7c58705bb3f180d057b085a72a88bb5",
+    ),
+)
+VOICE_REVISION = hashlib.sha256(
+    "".join(f.digest for f in VOICE_FILES).encode()
+).hexdigest()[:40]
+
+
+def voice_paths(folder):
+    return dict(
+        path=str(folder),
+        segmentation=str(folder / "segmentation.onnx"),
+        embedding=str(folder / "embedding.onnx"),
+    )
+
+
 def inventory(cache):
     items = {}
     for marker in Path(cache).glob("*/*/rikai-install.json"):
@@ -61,6 +99,10 @@ def inventory(cache):
                     if weights not in m["files"]:
                         continue
                     result["path"] = str(marker.parent / weights)
+                elif result.get("kind") == "voices":
+                    if m["files"] != {f.rfilename: f.size for f in VOICE_FILES}:
+                        continue
+                    result.update(voice_paths(marker.parent))
                 elif result.get("kind") == "translation":
                     result["path"] = str(marker.parent)
                 items[m["preset"]] = result
@@ -118,21 +160,18 @@ def installed_packages(roots):
 def matches_hub_file(path, entry):
     if not path.is_file() or path.stat().st_size != entry.size:
         return False
-    if entry.lfs:
+    if not entry.git_blob:
         with path.open("rb") as handle:
-            return hashlib.file_digest(handle, "sha256").hexdigest() == entry.lfs.sha256
+            return hashlib.file_digest(handle, "sha256").hexdigest() == entry.digest
     blob = hashlib.sha1(f"blob {entry.size}\0".encode() + path.read_bytes())
-    return blob.hexdigest() == entry.blob_id
+    return blob.hexdigest() == entry.digest
 
 
-def install(p, progress):
-    if p.get("consent") is not True:
-        raise ValueError("Autorisation de téléchargement requise")
-    from filelock import FileLock
+def distribution(preset):
+    if preset == VOICE_PRESET:
+        return "k2-fsa/sherpa-onnx", VOICE_REVISION, "voices", VOICE_FILES
     from huggingface_hub import HfApi, hf_hub_url
-    from huggingface_hub.utils import get_session
 
-    preset = p["preset"]
     revision = None
     if preset in PACKAGES:
         repo, revision, size, needed = PACKAGES[preset]
@@ -142,7 +181,6 @@ def install(p, progress):
         size = repo.split("/")[1].removeprefix("faster-whisper-")
         needed = ["config.json", "model.bin", "tokenizer.json"]
         optional = ("vocabulary.txt", "vocabulary.json", "preprocessor_config.json")
-    progress("Lecture de la liste des fichiers du modèle")
     metadata = HfApi().model_info(
         repo, revision=revision, files_metadata=True, token=False, timeout=20
     )
@@ -151,12 +189,32 @@ def install(p, progress):
     ):
         raise ValueError("Révision du modèle invalide")
     files = [
-        f for f in metadata.siblings if f.rfilename in needed or f.rfilename in optional
+        ModelFile(
+            f.rfilename,
+            f.size,
+            hf_hub_url(repo, f.rfilename, revision=metadata.sha),
+            f.lfs.sha256 if f.lfs else f.blob_id,
+            not f.lfs,
+        )
+        for f in metadata.siblings
+        if f.rfilename in needed or f.rfilename in optional
     ]
     if not set(needed).issubset(f.rfilename for f in files):
         raise ValueError("Distribution de modèle incomplète")
+    return repo, metadata.sha, size, files
+
+
+def install(p, progress):
+    if p.get("consent") is not True:
+        raise ValueError("Autorisation de téléchargement requise")
+    from filelock import FileLock
+    from huggingface_hub.utils import get_session
+
+    preset = p["preset"]
+    progress("Lecture de la liste des fichiers du modèle")
+    repo, revision, size, files = distribution(preset)
     cache = Path(p["cache"]) if p.get("cache") else locations()[0] / "modeles"
-    folder = cache / size / metadata.sha
+    folder = cache / size / revision
     folder.mkdir(parents=True, exist_ok=True)
     total = sum(entry.size for entry in files)
     done = 0
@@ -171,7 +229,7 @@ def install(p, progress):
         for entry in missing:
             stage = f"Téléchargement de {entry.rfilename}"
             progress(stage, received=done, total=total)
-            url = hf_hub_url(repo, entry.rfilename, revision=metadata.sha)
+            url = entry.url
             part = folder / (entry.rfilename + ".part")
             if entry.size >= 64 * 1024**2:
                 download_large(
@@ -205,11 +263,15 @@ def install(p, progress):
             os.replace(part, folder / entry.rfilename)
             done += entry.size
         progress("Modèle vérifié", received=done, total=total)
-        result = {"folder": str(folder), "repo": repo, "revision": metadata.sha}
-        if preset in PACKAGES:
+        result = {"folder": str(folder), "repo": repo, "revision": revision}
+        if size == "voices":
+            result.update(kind=size, preset=preset, **voice_paths(folder))
+        elif preset in PACKAGES:
             result["kind"] = size
             result["preset"] = preset
-            result["path"] = str(folder / needed[0] if size == "summary" else folder)
+            result["path"] = str(
+                folder / PACKAGES[preset][3][0] if size == "summary" else folder
+            )
         marker = folder / "rikai-install.tmp"
         marker.write_text(
             json.dumps(

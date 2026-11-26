@@ -3680,5 +3680,68 @@
   "● ЗАПИСЬ",
   "● 録音",
   "● 录音"
+ ],
+ "Provisoire": [
+  "Interim",
+  "Provisional",
+  "Предварительно",
+  "暫定",
+  "暂定"
+ ],
+ "Voix superposées": [
+  "Overlapping voices",
+  "Voces superpuestas",
+  "Перекрывающиеся голоса",
+  "発話の重なり",
+  "多人同时说话"
+ ],
+ "Identification des voix": [
+  "Speaker identification",
+  "Identificación de hablantes",
+  "Определение говорящих",
+  "話者識別",
+  "说话人识别"
+ ],
+ "pyannote · CAM++ · 36 Mo": [
+  "pyannote · CAM++ · 36 MB",
+  "pyannote · CAM++ · 36 MB",
+  "pyannote · CAM++ · 36 МБ",
+  "pyannote · CAM++ · 36 MB",
+  "pyannote · CAM++ · 36 MB"
+ ],
+ "Installez les modèles de voix dans les paramètres.": [
+  "Install the speaker models in Settings.",
+  "Instala los modelos de voz en los ajustes.",
+  "Установите модели для распознавания голосов в настройках.",
+  "設定から話者識別モデルをインストールしてください。",
+  "请在设置中安装说话人识别模型。"
+ ],
+ "Télécharger les deux modèles de voix pour identifier les intervenants sur cet appareil ?": [
+  "Download both models to identify speakers on this device?",
+  "¿Descargar los dos modelos para identificar a los hablantes en este dispositivo?",
+  "Скачать обе модели для определения говорящих на этом устройстве?",
+  "この端末で話者を識別するために、2 つのモデルをダウンロードしますか？",
+  "要下载两个模型以在此设备上识别说话人吗？"
+ ],
+ "Délai après la parole": [
+  "Delay after speech",
+  "Latencia al terminar de hablar",
+  "Задержка после речи",
+  "発話終了後の遅延",
+  "发言结束后的延迟"
+ ],
+ "Modèle de segmentation incompatible avec le direct": [
+  "This segmentation model is incompatible with live translation",
+  "Este modelo de segmentación es incompatible con la traducción en directo",
+  "Эта модель сегментации несовместима с переводом в реальном времени",
+  "このセグメンテーションモデルはリアルタイム翻訳に対応していません",
+  "此分段模型不支持实时翻译"
+ ],
+ "Traduction sur CPU · transcription sur GPU": [
+  "Translation on CPU · transcription on GPU",
+  "Traducción en CPU · transcripción en GPU",
+  "Перевод на ЦП · распознавание речи на ГП",
+  "翻訳はCPU · 文字起こしはGPU",
+  "CPU 翻译 · GPU 转写"
  ]
 }

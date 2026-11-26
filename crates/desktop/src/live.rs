@@ -3,13 +3,15 @@ use unicode_segmentation::UnicodeSegmentation;
 
 enum LiveEvent {
     Sources(Result<Vec<Input>>),
-    Capture(Control),
+    Capture(Control, Instant),
     Progress(crate::worker::Progress),
     Finished(Result<()>),
 }
 
 struct Phrase {
-    key: (usize, u64),
+    key: (u64, usize, u64),
+    confirmed: bool,
+    animate_translation: bool,
     speaker: String,
     original: String,
     translated: Option<(String, Instant)>,
@@ -22,11 +24,15 @@ pub(in crate::ui) struct Live {
     inputs: Vec<Input>,
     selected: HashSet<Source>,
     target: String,
+    identify: bool,
+    recognize: bool,
     search: Field,
     picker: bool,
     scanning: bool,
     status: String,
     control: Option<Control>,
+    capture_start: Option<Instant>,
+    latency: Option<Duration>,
     cancel: Option<Arc<AtomicBool>>,
     stopping: bool,
     closing: bool,
@@ -50,6 +56,8 @@ impl Desk {
             .downcast::<Desk>()
             .context("Fenêtre Rikai introuvable")?;
         let selected = self.chosen.clone();
+        let identify = self.settings["diarization"] == true;
+        let recognize = self.settings["recognize"] == true;
         let opt = window_frame::options(
             Live::window_title(),
             size(px(800.), px(580.)),
@@ -57,7 +65,7 @@ impl Desk {
             cx,
         );
         self.live_window = Some(cx.open_window(opt, |w, cx| {
-            let view = cx.new(|cx| Live::new(owner, selected, cx));
+            let view = cx.new(|cx| Live::new(owner, selected, identify, recognize, cx));
             let weak = view.downgrade();
             w.on_window_should_close(cx, move |_, cx| {
                 weak.update(cx, Live::can_close).unwrap_or(true)
@@ -84,7 +92,13 @@ impl Live {
         false
     }
 
-    fn new(owner: WindowHandle<Desk>, selected: HashSet<Source>, cx: &mut Context<Self>) -> Self {
+    fn new(
+        owner: WindowHandle<Desk>,
+        selected: HashSet<Source>,
+        identify: bool,
+        recognize: bool,
+        cx: &mut Context<Self>,
+    ) -> Self {
         let (tx, rx) = mpsc::channel();
         let search = cx.new(|cx| EditableTextState::new(StringStorage::default(), cx));
         cx.observe(&search, |_, _, cx| cx.notify()).detach();
@@ -92,12 +106,16 @@ impl Live {
             owner,
             inputs: vec![],
             selected,
+            identify,
+            recognize,
             target: crate::i18n::code().into(),
             search,
             picker: false,
             scanning: false,
             status: String::new(),
             control: None,
+            capture_start: None,
+            latency: None,
             cancel: None,
             stopping: false,
             closing: false,
@@ -109,21 +127,21 @@ impl Live {
         };
         s.scan();
         cx.spawn(async move |this, cx| {
+            let mut interval = 80;
             loop {
                 cx.background_executor()
-                    .timer(Duration::from_millis(80))
+                    .timer(Duration::from_millis(interval))
                     .await;
-                if this
-                    .update(cx, |s, cx| {
-                        while let Ok(e) = s.rx.try_recv() {
-                            s.apply(e);
-                            cx.notify();
-                        }
-                    })
-                    .is_err()
-                {
+                let Ok(active) = this.update(cx, |s, cx| {
+                    while let Ok(e) = s.rx.try_recv() {
+                        s.apply(e);
+                        cx.notify();
+                    }
+                    s.cancel.is_some()
+                }) else {
                     break;
-                }
+                };
+                interval = if active { 25 } else { 80 };
             }
         })
         .detach();
@@ -148,7 +166,21 @@ impl Live {
             .collect();
         ensure!(!inputs.is_empty(), "Sélectionnez au moins une source");
         let owner = self.owner.read(cx)?;
-        let settings = owner.settings.clone();
+        let mut settings = owner.settings.clone();
+        settings["diarization"] = json!(self.identify);
+        settings["recognize"] = json!(self.identify && self.recognize);
+        if self.identify {
+            ensure!(
+                voice_models_ready(&settings),
+                "{}",
+                tr("Installez les modèles de voix dans les paramètres.")
+            );
+        }
+        let profiles = if self.identify && settings["recognize"] == true {
+            owner.db.profiles(true)?
+        } else {
+            Vec::new()
+        };
         for (key, file, msg) in [
             (
                 "whisper",
@@ -175,14 +207,15 @@ impl Live {
             .collect();
         let temp = tempfile::Builder::new().prefix("rikai-live-").tempdir()?;
         let dir = temp.path().join("audio");
-        let params =
-            json!({"directory":dir,"settings":settings,"tracks":inputs.len(),"target":self.target});
+        let params = json!({"directory":dir,"settings":settings,"tracks":inputs.len(),"target":self.target,"profiles":profiles});
         let cancel = Arc::new(AtomicBool::new(false));
         self.cancel = Some(cancel.clone());
         self.control = None;
         self.stopping = false;
         self.picker = false;
         self.phrases.clear();
+        self.latency = None;
+        self.capture_start = None;
         self.names = inputs.iter().map(|i| i.name.clone()).collect();
         self.status = "Chargement du modèle de transcription".into();
         let tx = self.tx.clone();
@@ -205,12 +238,13 @@ impl Live {
                     && active.borrow().is_none()
                     && !cancel.load(Ordering::Acquire)
                 {
+                    let started = Instant::now();
                     let ctl = Control::default();
                     for (source, db) in &gains {
                         ctl.set_gain_db(source, *db);
                     }
                     active.replace(Some(ctl.clone()));
-                    let _ = tx.send(LiveEvent::Capture(ctl.clone()));
+                    let _ = tx.send(LiveEvent::Capture(ctl.clone(), started));
                     let _ = ready.send(ctl);
                 }
                 let _ = tx.send(LiveEvent::Progress(event));
@@ -247,7 +281,8 @@ impl Live {
                     Err(e) => self.status = e.to_string(),
                 }
             }
-            LiveEvent::Capture(c) => {
+            LiveEvent::Capture(c, started) => {
+                self.capture_start = Some(started);
                 if self.stopping {
                     c.stop();
                 }
@@ -281,7 +316,8 @@ impl Live {
                 else {
                     return;
                 };
-                let key = (track as usize, start);
+                let track = track as usize;
+                let key = (start, track, v["part"].as_u64().unwrap_or(0));
                 let index = self.phrases.iter().rposition(|p| p.key == key);
                 if text.is_empty() {
                     if let Some(i) = index {
@@ -291,20 +327,52 @@ impl Live {
                 }
                 let now = Instant::now();
                 let i = index.unwrap_or_else(|| {
-                    if self.phrases.len() >= 160 {
-                        self.phrases.pop_front();
-                    }
-                    self.phrases.push_back(Phrase {
-                        key,
-                        speaker: self.names.get(key.0).cloned().unwrap_or_default(),
-                        original: String::new(),
-                        translated: None,
-                        appeared: now,
-                        previous_prefix: 0,
-                    });
-                    self.phrases.len() - 1
+                    let pos = self.phrases.partition_point(|phrase| phrase.key < key);
+                    self.phrases.insert(
+                        pos,
+                        Phrase {
+                            key,
+                            confirmed: false,
+                            animate_translation: false,
+                            speaker: String::new(),
+                            original: String::new(),
+                            translated: None,
+                            appeared: now,
+                            previous_prefix: 0,
+                        },
+                    );
+                    pos
                 });
                 let phrase = &mut self.phrases[i];
+                let source = self.names.get(track).map(String::as_str).unwrap_or("");
+                let speaker = match &v["speaker"] {
+                    id if id.is_u64() => Some(format!("{} {}", tr("Intervenant"), id)),
+                    s if s == "uncertain" => Some(tr("Intervenant incertain").to_owned()),
+                    s if s == "overlap" => Some(tr("Voix superposées").to_owned()),
+                    _ => None,
+                };
+                phrase.speaker = speaker.map_or_else(
+                    || source.to_owned(),
+                    |name| {
+                        [source, &name]
+                            .into_iter()
+                            .filter(|s| !s.is_empty())
+                            .collect::<Vec<_>>()
+                            .join(" · ")
+                    },
+                );
+                if let Some(name) = v["suggestion"].as_str() {
+                    phrase.speaker.push_str(&format!(" · {name} ?"));
+                }
+                phrase.confirmed = v["final"] == true;
+                if phrase.confirmed
+                    && let (Some(start), Some(frame)) =
+                        (self.capture_start, v["speech_end"].as_u64())
+                {
+                    self.latency = start.elapsed().checked_sub(Duration::from_secs_f64(
+                        frame as f64 / f64::from(audio_capture::RATE),
+                    ));
+                }
                 if text != phrase.original {
                     phrase.previous_prefix = text
                         .split_word_bound_indices()
@@ -313,14 +381,21 @@ impl Live {
                         .map(|((i, a), _)| i + a.len())
                         .last()
                         .unwrap_or(0);
+                    phrase.translated = None;
                     phrase.original = text.into();
                     phrase.appeared = now;
                 }
-                if let Some(output) = v["translated"].as_str() {
-                    phrase.translated = Some((
-                        output.into(),
-                        now.max(phrase.appeared + Duration::from_millis(340)),
-                    ));
+                if let Some(output) = v["translated"].as_str()
+                    && phrase
+                        .translated
+                        .as_ref()
+                        .is_none_or(|(current, _)| current != output)
+                {
+                    phrase.animate_translation = phrase.confirmed;
+                    phrase.translated = Some((output.into(), now));
+                }
+                if self.phrases.len() > 160 {
+                    self.phrases.pop_front();
                 }
                 self.scroll.scroll_to_bottom();
             }
@@ -339,17 +414,22 @@ impl Drop for Live {
     }
 }
 
+pub(in crate::ui) fn voice_models_ready(settings: &Value) -> bool {
+    ["segmentation", "embedding"].iter().all(|key| {
+        settings[*key]
+            .as_str()
+            .is_some_and(|v| std::path::Path::new(v).is_file())
+    })
+}
+
 // One shaped text run per colour, with grapheme boundaries for combining marks
 // and non-Latin scripts. Settled lines allocate no animation frames.
 fn phrase_text(phrase: &Phrase, p: Palette, w: &Window, cx: &App) -> AnyElement {
     let muted = rgb_to_hsla(rgb(p.muted));
     let now = Instant::now();
-    if phrase.translated.as_ref().is_none_or(|(_, t)| now < *t) {
-        if phrase.translated.is_some() {
-            w.request_animation_frame();
-        }
+    if phrase.translated.is_none() {
         let mut end = phrase.original.len();
-        let fraction = phrase.appeared.elapsed().as_secs_f32() / 0.27;
+        let fraction = phrase.appeared.elapsed().as_secs_f32() / 0.10;
         if !cx.reduce_motion() && fraction < 1. {
             let words = &phrase.original[phrase.previous_prefix..];
             let count = words.split_word_bounds().count();
@@ -369,7 +449,7 @@ fn phrase_text(phrase: &Phrase, p: Palette, w: &Window, cx: &App) -> AnyElement 
     }
     let (target, start) = phrase.translated.as_ref().unwrap();
     let elapsed = now.saturating_duration_since(*start).as_secs_f32();
-    if cx.reduce_motion() || elapsed >= 0.78 {
+    if !phrase.animate_translation || cx.reduce_motion() || elapsed >= 0.12 {
         return div().child(target.clone()).into_any_element();
     }
     w.request_animation_frame();
@@ -379,7 +459,7 @@ fn phrase_text(phrase: &Phrase, p: Palette, w: &Window, cx: &App) -> AnyElement 
     let mut out = String::new();
     let mut colours = Vec::new();
     for i in 0..count {
-        let t = glide(((elapsed - 0.57 * i as f32 / count as f32) / 0.21).clamp(0., 1.));
+        let t = glide(((elapsed - 0.08 * i as f32 / count as f32) / 0.04).clamp(0., 1.));
         let original = a.get(i).copied().unwrap_or("");
         let dest = b.get(i).copied().unwrap_or("");
         let g = if t == 0. {
@@ -440,6 +520,34 @@ impl Render for Live {
                     )),
                 ))
                 .child(sources)
+                .child(
+                    checkbox(
+                        tr("Identifier les intervenants").to_owned(),
+                        self.identify,
+                        false,
+                        p,
+                    )
+                    .id("live-identify")
+                    .on_click(cx.listener(|s, _, _, cx| {
+                        s.identify = !s.identify;
+                        cx.notify();
+                    })),
+                )
+                .when(self.identify, |d| {
+                    d.child(
+                        checkbox(
+                            tr("Proposer les voix connues").to_owned(),
+                            self.recognize,
+                            false,
+                            p,
+                        )
+                        .id("live-recognize")
+                        .on_click(cx.listener(|s, _, _, cx| {
+                            s.recognize = !s.recognize;
+                            cx.notify();
+                        })),
+                    )
+                })
                 .child(
                     row().child(label("Langue cible")).child(
                         action(
@@ -503,7 +611,8 @@ impl Render for Live {
             let missing_translation = owner.settings["translation"]
                 .as_str()
                 .is_none_or(|v| !std::path::Path::new(v).join("model.bin").is_file());
-            if missing_whisper || missing_translation {
+            let missing_voices = self.identify && !voice_models_ready(&owner.settings);
+            if missing_whisper || missing_translation || missing_voices {
                 panel = panel.child(
                     action("Configurer les modèles", Button::Secondary, None).on_click(
                         cx.listener(move |s, _, _, cx| {
@@ -515,7 +624,11 @@ impl Render for Live {
                                     }
                                     desk.section = if missing_whisper { 0 } else { 1 };
                                     if !missing_whisper {
-                                        desk.page = Page::ConfirmDownload("Traduction locale");
+                                        desk.page = Page::ConfirmDownload(if missing_translation {
+                                            "Traduction locale"
+                                        } else {
+                                            "Identification des voix"
+                                        });
                                     }
                                     cx.notify();
                                 }
@@ -566,7 +679,10 @@ impl Render for Live {
                         div()
                             .text_size(px(11.))
                             .text_color(rgb(p.muted))
-                            .child(phrase.speaker.clone()),
+                            .child(phrase.speaker.clone())
+                            .when(!phrase.confirmed, |d| {
+                                d.child(format!(" · {}", tr("Provisoire")))
+                            }),
                     )
                     .child(phrase_text(phrase, p, w, cx)),
             );
@@ -612,9 +728,17 @@ impl Render for Live {
             .child(p.panel().flex_1().min_h_0().child(captions))
             .when(!self.status.is_empty(), |d| {
                 d.child(
-                    div()
+                    row()
+                        .justify_between()
                         .text_color(rgb(p.muted))
-                        .child(crate::i18n::message(&self.status)),
+                        .child(crate::i18n::message(&self.status))
+                        .when_some(self.latency, |d, latency| {
+                            d.child(format!(
+                                "{} · {} ms",
+                                tr("Délai après la parole"),
+                                latency.as_millis()
+                            ))
+                        }),
                 )
             });
         window_frame::surface(p)

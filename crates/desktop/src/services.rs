@@ -41,6 +41,16 @@ impl Desk {
                 self.settings[key] = self.installed[name]["path"].clone();
             }
         }
+        if self.available("Identification des voix") {
+            for key in ["segmentation", "embedding"] {
+                if self.settings[key]
+                    .as_str()
+                    .is_none_or(|path| !std::path::Path::new(path).is_file())
+                {
+                    self.settings[key] = self.installed["Identification des voix"][key].clone();
+                }
+            }
+        }
         if prior != self.settings {
             self.save_settings()?;
         }
@@ -98,6 +108,9 @@ impl Desk {
     }
     pub(super) fn available(&self, preset: &str) -> bool {
         let entry = &self.installed[preset];
+        if entry["kind"] == "voices" {
+            return live::voice_models_ready(entry);
+        }
         if let Some(path) = entry["path"].as_str() {
             return std::path::Path::new(path).exists();
         }

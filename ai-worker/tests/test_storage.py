@@ -145,3 +145,30 @@ class PackageStorage(unittest.TestCase):
         self.relocate(True)
         self.assertTrue(extra.is_file())
         self.assertFalse((self.target / self.package / extra.name).exists())
+
+    def test_voice_pack_relocates_both_models_and_requires_a_complete_receipt(self):
+        preset = models.VOICE_PRESET
+        relative = Path("modeles", "voices", models.VOICE_REVISION)
+        folder = self.home / relative
+        folder.mkdir(parents=True)
+        expected = {f.rfilename: f.size for f in models.VOICE_FILES}
+        for name, size in expected.items():
+            with (folder / name).open("wb") as handle:
+                handle.truncate(size)
+        (folder / "rikai-install.json").write_text(
+            json.dumps(
+                {
+                    "preset": preset,
+                    "files": expected,
+                    "result": {"kind": "voices", "preset": preset},
+                }
+            )
+        )
+        result = self.relocate(True)["installed"][preset]
+        for key in ("segmentation", "embedding"):
+            self.assertEqual(
+                Path(result[key]), self.target / relative / (key + ".onnx")
+            )
+            self.assertTrue(Path(result[key]).is_file())
+        Path(result["embedding"]).unlink()
+        self.assertNotIn(preset, models.inventory(self.target / "modeles"))

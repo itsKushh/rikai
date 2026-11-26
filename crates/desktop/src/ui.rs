@@ -746,6 +746,14 @@ impl Desk {
                         "Moteur NVIDIA prêt. Vérifiez CUDA avec le modèle choisi.".into();
                     return Ok(());
                 }
+                if v["kind"] == "voices" {
+                    self.installed["Identification des voix"] = v.clone();
+                    for key in ["segmentation", "embedding"] {
+                        self.settings[key] = v[key].clone();
+                    }
+                    self.save_settings()?;
+                    return Ok(());
+                }
                 if let Some(kind) = v["kind"].as_str() {
                     let (key, preset) = if kind == "summary" {
                         ("gguf", v["preset"].as_str().unwrap_or("Résumé local"))

@@ -33,7 +33,7 @@ def locations():
 
 
 def _managed_files(root):
-    from models import GGUF, PACKAGES, PRESETS
+    from models import GGUF, PACKAGES, PRESETS, VOICE_FILES, VOICE_REVISION
     from nvidia_runtime import LIBRARIES, RELEASE, WHEELS
 
     names = {
@@ -51,6 +51,7 @@ def _managed_files(root):
     }
     groups = {
         "tiny",
+        "voices",
         *(
             repo.split("/")[-1].removeprefix("faster-whisper-")
             for repo in PRESETS.values()
@@ -73,6 +74,13 @@ def _managed_files(root):
                     if group == package_group and sha == revision.name
                     for name in files
                 )
+                if group == "voices":
+                    if revision.name != VOICE_REVISION:
+                        continue
+                    managed = {
+                        "rikai-install.json",
+                        *(f.rfilename for f in VOICE_FILES),
+                    }
                 for file in sorted(revision.iterdir()):
                     if file.name.removesuffix(".part") in managed:
                         _check_path(root, file)

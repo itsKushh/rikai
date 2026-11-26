@@ -286,7 +286,7 @@ fn record_tracks(dir: &Path, inputs: Vec<Input>, ctl: Control, mix: bool) -> Res
         dir.join("sources.json"),
         serde_json::to_vec_pretty(&manifest)?,
     )?;
-    if let Err(e) = capture_tracks(Some(dir), &manifest.tracks, &ctl) {
+    if let Err(e) = capture_tracks(Some(dir), &manifest.tracks, &ctl, !mix) {
         std::fs::write(dir.join("erreur.txt"), format!("{e:#}"))?;
         return Err(e);
     }
@@ -301,7 +301,7 @@ fn record_tracks(dir: &Path, inputs: Vec<Input>, ctl: Control, mix: bool) -> Res
 pub fn test_levels(inputs: Vec<Input>, ctl: Control) -> Result<()> {
     check_windows()?;
     validate(&inputs)?;
-    capture_tracks(None, &make_tracks(inputs), &ctl)
+    capture_tracks(None, &make_tracks(inputs), &ctl, false)
 }
 
 fn make_tracks(inputs: Vec<Input>) -> Vec<Track> {
@@ -314,14 +314,14 @@ fn make_tracks(inputs: Vec<Input>) -> Vec<Track> {
         })
         .collect()
 }
-fn capture_tracks(dir: Option<&Path>, tracks: &[Track], ctl: &Control) -> Result<()> {
+fn capture_tracks(dir: Option<&Path>, tracks: &[Track], ctl: &Control, live: bool) -> Result<()> {
     thread::scope(|scope| {
         let handles: Vec<_> = tracks
             .iter()
             .map(|t| {
                 let ctl = ctl.clone();
                 scope.spawn(move || {
-                    let result = capture_one(dir, t, &ctl)
+                    let result = capture_one(dir, t, &ctl, live)
                         .with_context(|| format!("Source « {} »", t.input.name));
                     if result.is_err() {
                         ctl.stop();
@@ -337,9 +337,16 @@ fn capture_tracks(dir: Option<&Path>, tracks: &[Track], ctl: &Control) -> Result
         Ok(())
     })
 }
-fn capture_one(dir: Option<&Path>, track: &Track, ctl: &Control) -> Result<()> {
+fn capture_one(dir: Option<&Path>, track: &Track, ctl: &Control, live: bool) -> Result<()> {
     let mut wav = dir
-        .map(|dir| TrackWriter::create(&dir.join(&track.file)))
+        .map(|dir| {
+            let path = dir.join(&track.file);
+            if live {
+                TrackWriter::create_live(&path)
+            } else {
+                TrackWriter::create(&path)
+            }
+        })
         .transpose()?;
     let mut log: Box<dyn Write> = match dir {
         Some(dir) => Box::new(File::create_new(dir.join(format!("{}.log", track.file)))?),
@@ -351,7 +358,7 @@ fn capture_one(dir: Option<&Path>, track: &Track, ctl: &Control) -> Result<()> {
         if ctl.timeline.lock().unwrap().stop.is_some() {
             break;
         }
-        let result = capture_stream(track, ctl, wav.as_mut(), &mut log, &mut opened);
+        let result = capture_stream(track, ctl, wav.as_mut(), &mut log, &mut opened, live);
         match result {
             Ok(()) => break,
             Err(e) if opened && matches!(track.input.source, Source::Microphone { .. }) => {
@@ -384,6 +391,7 @@ fn capture_stream(
     mut wav: Option<&mut TrackWriter>,
     log: &mut dyn Write,
     opened: &mut bool,
+    live: bool,
 ) -> Result<()> {
     let _com = Apartment::enter()?;
     let mut pinned = None;
@@ -517,6 +525,12 @@ fn capture_stream(
                     .insert(track.file.clone(), held_peak);
             }
             last_packet = Instant::now();
+        }
+        if live
+            && last_packet.elapsed() >= Duration::from_millis(80)
+            && let Some(writer) = wav.as_deref_mut()
+        {
+            writer.commit_pending()?;
         }
         if last_packet.elapsed() > Duration::from_millis(300) {
             held_peak = 0.;

@@ -39,7 +39,9 @@ La capture suit chaque application sélectionnée et ses processus enfants. Les 
 
 ## Traduire en direct
 
-Cliquez sur **Traduction** dans la barre supérieure. Dans la seconde fenêtre, sélectionnez les sources à écouter et la langue cible, puis cliquez sur **Enregistrer**. Whisper affiche les paroles reconnues en gris. M2M100 traduit chaque groupe de mots dans son contexte et la traduction apparaît progressivement. **Arrêter** termine le dernier passage. Les pistes de cette fenêtre sont temporaires. Pour conserver une capture dans la bibliothèque, utilisez **Enregistrer** dans la fenêtre principale.
+Cliquez sur **Traduction** dans la barre supérieure. Dans la seconde fenêtre, sélectionnez les sources à écouter et la langue cible, puis cliquez sur **Enregistrer**. Les premiers mots traduits apparaissent avec la mention **Provisoire**. À la fin de la prise de parole, Whisper relit le passage et M2M100 confirme ou révise la traduction. Le délai affiché en millisecondes va de la dernière activité vocale détectée à la réception du résultat final dans la fenêtre. Il varie avec le modèle, le nombre de sources et la charge du PC. **Arrêter** termine le dernier passage. Les pistes de cette fenêtre sont temporaires. Pour conserver une capture dans la bibliothèque, utilisez **Enregistrer** dans la fenêtre principale.
+
+Pour distinguer plusieurs personnes sur un même micro, installez **Identification des voix** dans **Paramètres → Dépendances**, puis cochez **Identifier les intervenants** dans la fenêtre Traduction. Les numéros restent associés aux voix pendant la session. Un passage trop court peut être marqué **Intervenant incertain**. Si plusieurs personnes parlent en même temps, Rikai peut signaler **Voix superposées**. Les suggestions de noms utilisent uniquement les profils vocaux locaux préalablement autorisés, lorsque **Proposer les voix connues** est activé.
 
 ## Modèles et accélération
 
@@ -51,6 +53,7 @@ Les modèles se téléchargent à la demande. Pour la transcription, les profils
 | Moteur NVIDIA pour accélérer la transcription | **Paramètres → Dépendances → Installer le moteur NVIDIA** | 641 Mo |
 | Qwen3-4B-Instruct-2507 pour le résumé contextuel | **Paramètres → Modèles → Résumé contextualisé** | 2,50 Go |
 | Qwen2.5-3B-Instruct pour le résumé local | **Paramètres → Modèles → Résumé local** | 2,10 Go |
+| Identification des voix avec pyannote et CAM++ | **Paramètres → Dépendances → Identification des voix** | 36 Mo |
 | M2M100 pour la traduction des passages | **Paramètres → Dépendances → Traduction locale** | 496 Mo |
 
 **Calcul sur GPU.** Avec une carte NVIDIA et un pilote compatible CUDA 12, sélectionnez **CUDA** dans **Paramètres → Calcul**, puis **Vérifier CUDA avec ce modèle**. Le test exécute le modèle de transcription sélectionné sur la carte. Ces paramètres permettent aussi de régler les threads CPU, le plafond de RAM et la part de temps GPU. Le mode CPU fonctionne sans carte NVIDIA.

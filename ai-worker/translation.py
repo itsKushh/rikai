@@ -62,7 +62,7 @@ def detector():
 
 
 @lru_cache(maxsize=1)
-def translation_model(folder, threads=0):
+def translation_model(folder, threads=0, device="cpu"):
     import ctranslate2
     import sentencepiece as spm
 
@@ -71,15 +71,15 @@ def translation_model(folder, threads=0):
     )
     engine = ctranslate2.Translator(
         str(folder),
-        device="cpu",
-        compute_type="int8",
+        device=device,
+        compute_type="int8_float16" if device == "cuda" else "int8",
         inter_threads=1,
         intra_threads=threads,
     )
     return tokenizer, engine
 
 
-def translate(p, progress):
+def translate(p, progress, *, on_token=None):
     text, target = p["text"].strip(), p["target"]
     if target not in LANGUAGES or not text:
         raise ValueError("Langue ou passage invalide")
@@ -93,7 +93,9 @@ def translate(p, progress):
     if source == target:
         return {"text": text, "source": source, "target": target}
     progress("Traduction du passage")
-    tokenizer, engine = translation_model(p["folder"], p.get("threads", 0))
+    tokenizer, engine = translation_model(
+        p["folder"], p.get("threads", 0), p.get("device", "cpu")
+    )
     pieces = tokenizer.encode(translation_input(text, source), out_type=str)
     # Split long edited passages at a word boundary; never silently truncate them.
     chunks = []
@@ -109,7 +111,12 @@ def translate(p, progress):
     results = engine.translate_batch(
         chunks,
         target_prefix=[[f"__{target}__"] for _ in chunks],
-        beam_size=4,
+        beam_size=4 if on_token is None else 1,
+        **(
+            {"callback": lambda step: on_token(step.token, tokenizer)}
+            if on_token
+            else {}
+        ),
         max_decoding_length=768,
     )
     output = " ".join(
