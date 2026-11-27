@@ -1,5 +1,17 @@
 use super::*;
 impl Library {
+    /// The decoded files are already in the reserved recording directory.
+    pub fn finalize_import(&mut self, id: i64, name: &str, duration: i64) -> Result<()> {
+        let tx = self.0.transaction()?;
+        tx.execute(
+            "INSERT INTO audio_source(meeting_id,name,identity_json) VALUES(?,?,?)",
+            params![id, name, r#"{"kind":"Media"}"#],
+        )?;
+        tx.execute("INSERT INTO audio_track(meeting_id,source_id,file) VALUES(?,last_insert_rowid(),'piste-1.wav')",[id])?;
+        tx.execute("UPDATE meeting SET ended_at=unixepoch(),duration_ms=?,status='Audio finalisé' WHERE id=?",params![duration,id])?;
+        tx.commit()?;
+        Ok(())
+    }
     pub fn transcribed_ids(&self) -> Result<Vec<i64>> {
         Ok(self.0.prepare("SELECT DISTINCT meeting_id FROM transcript t WHERE id=(SELECT max(id) FROM transcript WHERE meeting_id=t.meeting_id) AND EXISTS(SELECT 1 FROM transcript_segment WHERE transcript_id=t.id)")?.query_map([],|r|r.get(0))?.collect::<rusqlite::Result<_>>()?)
     }

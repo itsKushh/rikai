@@ -157,6 +157,7 @@ impl Desk {
     }
 
     fn dismiss_drawer(&mut self) {
+        self.binding = None;
         if self.confirmation.take().is_some() {
             return;
         }
@@ -698,11 +699,15 @@ impl Render for Desk {
         let p = *cx.global::<Palette>();
         let narrow = window.viewport_size().width < px(810.);
         let package = matches!(self.page, Page::ConfirmDownload(_) | Page::StorageChange);
-        let update = !package
+        let update = !self.live_active
+            && !package
             && self.confirmation.is_none()
             && self.update_info.is_some()
             && (self.cancel.is_none() && self.ctl.is_none() && self.preview.is_none()
                 || self.update_downloading);
+        if window.focused(cx).is_none() {
+            self.root_focus.focus(window, cx);
+        }
         let modal = update || package;
         if modal && !self.release_was_open {
             self.release_focus.focus(window, cx);
@@ -841,6 +846,7 @@ impl Render for Desk {
                 .into_any_element()
         };
         window_frame::surface(p)
+            .track_focus(&self.root_focus)
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
                 if s.project_form.is_some() && ev.keystroke.key == "escape" {
                     s.project_form = None;

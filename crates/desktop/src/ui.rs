@@ -226,6 +226,7 @@ struct Desk {
     settings_scroll: ScrollHandle,
     wheel: [view::scroller::Wheel; 2],
     settings_origin: Page,
+    root_focus: FocusHandle,
     drawer_focus: FocusHandle,
     drawer_was_open: bool,
     inspector: Inspector,
@@ -436,6 +437,7 @@ impl Desk {
             settings_scroll: Default::default(),
             wheel: Default::default(),
             settings_origin: Page::Home,
+            root_focus: cx.focus_handle(),
             drawer_focus: cx.focus_handle(),
             drawer_was_open: false,
             inspector: Inspector::Session,
@@ -956,18 +958,16 @@ impl Desk {
             Event::Imported(name, project, options, res) => {
                 self.cancel = None;
                 let (stage, info) = res?;
-                let id = self.db.create(&name, &project, &options.to_string())?;
                 let duration = info["duration_ms"]
                     .as_i64()
                     .context("Durée audio absente")?;
+                let id = self.db.create(&name, &project, &options.to_string())?;
                 let dest = self.root.join("audio").join(id.to_string());
                 if let Err(e) = fs::rename(stage.path(), &dest) {
                     self.db.delete_meeting(id)?;
                     return Err(e.into());
                 }
-                self.db
-                    .track(id, &name, r#"{"kind":"Media"}"#, "piste-1.wav")?;
-                self.db.finish(id, duration, "Audio finalisé")?;
+                self.db.finalize_import(id, &name, duration)?;
                 self.detail(id)?;
                 self.tab = 1;
                 if self.settings["whisper"].is_string() {

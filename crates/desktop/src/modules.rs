@@ -423,6 +423,9 @@ impl Desk {
     ) -> bool {
         let k = &ev.keystroke;
         let code = k.unparse();
+        if self.page != Page::Settings || self.section != 4 {
+            self.binding = None;
+        }
         if let Some(key) = self.binding {
             if ev.is_held {
                 return true;
