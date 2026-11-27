@@ -35,6 +35,19 @@ def invoke(method, params, expected):
     return stages, answer
 
 
+# Exercise PyAV through the packaged IPC worker, including resampling and its WAV manifest.
+with tempfile.TemporaryDirectory() as folder:
+    import wave
+    root = Path(folder)
+    source = root / "exemple.wav"
+    with wave.open(str(source), "wb") as out:
+        out.setparams((1, 2, 8000, 0, "NONE", ""))
+        out.writeframes(b"\x00\x00" * 8000)
+    _, probe = invoke("probe_media", {"path": str(source), "thumbnail": str(root / "thumb.png")}, "result")
+    assert probe["result"]["video"] is False, probe
+    _, decoded = invoke("import_media", {"path": str(source), "directory": str(root)}, "result")
+    assert decoded["result"]["duration_ms"] == 1000 and (root / "finalise").is_file(), decoded
+
 for method in ("capabilities", "selftest"):
     _, response = invoke(method, {}, "result")
     print(method, response["result"])

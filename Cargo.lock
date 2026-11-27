@@ -516,7 +516,7 @@ dependencies = [
 
 [[package]]
 name = "audio-capture"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "hound",
@@ -3333,7 +3333,7 @@ dependencies = [
 
 [[package]]
 name = "meeting-storage"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "rusqlite",
@@ -4925,7 +4925,7 @@ dependencies = [
 
 [[package]]
 name = "rikai"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "anyhow",
  "audio-capture",

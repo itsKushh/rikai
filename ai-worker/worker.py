@@ -11,6 +11,7 @@ if __name__ == "__main__":
 
     freeze_support()
 
+from media import import_media, probe
 from models import capabilities, install
 from package_storage import change_location, storage_lock
 from translation import translate
@@ -154,6 +155,7 @@ def main():
 
         # os.read/readline en arrière-plan ne doit pas bloquer la fermeture de l'interpréteur.
         if req["method"] in (
+            "import_media",
             "transcribe",
             "summarize",
             "enroll",
@@ -167,6 +169,8 @@ def main():
             reader = threading.Thread(target=controls, daemon=True)
             reader.start()
         engines = {
+            "probe_media": probe,
+            "import_media": import_media,
             "apply_update": apply_update,
             "translate": translate,
             "listen": listen,

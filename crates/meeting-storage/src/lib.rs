@@ -1,6 +1,10 @@
+pub mod export;
 mod jobs;
 mod library;
+mod projects;
+pub use projects::shared_phrases;
 mod profiles;
+pub mod review;
 use anyhow::{Result, ensure};
 pub use library::{Excerpt, Hit};
 use rusqlite::{Connection, OptionalExtension, params};
@@ -33,6 +37,8 @@ pub struct Segment {
     pub speaker: String,
     #[serde(default)]
     pub acoustic_label: String,
+    #[serde(skip)]
+    pub reviewed: bool,
     pub echo_candidate: Option<serde_json::Value>,
     pub text: String,
     pub words: Vec<Word>,
@@ -52,7 +58,7 @@ impl Library {
             "PRAGMA foreign_keys=ON; PRAGMA secure_delete=ON; PRAGMA journal_mode=WAL;",
         )?;
         let v: i32 = c.query_row("PRAGMA user_version", [], |r| r.get(0))?;
-        ensure!(v <= 4, "Version de bibliothèque trop récente");
+        ensure!(v <= 6, "Version de bibliothèque trop récente");
         if v == 0 {
             let tx = c.transaction()?;
             tx.execute_batch(include_str!("../../../migrations/001_library.sql"))?;
@@ -71,6 +77,16 @@ impl Library {
         if v < 4 {
             let tx = c.transaction()?;
             tx.execute_batch(include_str!("../../../migrations/004_translation.sql"))?;
+            tx.commit()?;
+        }
+        if v < 5 {
+            let tx = c.transaction()?;
+            tx.execute_batch(include_str!("../../../migrations/005_review.sql"))?;
+            tx.commit()?;
+        }
+        if v < 6 {
+            let tx = c.transaction()?;
+            tx.execute_batch(include_str!("../../../migrations/006_projects.sql"))?;
             tx.commit()?;
         }
         Ok(Self(c))
@@ -137,7 +153,7 @@ impl Library {
     }
     pub fn list(&self, query: &str) -> Result<Vec<Meeting>> {
         let term = format!("\"{}\"", query.replace('"', "\"\""));
-        let mut q=self.0.prepare("SELECT id,title,project,status,duration_ms,datetime(created_at,'unixepoch','localtime') FROM meeting m WHERE ?1='' OR EXISTS(SELECT 1 FROM meeting_speaker_assignment a LEFT JOIN voice_profile p ON p.id=a.profile_id WHERE a.meeting_id=m.id AND instr(lower(coalesce(a.display_name,p.name)),lower(?1))>0) OR id IN (SELECT rowid FROM title_search WHERE title_search MATCH ?2) OR id IN (SELECT t.meeting_id FROM speech_search f JOIN transcript_segment s ON f.rowid=s.id JOIN transcript t ON t.id=s.transcript_id WHERE speech_search MATCH ?2 AND t.id=(SELECT max(v.id) FROM transcript v WHERE v.meeting_id=t.meeting_id)) ORDER BY id DESC")?;
+        let mut q=self.0.prepare("SELECT id,title,project,status,duration_ms,datetime(created_at,'unixepoch','localtime') FROM meeting m WHERE ?1='' OR instr(lower(m.title),lower(?1))>0 OR EXISTS(SELECT 1 FROM meeting_speaker_assignment a LEFT JOIN voice_profile p ON p.id=a.profile_id WHERE a.meeting_id=m.id AND instr(lower(coalesce(a.display_name,p.name)),lower(?1))>0) OR id IN (SELECT rowid FROM title_search WHERE title_search MATCH ?2) OR id IN (SELECT t.meeting_id FROM speech_search f JOIN transcript_segment s ON f.rowid=s.id JOIN transcript t ON t.id=s.transcript_id WHERE speech_search MATCH ?2 AND t.id=(SELECT max(v.id) FROM transcript v WHERE v.meeting_id=t.meeting_id)) ORDER BY id DESC")?;
         Ok(q.query_map(params![query.trim(), term], |r| {
             Ok(Meeting {
                 id: r.get(0)?,
@@ -195,7 +211,7 @@ impl Library {
         self.segments_at(id, None)
     }
     pub fn segments_at(&self, id: i64, version: Option<i64>) -> Result<Vec<Segment>> {
-        let mut q=self.0.prepare("SELECT s.id,start_ms,end_ms,track,coalesce(a.display_name,p.name,s.speaker),coalesce(edited,raw),words,confidence,s.speaker,s.echo_candidate FROM transcript_segment s LEFT JOIN meeting_speaker_assignment a ON a.meeting_id=?1 AND s.transcript_id=(SELECT max(v.id) FROM transcript v WHERE v.meeting_id=?1) AND a.label=s.speaker LEFT JOIN voice_profile p ON p.id=a.profile_id WHERE transcript_id=(SELECT max(id) FROM transcript WHERE meeting_id=?1 AND (?2 IS NULL OR id=?2)) ORDER BY start_ms,end_ms,s.id")?;
+        let mut q=self.0.prepare("SELECT s.id,start_ms,end_ms,track,coalesce(a.display_name,p.name,s.speaker),coalesce(edited,raw),words,confidence,s.speaker,s.echo_candidate,(s.reviewed OR s.edited IS NOT NULL) FROM transcript_segment s LEFT JOIN meeting_speaker_assignment a ON a.meeting_id=?1 AND s.transcript_id=(SELECT max(v.id) FROM transcript v WHERE v.meeting_id=?1) AND a.label=s.speaker LEFT JOIN voice_profile p ON p.id=a.profile_id WHERE transcript_id=(SELECT max(id) FROM transcript WHERE meeting_id=?1 AND (?2 IS NULL OR id=?2)) ORDER BY start_ms,end_ms,s.id")?;
         let mut rows = q.query(params![id, version])?;
         let mut out = vec![];
         while let Some(r) = rows.next()? {
@@ -206,6 +222,7 @@ impl Library {
                 track: r.get(3)?,
                 speaker: r.get(4)?,
                 acoustic_label: r.get(8)?,
+                reviewed: r.get(10)?,
                 echo_candidate: r
                     .get::<_, Option<String>>(9)?
                     .map(|s| serde_json::from_str(&s))
@@ -241,6 +258,15 @@ impl Library {
     }
     pub fn segment_language(&self, id: i64) -> Result<Option<String>> {
         Ok(self.0.query_row("SELECT json_extract(v.settings,'$.language') FROM transcript v JOIN transcript_segment s ON s.transcript_id=v.id WHERE s.id=?", [id], |r|r.get(0))?)
+    }
+    pub fn confirm_segment(&self, id: i64) -> Result<()> {
+        ensure!(
+            self.0
+                .execute("UPDATE transcript_segment SET reviewed=1 WHERE id=?", [id])?
+                == 1,
+            "Segment inconnu"
+        );
+        Ok(())
     }
     pub fn edit(&self, id: i64, text: &str) -> Result<()> {
         ensure!(
@@ -283,6 +309,39 @@ impl Library {
 mod tests {
     use super::*;
     #[test]
+    fn review_migrates_existing_transcripts_and_survives_reopening() -> Result<()> {
+        let path = std::env::temp_dir().join(format!("rikai-review-{}.sqlite", std::process::id()));
+        let legacy = Connection::open(&path)?;
+        for sql in [
+            include_str!("../../../migrations/001_library.sql"),
+            include_str!("../../../migrations/002_profiles.sql"),
+            include_str!("../../../migrations/003_echo.sql"),
+            include_str!("../../../migrations/004_translation.sql"),
+        ] {
+            legacy.execute_batch(sql)?;
+        }
+        legacy.execute_batch("INSERT INTO meeting(id,title,status) VALUES(1,'Essai','Transcrite');
+            INSERT INTO transcript(id,meeting_id,settings) VALUES(1,1,'{}');
+            INSERT INTO transcript_segment(id,transcript_id,track,start_ms,end_ms,speaker,raw,edited,words,confidence)
+            VALUES(1,1,'mic',0,10,'Moi','Bien',NULL,'[]',0.4),(2,1,'mic',10,20,'Moi','Bain','Bien','[]',0.4);")?;
+        drop(legacy);
+        let db = Library::open(&path)?;
+        let old = db.segments(1)?;
+        assert!(review::flag(&old[0]).is_some());
+        assert!(review::flag(&old[1]).is_none());
+        db.confirm_segment(old[0].id)?;
+        drop(db);
+        let mut db = Library::open(&path)?;
+        assert!(db.segments(1)?.iter().all(|s| s.reviewed));
+        db.publish(1, "{}", &old, &[], Default::default())?;
+        assert!(review::flag(&db.segments(1)?[0]).is_some());
+        assert!(db.segments_at(1, Some(1))?[0].reviewed);
+        drop(db);
+        std::fs::remove_file(path)?;
+        Ok(())
+    }
+
+    #[test]
     fn edits_search_and_versions_survive_reopen() -> Result<()> {
         let path =
             std::env::temp_dir().join(format!("rikai-storage-{}.sqlite", std::process::id()));
@@ -295,6 +354,7 @@ mod tests {
             track: "mic.wav".into(),
             speaker: "Moi".into(),
             acoustic_label: "Moi".into(),
+            reviewed: false,
             echo_candidate: None,
             text: "maquette".into(),
             words: vec![],
@@ -317,6 +377,7 @@ mod tests {
         assert_eq!(db.list("jeudi")?.len(), 1);
         assert!(db.list("maquette")?.is_empty());
         assert_eq!(db.segments(id)?[0].text, "validation jeudi");
+        assert!(db.segments(id)?[0].reviewed);
         drop(db);
         std::fs::remove_file(path)?;
         Ok(())

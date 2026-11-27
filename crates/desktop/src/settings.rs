@@ -7,15 +7,34 @@ impl Desk {
             "Dépendances",
             "Interface",
             "Calcul",
+            "Raccourcis",
             "Mises à jour",
         ];
-        self.settings_nav
-            .render(NAMES, self.section, w, cx, |s, i| {
-                s.settings_nav.select(s.section, i, NAMES.len());
-                s.section = i;
-                s.menu = None;
-                s.settings_scroll.set_offset(Point::default());
-            })
+        let live = self.settings_origin == Page::Live;
+        let categories = if live {
+            ["Audio", "Traduction", "Voix"]
+                .into_iter()
+                .chain(NAMES.iter().copied())
+                .collect::<Vec<_>>()
+        } else {
+            NAMES.to_vec()
+        };
+        let selected = if live {
+            (self.section + 3) % 9
+        } else {
+            self.section
+        };
+        preferences_panel::sidebar(&categories, selected, w, cx, |s, i| {
+            let i = if s.settings_origin == Page::Live {
+                (i + 6) % 9
+            } else {
+                i
+            };
+            s.binding = None;
+            s.section = i;
+            s.menu = None;
+            s.settings_scroll.set_offset(Point::default());
+        })
     }
     pub(super) fn storage_settings(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
@@ -206,14 +225,8 @@ impl Desk {
                         None,
                         false,
                         cx,
-                        move |s, cx| {
+                        move |s, _| {
                             crate::i18n::select(Some(code));
-                            if let Some(live) = s.live_window {
-                                let _ = live.update(cx, |_, window, cx| {
-                                    window.set_window_title(&live::Live::window_title());
-                                    cx.notify();
-                                });
-                            }
                             s.settings["locale"] = json!(code);
                             s.menu = None;
                             s.save_settings()

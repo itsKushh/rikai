@@ -103,6 +103,8 @@ pub(super) const PLAY: &str = include_str!("../../../assets/nucleo/media-play.sv
 pub(super) const PAUSE: &str = include_str!("../../../assets/nucleo/media-pause.svg");
 pub(super) const SAVE: &str = include_str!("../../../assets/nucleo/download.svg");
 pub(super) const SESSION: &str = include_str!("../../../assets/nucleo/file-search.svg");
+pub(super) const APPLICATIONS: &str = include_str!("../../../assets/nucleo/applications.svg");
+pub(super) const FOLDER: &str = include_str!("../../../assets/nucleo/folder.svg");
 pub(super) const DESK: &str = include_str!("../../../assets/nucleo/folder-open.svg");
 pub(super) const LIBRARY: &str = include_str!("../../../assets/nucleo/archive.svg");
 pub(super) const VOICES: &str = include_str!("../../../assets/nucleo/users.svg");
@@ -119,7 +121,8 @@ pub(super) const CHEVRON: &str = include_str!("../../../assets/nucleo/chevron-do
 pub(super) const AUDIO: &str = include_str!("../../../assets/nucleo/music-note.svg");
 pub(super) const MODEL: &str = include_str!("../../../assets/nucleo/brain-nodes.svg");
 pub(super) const WINDOW_MIN: &str = include_str!("../../../assets/nucleo/minus.svg");
-pub(super) const WINDOW_RESTORE: &str = include_str!("../../../assets/nucleo/duplicate.svg");
+pub(super) const COPY: &str = include_str!("../../../assets/nucleo/duplicate.svg");
+pub(super) const WINDOW_RESTORE: &str = COPY;
 pub(super) const WINDOW_MAX: &str = include_str!("../../../assets/nucleo/shape-square.svg");
 pub(super) fn glyph(data: &'static str, pixels: f32, color: u32) -> Svg {
     svg()

@@ -40,6 +40,7 @@ pub const TICKS: u64 = 10_000_000;
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(tag = "kind")]
 pub enum Source {
+    Media,
     Application { pid: u32, born: u64, exe: PathBuf },
     Microphone { endpoint: String },
 }
@@ -117,6 +118,22 @@ fn spec() -> WavSpec {
         bits_per_sample: 16,
         sample_format: SampleFormat::Int,
     }
+}
+
+/// Étend le passage de deux secondes de chaque côté dans les limites de la piste.
+pub fn context_span(path: &Path, start_ms: i64, end_ms: i64) -> Result<(i64, i64)> {
+    let reader = WavReader::open(path).context("La piste audio est illisible ou absente")?;
+    let rate = i64::from(reader.spec().sample_rate);
+    ensure!(rate > 0, "Fréquence de piste invalide");
+    let length = i64::from(reader.duration()) * 1000 / rate;
+    ensure!(
+        start_ms >= 0 && end_ms > start_ms && start_ms < length,
+        "Passage en dehors de la piste"
+    );
+    Ok((
+        (start_ms - 2000).max(0),
+        end_ms.saturating_add(2000).min(length),
+    ))
 }
 
 /// Exporte exactement l’intervalle demandé en PCM, avec publication atomique.
@@ -272,6 +289,8 @@ mod tests {
             wav.write_sample(i as i16)?;
         }
         wav.finalize()?;
+        assert_eq!(context_span(&source, 25, 75)?, (0, 100));
+        assert!(context_span(&source, 110, 150).is_err());
         export_segment(&source, &out, 25, 75)?;
         let mut clip = WavReader::open(&out)?;
         assert_eq!(clip.spec(), spec());
@@ -341,4 +360,54 @@ mod tests {
         assert_eq!(samples, [0, 1, 2, 5, 0]);
         Ok(())
     }
+}
+
+/// Render the marked interval across the original capture tracks, including the microphone.
+pub fn export_mark(dir: &Path, dest: &Path, start: i64, end: i64) -> Result<()> {
+    ensure!(
+        start >= 0 && end > start && end - start <= 90_000,
+        "Intervalle d’extrait invalide"
+    );
+    let manifest: Manifest = serde_json::from_reader(File::open(dir.join("sources.json"))?)?;
+    let mut readers = Vec::new();
+    let first = (start as u64 * RATE as u64 / 1000) as u32;
+    for t in manifest.tracks {
+        ensure!(
+            Path::new(&t.file).components().count() == 1 && !t.file.contains(['/', '\\', ':']),
+            "Nom de piste invalide"
+        );
+        let path = dir.join(t.file);
+        ensure!(
+            !dest.exists() || dest.canonicalize()? != path.canonicalize()?,
+            "Choisissez un autre fichier que la piste source."
+        );
+        let mut wav = WavReader::open(path)?;
+        ensure!(wav.spec() == spec(), "Format de piste incompatible");
+        if first < wav.duration() {
+            wav.seek(first)?;
+            readers.push(wav);
+        }
+    }
+    ensure!(!readers.is_empty(), "Aucun échantillon dans cet intervalle");
+    let mut temp =
+        tempfile::NamedTempFile::new_in(dest.parent().context("Dossier de destination absent")?)?;
+    let mut out = WavWriter::new(BufWriter::new(temp.as_file_mut()), spec())?;
+    let mut tracks: Vec<_> = readers.iter_mut().map(|w| w.samples::<i16>()).collect();
+    for _ in 0..((end - start) as u64 * RATE as u64 / 1000) {
+        let mut sum = 0i64;
+        let mut samples = 0;
+        for iter in &mut tracks {
+            if let Some(v) = iter.next() {
+                sum += i64::from(v?);
+                samples += 1;
+            }
+        }
+        if samples == 0 {
+            break;
+        }
+        out.write_sample(sum.clamp(i16::MIN as i64, i16::MAX as i64) as i16)?;
+    }
+    out.finalize()?;
+    temp.persist(dest)?;
+    Ok(())
 }

@@ -4,6 +4,8 @@ mod data_root;
 #[cfg(any(windows, test))]
 mod i18n;
 #[cfg(any(windows, test))]
+mod live_transcript;
+#[cfg(any(windows, test))]
 mod page;
 #[cfg(windows)]
 mod playback;

@@ -2,6 +2,7 @@ use super::*;
 
 #[derive(Clone, Copy, PartialEq)]
 pub(in crate::ui) enum Budget {
+    ClipSeconds,
     Threads,
     Ram,
     Gpu,
@@ -10,6 +11,7 @@ pub(in crate::ui) enum Budget {
 impl Budget {
     fn key(self) -> &'static str {
         match self {
+            Self::ClipSeconds => "clip_seconds",
             Self::Threads => "cpu_threads",
             Self::Ram => "ram_gib",
             Self::Gpu => "gpu_duty",
@@ -17,6 +19,7 @@ impl Budget {
     }
     fn name(self) -> &'static str {
         match self {
+            Self::ClipSeconds => "Secondes à conserver",
             Self::Threads => "Threads CPU",
             Self::Ram => "Plafond de RAM",
             Self::Gpu => "Temps de calcul GPU",
@@ -24,15 +27,18 @@ impl Budget {
     }
     fn range(self, s: &Desk) -> (u64, u64) {
         match self {
+            Self::ClipSeconds => (1, 90),
             Self::Threads => (0, s.load.threads.max(1)),
             Self::Ram => (0, s.load.total_gib.max(2)),
             Self::Gpu => (10, 100),
         }
     }
     fn saved(self, s: &Desk) -> u64 {
-        s.settings[self.key()]
-            .as_u64()
-            .unwrap_or(if self == Self::Gpu { 100 } else { 0 })
+        s.settings[self.key()].as_u64().unwrap_or(match self {
+            Self::Gpu => 100,
+            Self::ClipSeconds => 30,
+            _ => 0,
+        })
     }
     fn snap(self, n: u64) -> u64 {
         match self {
@@ -43,6 +49,7 @@ impl Budget {
     fn value(self, s: &Desk) -> String {
         let n = self.saved(s);
         match self {
+            Self::ClipSeconds => format!("{n} s"),
             Self::Gpu => format!("{n} %"),
             Self::Ram if n == 0 => "Géré par Windows".into(),
             _ if n == 0 => "Auto".into(),
@@ -64,7 +71,7 @@ impl Desk {
                 .clamp(lo, hi)
         );
     }
-    fn budget(&self, b: Budget, cx: &Context<Self>) -> Div {
+    pub(super) fn budget(&self, b: Budget, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let (lo, hi) = b.range(self);
         let n = b.saved(self).clamp(lo, hi);

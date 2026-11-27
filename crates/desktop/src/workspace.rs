@@ -141,7 +141,7 @@ fn selected_file(settings: &Value, key: &str) -> String {
 }
 
 impl Desk {
-    fn drawer_open(&self) -> bool {
+    pub(super) fn drawer_open(&self) -> bool {
         self.confirmation.is_some() || self.page == Page::Settings
     }
 
@@ -178,19 +178,24 @@ impl Desk {
             p,
             "navigation-pill",
             match page {
-                Page::Library => 1,
-                Page::Profiles => 2,
+                Page::Modules | Page::Live | Page::Media | Page::Follow => 1,
+                Page::Library | Page::Project | Page::Detail => 2,
+                Page::Profiles => 3,
                 _ => 0,
             },
             &self.tab_geometry[0],
         );
         for (target, name, icon) in [
             (Page::Home, "Espace de travail", DESK),
+            (Page::Modules, "Modules", APPLICATIONS),
             (Page::Library, "Bibliothèque", LIBRARY),
             (Page::Profiles, "Voix", VOICES),
         ] {
             let active = page == target
-                || (target == Page::Home && matches!(page, Page::New | Page::Detail));
+                || (target == Page::Home && page == Page::New)
+                || (target == Page::Library && matches!(page, Page::Detail | Page::Project))
+                || (target == Page::Modules
+                    && matches!(page, Page::Live | Page::Media | Page::Follow));
             if locked {
                 nav = nav.child(
                     div()
@@ -223,24 +228,30 @@ impl Desk {
                     Some(SLIDERS),
                     true,
                     cx,
-                    |s, _| s.go(Page::Settings),
+                    |s, _| {
+                        let live = s.page == Page::Live;
+                        s.go(Page::Settings)?;
+                        if live {
+                            s.section = 7;
+                        } else if s.section >= 6 {
+                            s.section = 0;
+                        }
+                        Ok(())
+                    },
                 ))
-                .child(window_button(
-                    "Traduction",
-                    Button::Secondary,
-                    Some(TRANSLATE),
-                    false,
-                    cx,
-                    |s, w, cx| s.open_live(w, cx),
-                ))
-                .child(button(
-                    "Enregistrer",
-                    Button::Primary,
-                    Some(WAVE),
-                    false,
-                    cx,
-                    |s, _| s.go(Page::New),
-                ));
+                .when(
+                    page != Page::Live && !(page == Page::Home && self.library.is_empty()),
+                    |bar| {
+                        bar.child(button(
+                            "Enregistrer",
+                            Button::Primary,
+                            Some(WAVE),
+                            false,
+                            cx,
+                            |s, _| s.go(Page::New),
+                        ))
+                    },
+                );
         }
         bar.child(window_frame::controls(
             window,
@@ -259,10 +270,31 @@ impl Desk {
         let mut path = vec![(Page::Home, tr("Espace de travail").to_owned())];
         match page {
             Page::New => path.push((page, tr("Enregistrer").into())),
+            Page::Modules | Page::Media | Page::Follow | Page::Live => {
+                path.push((Page::Modules, tr("Modules").into()));
+                if page != Page::Modules {
+                    path.push((
+                        page,
+                        tr(match page {
+                            Page::Media => "Export audio et vidéo vers texte",
+                            Page::Follow => "Suivi entre échanges",
+                            _ => "Traduction en direct",
+                        })
+                        .into(),
+                    ));
+                }
+            }
+            Page::Project => {
+                path.push((Page::Library, tr("Bibliothèque").into()));
+                path.push((page, self.folder_title()));
+            }
             Page::Profiles => path.push((page, tr("Voix").into())),
             Page::Library | Page::Detail => {
                 path.push((Page::Library, tr("Bibliothèque").into()));
                 if page == Page::Detail {
+                    if self.project_folder.is_some() {
+                        path.push((Page::Project, self.folder_title()));
+                    }
                     let title = self
                         .library
                         .iter()
@@ -270,10 +302,7 @@ impl Desk {
                         .map(|m| m.title.clone())
                         .unwrap_or_else(|| tr("Enregistrement").into());
                     path.push((Page::Detail, title));
-                    path.push((
-                        Page::Detail,
-                        tr(["Résumé", "Transcription", "Intervenants"][self.tab as usize]).into(),
-                    ));
+                    path.push((Page::Detail, tr(RECORD_TABS[self.tab as usize]).into()));
                 }
             }
             _ => {}
@@ -683,6 +712,9 @@ impl Render for Desk {
         }
         self.release_was_open = modal;
         let drawer = self.drawer_open();
+        if self.project_form.is_some() && !self.drawer_focus.contains_focused(window, cx) {
+            self.drawer_focus.focus(window, cx);
+        }
         let visibility = preferences_panel::visibility(drawer, window, cx);
         if drawer && !self.drawer_was_open && !update {
             self.drawer_focus.focus(window, cx);
@@ -690,7 +722,10 @@ impl Render for Desk {
         self.drawer_was_open = drawer;
         let page = self.workspace_page();
         let background_activity = !modal && (!drawer || self.confirmation.is_some());
-        let reader = page == Page::Detail && self.tab <= 1 && !self.metadata && !self.busy();
+        let reader = page == Page::Detail
+            && matches!(self.tab, 0 | 1 | REVIEW_TAB | 4)
+            && !self.metadata
+            && !self.busy();
         let home = page == Page::Home && !(self.busy() && background_activity);
         let mut left = col().min_h_0().flex_1().gap(px(16.));
         if home {
@@ -725,7 +760,16 @@ impl Render for Desk {
                     .child(if detail {
                         self.record_header(title, cx)
                     } else {
-                        header(title, p)
+                        if matches!(page, Page::Library | Page::Project) {
+                            row()
+                                .justify_between()
+                                .px_3()
+                                .py_2()
+                                .child(raw_label(tr(&title).to_owned()))
+                                .child(self.library_header_action(cx))
+                        } else {
+                            header(title, p)
+                        }
                     })
                     .when(detail, |d| {
                         d.child(
@@ -744,7 +788,35 @@ impl Render for Desk {
             );
         }
         let inspector = self.inspector_panel(page, drawer, cx);
-        let layout = if narrow {
+        let standalone = matches!(
+            page,
+            Page::Modules | Page::Media | Page::Follow | Page::Project | Page::Library | Page::Live
+        ) || page == Page::Home && self.library.is_empty() && home;
+        let layout = if page == Page::Live
+            && !(drawer && self.section >= 6)
+            && let Some(l) = self.live_view.clone()
+        {
+            col().relative().size_full().child(l).into_any_element()
+        } else if page == Page::Modules && !self.busy() {
+            col()
+                .size_full()
+                .items_center()
+                .child(
+                    col()
+                        .w_full()
+                        .max_w(px(1010.))
+                        .px_4()
+                        .pt(px(46.))
+                        .gap_4()
+                        .child(div().text_2xl().child(tr("Modules")))
+                        .child(self.module_cards(cx)),
+                )
+                .into_any_element()
+        } else if home && self.library.is_empty() {
+            self.first_home(cx).into_any_element()
+        } else if standalone {
+            left.size_full().into_any_element()
+        } else if narrow {
             ScrollArea::new(
                 "compact-workspace",
                 col()
@@ -770,6 +842,17 @@ impl Render for Desk {
         };
         window_frame::surface(p)
             .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
+                if s.project_form.is_some() && ev.keystroke.key == "escape" {
+                    s.project_form = None;
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
+                if s.handle_shortcut(ev, w, cx) {
+                    cx.stop_propagation();
+                    cx.notify();
+                    return;
+                }
                 if ev.keystroke.key == "escape"
                     && (s.source_menu.take().is_some() || s.record_menu.take().is_some())
                 {
@@ -789,7 +872,7 @@ impl Render for Desk {
                     Window::focus_next
                 };
                 step(w, cx);
-                if s.release_was_open || s.drawer_open() {
+                if s.release_was_open || s.drawer_open() || s.project_form.is_some() {
                     let modal = if s.release_was_open {
                         &s.release_focus
                     } else {
@@ -826,6 +909,46 @@ impl Render for Desk {
             .when(!package && (drawer || visibility > 0.001), |s| {
                 s.child(self.settings_drawer(visibility, window, cx))
             })
+            .when(!modal && !drawer && self.project_form.is_some(), |s| {
+                s.child(self.project_modal(cx))
+            })
+            .when(
+                !drawer
+                    && !modal
+                    && self.project_form.is_none()
+                    && !self.busy()
+                    && !self.live_active,
+                |s| {
+                    s.on_drop(cx.listener(|desk, paths: &ExternalPaths, _, cx| {
+                        if let [path] = paths.paths() {
+                            desk.choose_media(path.clone(), desk.page == Page::Media, cx)
+                        } else {
+                            desk.message = "Déposez un seul fichier audio ou vidéo.".into();
+                        }
+                        cx.notify();
+                    }))
+                    .when(
+                        cx.active_drag()
+                            .is_some_and(|d| d.value.is::<ExternalPaths>()),
+                        |s| {
+                            s.child(
+                                div()
+                                    .absolute()
+                                    .inset_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_center()
+                                    .bg(black().opacity(0.55))
+                                    .backdrop_blur(px(7.))
+                                    .child(label("Déposez un fichier audio ou vidéo"))
+                                    .with_animation("drop-reveal", reveal(cx, 160), |d, t| {
+                                        d.opacity(t)
+                                    }),
+                            )
+                        },
+                    )
+                },
+            )
             .when(package, |s| s.child(self.package_modal(cx)))
             .when(update, |s| s.child(self.release_modal(cx)))
     }

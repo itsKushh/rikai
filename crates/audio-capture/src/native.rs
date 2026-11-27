@@ -233,6 +233,7 @@ fn validate(inputs: &[Input]) -> Result<()> {
     let mut mic = false;
     for input in inputs {
         match &input.source {
+            Source::Media => bail!("Ce fichier ne peut pas être capturé en direct"),
             Source::Application { pid, .. } => {
                 ensure!(
                     roots.insert(Pid::from_u32(*pid)),
@@ -396,6 +397,7 @@ fn capture_stream(
     let _com = Apartment::enter()?;
     let mut pinned = None;
     let mut client = match &track.input.source {
+        Source::Media => bail!("Cette piste provient d’un fichier"),
         Source::Application { pid, born, exe } => {
             let (handle, actual) = process_handle(*pid)?;
             ensure!(

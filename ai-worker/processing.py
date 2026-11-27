@@ -249,8 +249,10 @@ def nearby_terms(words, glossary):
     return ", ".join(sorted(rankings, key=rankings.get, reverse=True)[:6])
 
 
-def decode_block(engine, data, language, report, *, duty=100, glossary=""):
+def decode_block(engine, data, language, report, *, duty=100, glossary="", context=""):
     options = dict(language=language, word_timestamps=True, vad_filter=True)
+    if context:
+        options["initial_prompt"] = context[:480]
     with gpu_timeslice(duty):
         found, _ = engine.transcribe(data, **options)
     # Publier le bloc seulement après la fin de la lecture du générateur.
@@ -466,7 +468,7 @@ def transcribe(p, progress):
                 try:
                     decoded = decode_block(engine, data, language, report,
                                            duty=settings.get("gpu_duty", 100) if device == "cuda" else 100,
-                                           glossary=glossary)
+                                           glossary=glossary, context=settings.get("record_context", ""))
                     break
                 except (RuntimeError, ValueError, OSError) as exc:
                     if device != "cuda" or settings.get("strict_cuda") or not cuda_unavailable(exc):

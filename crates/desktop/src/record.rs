@@ -199,20 +199,27 @@ impl Desk {
                         cx.notify();
                     })),
             )
-            .children(["md", "txt", "json"].map(|fmt| {
-                window_button(
-                    format!("Exporter .{fmt}"),
-                    Button::Quiet,
-                    None,
-                    false,
-                    cx,
-                    move |s, w, cx| {
-                        s.record_menu = None;
-                        s.export(fmt, w, cx)
-                    },
-                )
-                .justify_start()
-            }))
+            .children(
+                meeting_storage::export::FORMATS
+                    .into_iter()
+                    .filter(|(fmt, _, _)| {
+                        !self.summary_only || matches!(*fmt, "md" | "txt" | "json")
+                    })
+                    .map(|(fmt, name, ext)| {
+                        window_button(
+                            format!("{}  ·  .{ext}", tr(name)),
+                            Button::Quiet,
+                            None,
+                            false,
+                            cx,
+                            move |s, w, cx| {
+                                s.record_menu = None;
+                                s.export(fmt, w, cx)
+                            },
+                        )
+                        .justify_start()
+                    }),
+            )
     }
 
     fn record_history(&self, cx: &Context<Self>) -> Div {
@@ -245,6 +252,7 @@ impl Desk {
                         s.set_report(s.db.summary_at(s.id, id)?);
                     } else {
                         s.segments = s.db.segments_at(s.id, Some(id))?;
+                        s.load_review_queue();
                         s.stop_segment();
                         s.dialogues
                             .reset_with_uniform_height(s.segments.len(), px(99.));

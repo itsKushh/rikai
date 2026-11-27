@@ -109,6 +109,9 @@ mod system_load;
 #[path = "taskbar.rs"]
 mod taskbar;
 enum Event {
+    MarkAudio(u64, i64, Result<tempfile::TempDir>),
+    MediaProbe(PathBuf, Result<(tempfile::TempDir, Value)>),
+    Imported(String, String, Value, Result<(tempfile::TempDir, Value)>),
     Load(system_load::Load),
     GpuTest(Result<Value>),
     Hardware(String, Value, bool, Value),
@@ -150,9 +153,45 @@ struct PlayingSegment {
     paused: bool,
 }
 
+const RECORD_TABS: [&str; 6] = [
+    "Résumé",
+    "Transcription",
+    "Intervenants",
+    "À vérifier",
+    "Sous-titres",
+    "Extraits",
+];
+const REVIEW_TAB: u8 = 3;
+
 struct Desk {
     taskbar: Option<taskbar::DownloadButton>,
-    live_window: Option<WindowHandle<live::Live>>,
+    live_view: Option<Entity<live::Live>>,
+    live_active: bool,
+    quick_start: bool,
+    model_choice: bool,
+    compare_offset: usize,
+    shared_phrases: Vec<(String, usize, usize)>,
+    project_folder: Option<i64>,
+    project_form: Option<bool>,
+    folder_name: Field,
+    selected_items: HashSet<i64>,
+    project_choice: bool,
+    binding: Option<&'static str>,
+    record_context: Field,
+    picked_media: Option<PathBuf>,
+    media_probe: Value,
+    media_preview: Option<tempfile::TempDir>,
+    mark_audio: Option<tempfile::TempDir>,
+    play_request: u64,
+    import_config: bool,
+    compared: Vec<(String, i64, Vec<Segment>)>,
+    folders: Vec<(i64, String)>,
+    folder_items: HashSet<i64>,
+    transcribed: HashSet<i64>,
+    matches: HashSet<i64>,
+    search_more: bool,
+    archive_search: String,
+
     browse_query: Field,
     browse_term: String,
     excerpts: Vec<meeting_storage::Excerpt>,
@@ -184,7 +223,6 @@ struct Desk {
     db: Library,
     page: Page,
     source_menu: Option<view::preferences_panel::SourceMenu>,
-    settings_nav: view::preferences_panel::Sidebar,
     settings_scroll: ScrollHandle,
     wheel: [view::scroller::Wheel; 2],
     settings_origin: Page,
@@ -231,6 +269,8 @@ struct Desk {
     metadata: bool,
     hits: Vec<meeting_storage::Hit>,
     dialogues: ListState,
+    review_list: ListState,
+    review_queue: Vec<(usize, meeting_storage::review::Flag)>,
     playing: Option<PlayingSegment>,
     report_list: ListState,
     report_lines: Vec<String>,
@@ -251,7 +291,7 @@ struct Desk {
 }
 impl Desk {
     fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
-        if self.busy() {
+        if self.busy() || self.live_active {
             self.message = "Arrêtez la capture ou annulez le traitement avant de fermer.".into();
             cx.notify();
             return false;
@@ -336,7 +376,32 @@ impl Desk {
         });
         let mut s = Self {
             taskbar,
-            live_window: None,
+            live_view: None,
+            live_active: false,
+            quick_start: false,
+            model_choice: false,
+            compare_offset: 0,
+            shared_phrases: vec![],
+            project_folder: None,
+            project_form: None,
+            folder_name: field(cx),
+            selected_items: Default::default(),
+            project_choice: false,
+            binding: None,
+            record_context: field(cx),
+            picked_media: None,
+            media_probe: Value::Null,
+            media_preview: None,
+            mark_audio: None,
+            play_request: 0,
+            import_config: false,
+            compared: vec![],
+            archive_search: String::new(),
+            folders: vec![],
+            folder_items: Default::default(),
+            transcribed: Default::default(),
+            matches: Default::default(),
+            search_more: false,
             browse_query: field(cx),
             browse_term: String::new(),
             excerpts: Vec::new(),
@@ -368,7 +433,6 @@ impl Desk {
             db,
             page: Page::Home,
             source_menu: None,
-            settings_nav: Default::default(),
             settings_scroll: Default::default(),
             wheel: Default::default(),
             settings_origin: Page::Home,
@@ -415,6 +479,8 @@ impl Desk {
             metadata: false,
             hits: vec![],
             dialogues: ListState::new(0, ListAlignment::Top, px(180.)),
+            review_list: ListState::new(0, ListAlignment::Top, px(180.)),
+            review_queue: Vec::new(),
             playing: None,
             report_list: ListState::new(0, ListAlignment::Top, px(180.)),
             report_lines: Vec::new(),
@@ -445,6 +511,16 @@ impl Desk {
         }
         cx.observe(&s.language_search, |_, _, cx| cx.notify())
             .detach();
+        cx.observe(&s.folder_name, |_, _, cx| cx.notify()).detach();
+        cx.observe(&s.search, |s, f, cx| {
+            let term = f.read(cx).as_str().trim().to_owned();
+            if s.archive_search != term {
+                s.archive_search = term;
+                s.update_matches();
+                cx.notify();
+            }
+        })
+        .detach();
         cx.observe(&s.browse_query, |s, f, cx| {
             let query = f.read(cx).as_str();
             if query == s.browse_term {
@@ -486,9 +562,26 @@ impl Desk {
         .detach();
         s
     }
+    fn play_mark(&mut self, start: i64, end: i64) -> Result<()> {
+        self.stop_segment();
+        let request = self.play_request;
+        let dir = self.audio_dir(self.id);
+        let tx = self.tx.clone();
+        thread::spawn(move || {
+            let res = (|| {
+                let tmp = tempfile::tempdir()?;
+                audio_capture::export_mark(&dir, &tmp.path().join("extrait.wav"), start, end)?;
+                Ok(tmp)
+            })();
+            let _ = tx.send(Event::MarkAudio(request, end - start, res));
+        });
+        Ok(())
+    }
     fn stop_segment(&mut self) {
+        self.play_request = self.play_request.wrapping_add(1);
         self.playing = None;
         super::playback::stop();
+        self.mark_audio = None;
     }
     fn listen(&mut self, id: i64, from: Option<f32>) -> Result<()> {
         let seg = self
@@ -496,7 +589,19 @@ impl Desk {
             .iter()
             .find(|s| s.id == id)
             .context("Passage introuvable")?;
-        let (start, end) = (seg.start_ms, seg.end_ms);
+        let path = self.audio_dir(self.id).join(&seg.track);
+        let (start, end) = if self.tab == REVIEW_TAB {
+            let word = meeting_storage::review::flag(seg)
+                .and_then(|flag| flag.word)
+                .and_then(|i| seg.words.get(i))
+                .filter(|w| {
+                    seg.start_ms <= w.start_ms && w.start_ms < w.end_ms && w.end_ms <= seg.end_ms
+                });
+            let (a, b) = word.map_or((seg.start_ms, seg.end_ms), |w| (w.start_ms, w.end_ms));
+            audio_capture::context_span(&path, a, b)?
+        } else {
+            (seg.start_ms, seg.end_ms)
+        };
         ensure!(end > start, "Ce passage est vide");
         let current = self.playing.filter(|p| p.id == id);
         if let Some(mut p) = current
@@ -514,7 +619,6 @@ impl Desk {
             .or(current.map(|p| p.position))
             .unwrap_or(start)
             .clamp(start, end - 1);
-        let path = self.audio_dir(self.id).join(&seg.track);
         self.playing = None;
         super::playback::play(&path, pos, end)?;
         self.playing = Some(PlayingSegment {
@@ -558,7 +662,25 @@ impl Desk {
     fn busy(&self) -> bool {
         self.ctl.is_some() || self.cancel.is_some()
     }
+    fn update_matches(&mut self) {
+        self.matches = if self.archive_search.is_empty() {
+            Default::default()
+        } else {
+            self.db
+                .list(&self.archive_search)
+                .unwrap_or_default()
+                .into_iter()
+                .map(|m| m.id)
+                .collect()
+        };
+    }
     fn refresh(&mut self, q: &str) -> Result<()> {
+        self.folders = self.db.projects()?;
+        self.transcribed = self.db.transcribed_ids()?.into_iter().collect();
+        if let Some(id) = self.project_folder {
+            self.folder_items = self.db.project_items(id)?.into_iter().collect();
+        }
+        self.update_matches();
         self.library = self.db.list(q)?;
         Ok(())
     }
@@ -579,6 +701,7 @@ impl Desk {
         self.id = id;
         self.suggestions = self.db.suggestions(id)?;
         self.segments = self.db.segments(id)?;
+        self.load_review_queue();
         self.translations = self.db.translations(id)?;
         self.language_picker = None;
         self.dialogues
@@ -664,6 +787,7 @@ impl Desk {
                 if self.preview.is_some() {
                     return Ok(());
                 }
+                let quick = std::mem::take(&mut self.quick_start);
                 self.inputs = result?;
                 self.chosen
                     .retain(|src| self.inputs.iter().any(|i| &i.source == src));
@@ -687,6 +811,9 @@ impl Desk {
                             self.chosen.insert(i.source.clone());
                         }
                     }
+                }
+                if quick && self.page == Page::New && !self.chosen.is_empty() {
+                    self.start(cx)?;
                 }
             }
             Event::Translated(id, original, lang, r) => {
@@ -805,6 +932,51 @@ impl Desk {
                 let profile = self.db.add_profile(&v?)?;
                 self.db.confirm(id, &label, Some(profile))?;
                 self.detail(id)?;
+            }
+            Event::MarkAudio(request, duration, res) => {
+                if request == self.play_request && self.page == Page::Detail && self.tab == 5 {
+                    let tmp = res?;
+                    crate::playback::play(&tmp.path().join("extrait.wav"), 0, duration)?;
+                    self.mark_audio = Some(tmp);
+                }
+            }
+            Event::MediaProbe(path, result) => {
+                if self.picked_media.as_ref() == Some(&path) {
+                    match result {
+                        Ok((dir, info)) => {
+                            self.media_probe = info;
+                            self.media_preview = Some(dir);
+                        }
+                        Err(e) => {
+                            self.media_probe = json!({"error":e.to_string()});
+                        }
+                    }
+                }
+            }
+            Event::Imported(name, project, options, res) => {
+                self.cancel = None;
+                let (stage, info) = res?;
+                let id = self.db.create(&name, &project, &options.to_string())?;
+                let duration = info["duration_ms"]
+                    .as_i64()
+                    .context("Durée audio absente")?;
+                let dest = self.root.join("audio").join(id.to_string());
+                if let Err(e) = fs::rename(stage.path(), &dest) {
+                    self.db.delete_meeting(id)?;
+                    return Err(e.into());
+                }
+                self.db
+                    .track(id, &name, r#"{"kind":"Media"}"#, "piste-1.wav")?;
+                self.db.finish(id, duration, "Audio finalisé")?;
+                self.detail(id)?;
+                self.tab = 1;
+                if self.settings["whisper"].is_string() {
+                    self.process(false)?
+                } else {
+                    self.message =
+                        "Audio enregistré. Choisissez un modèle de transcription dans Paramètres."
+                            .into()
+                }
             }
             Event::Stage(update) => {
                 if let (Some(button), Some((done, total))) = (&mut self.taskbar, update.bytes) {
@@ -1033,7 +1205,21 @@ impl Desk {
             );
         }
         let title = self.title.read(cx).as_str().trim();
-        ensure!(!title.is_empty(), "Donnez un titre à l’enregistrement.");
+        let title = if title.is_empty() {
+            tr("Enregistrement")
+        } else {
+            title
+        };
+        let mut options = self.settings.clone();
+        options["record_context"] = json!(
+            self.record_context
+                .read(cx)
+                .as_str()
+                .trim()
+                .chars()
+                .take(480)
+                .collect::<String>()
+        );
         if self.settings["auto_summary"] == true {
             ensure!(
                 self.settings["gguf"].is_string() && self.settings["whisper"].is_string(),
@@ -1053,11 +1239,9 @@ impl Desk {
                     .collect::<Vec<_>>(),
             )?,
         )?;
-        self.id = self.db.create(
-            title,
-            self.project.read(cx).as_str(),
-            &self.settings.to_string(),
-        )?;
+        self.id = self
+            .db
+            .create(title, self.project.read(cx).as_str(), &options.to_string())?;
         self.capture_names = inputs.iter().map(|i| i.name.clone()).collect();
         let ctl = self.audio_control(&inputs);
         self.ctl = Some(ctl.clone());
@@ -1144,7 +1328,9 @@ impl Desk {
             summary || dir.join("finalise").is_file(),
             "Audio incomplet. Vérifiez les pistes récupérées."
         );
-        let settings = self.settings.clone();
+        let mut settings = self.settings.clone();
+        let original: Value = serde_json::from_str(&self.db.options(id)?)?;
+        settings["record_context"] = original["record_context"].as_str().unwrap_or("").into();
         let params = if summary {
             if remote {
                 ensure!(
@@ -1186,6 +1372,9 @@ impl Desk {
         Ok(())
     }
     fn go(&mut self, page: Page) -> Result<()> {
+        if self.live_active && page != Page::Settings {
+            anyhow::bail!("Arrêtez la traduction en direct.")
+        }
         self.source_menu = None;
         self.record_menu = None;
         self.language_picker = None;
@@ -1199,6 +1388,19 @@ impl Desk {
             self.settings_origin = self.page;
         } else {
             self.hits.clear();
+        }
+        self.binding = None;
+        self.project_form = None;
+        self.project_choice = false;
+        self.quick_start = false;
+        self.model_choice = false;
+        if page == Page::Modules {
+            self.compared.clear();
+            self.selected_items.clear();
+            self.project_folder = None;
+        }
+        if matches!(page, Page::Library | Page::Home) {
+            self.project_folder = None;
         }
         self.page = page;
         self.message.clear();
@@ -1354,48 +1556,50 @@ impl Desk {
         Ok(())
     }
     fn export(&self, fmt: &'static str, w: &Window, cx: &mut Context<Self>) -> Result<()> {
+        let (_, _, ext) = meeting_storage::export::FORMATS
+            .iter()
+            .find(|f| f.0 == fmt)
+            .context("Format d’export inconnu")?;
         let dlg = rfd::AsyncFileDialog::new()
             .set_parent(w)
-            .add_filter(fmt, &[fmt])
-            .set_file_name(format!("enregistrement-{}.{}", self.id, fmt));
+            .add_filter(*ext, &[*ext])
+            .set_file_name(format!("Rikai-{}.{}", self.id, ext));
         let meeting = self
             .library
             .iter()
             .find(|m| m.id == self.id)
             .context("Enregistrement introuvable")?;
-        let segments = if self.summary_only {
-            vec![]
-        } else {
-            self.segments.clone()
-        };
-        let text = match fmt {
-            "json" => serde_json::to_string_pretty(
-                &json!({"meeting":meeting,"summary":self.summary,"segments":segments}),
-            )?,
-            _ => {
-                let mut text = format!(
-                    "{}{}\n\n{}\n\n",
-                    if fmt == "md" { "# " } else { "" },
-                    meeting.title,
-                    self.summary
-                );
-                for s in &segments {
-                    text.push_str(&format!(
-                        "[{} · §{}] {} — {}\n",
-                        time(s.start_ms as u64),
-                        s.id,
-                        s.speaker,
-                        s.text
-                    ));
-                }
-                text
+        let text = if self.summary_only {
+            ensure!(!self.summary.trim().is_empty(), "Aucun résumé disponible.");
+            match fmt {
+                "md" => format!("# {}\n\n{}", meeting.title, self.summary),
+                "json" => serde_json::to_string_pretty(
+                    &json!({"meeting":meeting,"summary":self.summary}),
+                )?,
+                _ => self.summary.clone(),
             }
+        } else if fmt == "json" {
+            serde_json::to_string_pretty(
+                &json!({"meeting":meeting,"summary":self.summary,"segments":self.segments,"translations":self.translations}),
+            )?
+        } else {
+            meeting_storage::export::transcript(&meeting.title, &self.segments, fmt)?
         };
         cx.spawn(async move |desk, cx| {
             if let Some(file) = dlg.save_file().await {
                 let result = cx
                     .background_executor()
-                    .spawn(async move { fs::write(file.path(), text) })
+                    .spawn(async move {
+                        use std::io::Write;
+                        let mut tmp = tempfile::NamedTempFile::new_in(
+                            file.path()
+                                .parent()
+                                .context("Dossier de destination absent")?,
+                        )?;
+                        tmp.write_all(text.as_bytes())?;
+                        tmp.persist(file.path())?;
+                        Ok::<_, anyhow::Error>(())
+                    })
                     .await;
                 let _ = desk.update(cx, |s, cx| {
                     s.message = match result {
@@ -1440,6 +1644,7 @@ impl Drop for Desk {
 
 fn pref_key(s: &Source) -> String {
     match s {
+        Source::Media => "media".to_owned(),
         Source::Application { exe, .. } => format!("app:{}", exe.display()),
         Source::Microphone { endpoint } => format!("mic:{endpoint}"),
     }

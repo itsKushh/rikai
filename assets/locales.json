@@ -3771,5 +3771,467 @@
   "Использовать видеокарту для отрисовки окон. Изменение вступит в силу при следующем запуске Rikai.",
   "GPU でウィンドウを描画します。変更は次回の Rikai 起動時に反映されます。",
   "使用 GPU 渲染窗口。更改将在下次启动 Rikai 时生效。"
+ ],
+ "Ajouter des éléments": [
+  "Add items",
+  "Añadir elementos",
+  "Добавить элементы",
+  "項目を追加",
+  "添加项目内容"
+ ],
+ "Aucun extrait marqué.": [
+  "No clips marked.",
+  "No hay fragmentos marcados.",
+  "Нет отмеченных фрагментов.",
+  "マークしたクリップはありません。",
+  "暂无标记的片段。"
+ ],
+ "Aucun passage à vérifier.": [
+  "No passages flagged for review.",
+  "No hay pasajes pendientes de revisión.",
+  "Нет фрагментов для проверки.",
+  "要確認の箇所はありません。",
+  "没有待核对的片段。"
+ ],
+ "Audio et vidéo": [
+  "Audio and video",
+  "Audio y vídeo",
+  "Аудио и видео",
+  "音声・動画",
+  "音频和视频"
+ ],
+ "Ce raccourci est déjà utilisé.": [
+  "This shortcut is already in use.",
+  "Este atajo ya está en uso.",
+  "Это сочетание уже используется.",
+  "このショートカットは使用中です。",
+  "该快捷键已被使用。"
+ ],
+ "Cette touche est réservée.": [
+  "This key is reserved.",
+  "Esta tecla está reservada.",
+  "Эта клавиша зарезервирована.",
+  "このキーは予約済みです。",
+  "此键已被保留。"
+ ],
+ "Cette transcription ne contient aucun indice de confiance.": [
+  "No confidence scores are available for this transcript.",
+  "Esta transcripción no contiene indicadores de confianza.",
+  "Для этой расшифровки нет оценок достоверности.",
+  "この文字起こしには信頼度の情報がありません。",
+  "此转写没有置信度信息。"
+ ],
+ "Changer de fichier": [
+  "Change file",
+  "Cambiar archivo",
+  "Сменить файл",
+  "ファイルを変更",
+  "更换文件"
+ ],
+ "Choisir un fichier": [
+  "Choose file",
+  "Elegir archivo",
+  "Выбрать файл",
+  "ファイルを選択",
+  "选择文件"
+ ],
+ "Comparer les passages de deux enregistrements.": [
+  "Compare passages from two recordings.",
+  "Compara pasajes de dos grabaciones.",
+  "Сравните фрагменты двух записей.",
+  "2件の録音の発言を比較します。",
+  "比较两段录音中的发言。"
+ ],
+ "Comparer les échanges": [
+  "Compare conversations",
+  "Comparar conversaciones",
+  "Сравнить разговоры",
+  "会話を比較",
+  "比较对话"
+ ],
+ "Contexte facultatif": [
+  "Optional context",
+  "Contexto opcional",
+  "Контекст (необязательно)",
+  "補足情報（任意）",
+  "背景信息（可选）"
+ ],
+ "Copier la traduction": [
+  "Copy translation",
+  "Copiar la traducción",
+  "Скопировать перевод",
+  "翻訳をコピー",
+  "复制译文"
+ ],
+ "Créer un projet": [
+  "Create project",
+  "Crear proyecto",
+  "Создать проект",
+  "プロジェクトを作成",
+  "创建项目"
+ ],
+ "Document Markdown": [
+  "Markdown document",
+  "Documento Markdown",
+  "Документ Markdown",
+  "Markdown文書",
+  "Markdown 文档"
+ ],
+ "Durée des extraits": [
+  "Clip length",
+  "Duración de los fragmentos",
+  "Длительность фрагментов",
+  "クリップの長さ",
+  "片段时长"
+ ],
+ "Démarrer un enregistrement": [
+  "Start recording",
+  "Iniciar una grabación",
+  "Начать запись",
+  "録音を開始",
+  "开始录音"
+ ],
+ "Déposez un fichier audio ou vidéo": [
+  "Drop an audio or video file",
+  "Arrastra un archivo de audio o vídeo",
+  "Перетащите аудио- или видеофайл",
+  "音声または動画ファイルをドロップ",
+  "拖入音频或视频文件"
+ ],
+ "Enregistrements et traductions": [
+  "Recordings and translations",
+  "Grabaciones y traducciones",
+  "Записи и переводы",
+  "録音と翻訳",
+  "录音和翻译"
+ ],
+ "Enregistrer dans ce projet": [
+  "Record in this project",
+  "Grabar en este proyecto",
+  "Начать запись в проекте",
+  "このプロジェクトで録音",
+  "在此项目中录音"
+ ],
+ "Enregistrez un moment": [
+  "Start a recording",
+  "Inicia una grabación",
+  "Начните запись",
+  "録音を始めましょう",
+  "开始录音"
+ ],
+ "Export audio et vidéo vers texte": [
+  "Audio and video to text",
+  "Audio y vídeo a texto",
+  "Аудио и видео в текст",
+  "音声・動画をテキストに変換",
+  "音视频转文字"
+ ],
+ "Exporter en WAV": [
+  "Export WAV",
+  "Exportar en WAV",
+  "Экспорт в WAV",
+  "WAVで書き出す",
+  "导出为 WAV"
+ ],
+ "Exporter la traduction": [
+  "Export translation",
+  "Exportar la traducción",
+  "Экспортировать перевод",
+  "翻訳を書き出す",
+  "导出译文"
+ ],
+ "Expressions communes": [
+  "Shared phrases",
+  "Expresiones comunes",
+  "Общие выражения",
+  "共通する表現",
+  "共有表达"
+ ],
+ "Extrait ajouté au carnet.": [
+  "Clip saved.",
+  "Fragmento guardado.",
+  "Фрагмент сохранён.",
+  "クリップを保存しました。",
+  "片段已保存。"
+ ],
+ "Extraits": [
+  "Clips",
+  "Fragmentos",
+  "Фрагменты",
+  "クリップ",
+  "片段"
+ ],
+ "Fenêtre active · Échap annule la saisie.": [
+  "Active window · Press Esc to cancel.",
+  "Ventana activa · Pulsa Esc para cancelar.",
+  "Активное окно · Esc отменяет ввод.",
+  "ウィンドウがアクティブなときに有効。Escで入力を取り消します。",
+  "窗口处于活动状态时生效。按 Esc 取消。"
+ ],
+ "Fichier texte": [
+  "Text file",
+  "Archivo de texto",
+  "Текстовый файл",
+  "テキストファイル",
+  "文本文件"
+ ],
+ "Filtres de recherche": [
+  "Search filters",
+  "Filtros de búsqueda",
+  "Фильтры поиска",
+  "検索フィルター",
+  "搜索筛选条件"
+ ],
+ "Garder les dernières secondes": [
+  "Save the last few seconds",
+  "Guardar los últimos segundos",
+  "Сохранить последние секунды",
+  "直前の音声を保存",
+  "保存最近几秒"
+ ],
+ "Lecture des informations…": [
+  "Reading file details…",
+  "Leyendo los datos del archivo…",
+  "Чтение сведений о файле…",
+  "ファイル情報を読み込み中…",
+  "正在读取文件信息…"
+ ],
+ "Marquer comme vérifié": [
+  "Mark as reviewed",
+  "Marcar como revisado",
+  "Отметить как проверенное",
+  "確認済みにする",
+  "标为已核对"
+ ],
+ "Modifier la sélection": [
+  "Edit selection",
+  "Cambiar selección",
+  "Изменить выбор",
+  "選択を変更",
+  "更改选择"
+ ],
+ "Modules": [
+  "Modules",
+  "Módulos",
+  "Модули",
+  "モジュール",
+  "模块"
+ ],
+ "Nom du projet": [
+  "Project name",
+  "Nombre del proyecto",
+  "Название проекта",
+  "プロジェクト名",
+  "项目名称"
+ ],
+ "Noms, vocabulaire et contexte de l’échange": [
+  "Names, vocabulary and conversation context",
+  "Nombres, vocabulario y contexto de la conversación",
+  "Имена, термины и контекст разговора",
+  "名前、用語、会話の背景",
+  "姓名、术语和对话背景"
+ ],
+ "Négation incertaine": [
+  "Uncertain negation",
+  "Negación dudosa",
+  "Отрицание под вопросом",
+  "否定表現が不明瞭",
+  "否定表述存疑"
+ ],
+ "Ou déposez un fichier audio ou vidéo ici": [
+  "Or drop an audio or video file here",
+  "O arrastra aquí un archivo de audio o vídeo",
+  "Или перетащите сюда аудио- или видеофайл",
+  "音声または動画ファイルをここにドロップ",
+  "或将音频或视频文件拖到此处"
+ ],
+ "Passages précédents": [
+  "Previous passages",
+  "Pasajes anteriores",
+  "Предыдущие фрагменты",
+  "前の発言",
+  "上一组发言"
+ ],
+ "Passages suivants": [
+  "Next passages",
+  "Pasajes siguientes",
+  "Следующие фрагменты",
+  "次の発言",
+  "下一组发言"
+ ],
+ "Passages à vérifier": [
+  "Flagged passages",
+  "Pasajes por revisar",
+  "Фрагменты для проверки",
+  "要確認の箇所",
+  "待核对片段"
+ ],
+ "Quantité incertaine": [
+  "Uncertain quantity",
+  "Cantidad dudosa",
+  "Количество под вопросом",
+  "数量が不明瞭",
+  "数量存疑"
+ ],
+ "Que faire avec ce fichier ?": [
+  "What would you like to do with this file?",
+  "¿Qué quieres hacer con este archivo?",
+  "Что сделать с этим файлом?",
+  "このファイルで何をしますか？",
+  "要如何处理此文件？"
+ ],
+ "Raccourcis": [
+  "Shortcuts",
+  "Atajos",
+  "Сочетания клавиш",
+  "ショートカット",
+  "快捷键"
+ ],
+ "Sans projet": [
+  "No project",
+  "Sin proyecto",
+  "Без проекта",
+  "プロジェクトなし",
+  "无项目"
+ ],
+ "Secondes à conserver": [
+  "Seconds to keep",
+  "Segundos que se guardan",
+  "Сколько секунд сохранить",
+  "保存する秒数",
+  "保留秒数"
+ ],
+ "Segments structurés": [
+  "Structured segments",
+  "Segmentos estructurados",
+  "Структурированные сегменты",
+  "構造化セグメント",
+  "结构化片段"
+ ],
+ "Sous-titres": [
+  "Subtitles",
+  "Subtítulos",
+  "Субтитры",
+  "字幕",
+  "字幕"
+ ],
+ "Sous-titres SRT": [
+  "SRT subtitles",
+  "Subtítulos SRT",
+  "Субтитры SRT",
+  "SRT字幕",
+  "SRT 字幕"
+ ],
+ "Sous-titres WebVTT": [
+  "WebVTT subtitles",
+  "Subtítulos WebVTT",
+  "Субтитры WebVTT",
+  "WebVTT字幕",
+  "WebVTT 字幕"
+ ],
+ "Suivi entre échanges": [
+  "Compare conversations",
+  "Comparar conversaciones",
+  "Сравнение разговоров",
+  "会話を比較",
+  "对话对比"
+ ],
+ "Texte avec intervenants": [
+  "Text with speakers",
+  "Texto con hablantes",
+  "Текст с именами говорящих",
+  "話者付きテキスト",
+  "带发言人的文本"
+ ],
+ "Texte horodaté": [
+  "Timestamped text",
+  "Texto con marcas de tiempo",
+  "Текст с временными метками",
+  "タイムスタンプ付きテキスト",
+  "带时间戳的文本"
+ ],
+ "Texte simple": [
+  "Plain text",
+  "Texto sin formato",
+  "Обычный текст",
+  "プレーンテキスト",
+  "纯文本"
+ ],
+ "Tous les projets": [
+  "All projects",
+  "Todos los proyectos",
+  "Все проекты",
+  "すべてのプロジェクト",
+  "所有项目"
+ ],
+ "Traduction copiée.": [
+  "Translation copied.",
+  "Traducción copiada.",
+  "Перевод скопирован.",
+  "翻訳をコピーしました。",
+  "已复制译文。"
+ ],
+ "Traduire les paroles au fil de l’échange.": [
+  "Translate speech as the conversation unfolds.",
+  "Traduce la conversación a medida que avanza.",
+  "Переводите речь по ходу разговора.",
+  "会話をその場で翻訳します。",
+  "随对话进行实时翻译。"
+ ],
+ "Transcription incertaine": [
+  "Uncertain wording",
+  "Transcripción dudosa",
+  "Неточная расшифровка",
+  "聞き取りが不確か",
+  "转写存疑"
+ ],
+ "Transcrire le fichier": [
+  "Transcribe file",
+  "Transcribir archivo",
+  "Расшифровать файл",
+  "ファイルを書き起こす",
+  "转录文件"
+ ],
+ "Transcrire un média et exporter le texte ou les sous-titres.": [
+  "Transcribe a file and export its text or subtitles.",
+  "Transcribe un archivo y exporta el texto o los subtítulos.",
+  "Расшифруйте файл и экспортируйте текст или субтитры.",
+  "ファイルを書き起こし、テキストや字幕を書き出します。",
+  "转录文件并导出文本或字幕。"
+ ],
+ "Un entretien, un appel ou une discussion à retrouver.": [
+  "Keep an interview, a call or a conversation for later.",
+  "Guarda una entrevista, una llamada o una conversación.",
+  "Сохраните интервью, звонок или беседу.",
+  "インタビューや通話、会話を録音して振り返れます。",
+  "记录访谈、通话或交谈，方便日后回顾。"
+ ],
+ "À vérifier": [
+  "To review",
+  "Por revisar",
+  "На проверку",
+  "要確認",
+  "待核对"
+ ],
+ "Échec de l’export": [
+  "Export failed",
+  "Error al exportar",
+  "Ошибка экспорта",
+  "書き出しに失敗しました",
+  "导出失败"
+ ],
+ "Écouter avec le contexte": [
+  "Play with context",
+  "Escuchar con contexto",
+  "Прослушать с контекстом",
+  "前後を含めて再生",
+  "连同上下文播放"
+ ],
+ "Écouter l’extrait": [
+  "Play clip",
+  "Reproducir fragmento",
+  "Прослушать фрагмент",
+  "クリップを再生",
+  "播放片段"
  ]
 }

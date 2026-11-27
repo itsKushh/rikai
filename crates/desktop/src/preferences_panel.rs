@@ -1,122 +1,56 @@
 use super::scroller::ScrollArea;
 use super::*;
 
-#[derive(Default)]
-pub(in crate::ui) struct Sidebar {
-    selection: usize,
-    origins: Vec<f32>,
-    since: Option<Instant>,
-    direction: f32,
-}
-impl Sidebar {
-    fn shift(&self, i: usize, current: usize, t: f32) -> f32 {
-        if self.selection != current || self.since.is_none() || t >= 1. {
-            return if current == i { 0. } else { 1. };
-        }
-        let from = self.origins[i];
-        if i == current {
-            let enter = if from.abs() < 1. {
-                t
-            } else {
-                ((t - 0.42) / 0.58).clamp(0., 1.)
-            };
-            from * (1. - glide(enter))
-        } else if from.abs() >= 1. {
-            from
+pub(super) fn sidebar<V: 'static>(
+    names: &[&'static str],
+    current: usize,
+    w: &Window,
+    cx: &Context<V>,
+    select: fn(&mut V, usize),
+) -> Div {
+    let p = *cx.global::<Palette>();
+    let mut side = col()
+        .gap(px(3.))
+        .w(if w.viewport_size().width < px(620.) {
+            px(114.)
         } else {
-            from + (self.direction - from) * glide((t / 0.42).min(1.))
-        }
-    }
-    fn phase(&self) -> f32 {
-        self.since
-            .map_or(1., |s| (s.elapsed().as_secs_f32() / 0.31).min(1.))
-    }
-    pub(super) fn select(&mut self, from: usize, to: usize, count: usize) {
-        if from == to {
-            return;
-        }
-        let t = self.phase();
-        let mut origins: Vec<_> = (0..count).map(|i| self.shift(i, from, t)).collect();
-        self.direction = if to > from { 1. } else { -1. };
-        if origins[to].abs() >= 1. {
-            origins[to] = -self.direction;
-        }
-        self.origins = origins;
-        self.selection = to;
-        self.since = Some(Instant::now());
-    }
-    pub(super) fn render<V: 'static>(
-        &self,
-        names: &[&'static str],
-        current: usize,
-        w: &Window,
-        cx: &Context<V>,
-        select: fn(&mut V, usize),
-    ) -> Div {
-        let p = *cx.global::<Palette>();
-        let t = if cx.reduce_motion() { 1. } else { self.phase() };
-        if t < 1. {
-            w.request_animation_frame();
-        }
-        let mut side = col()
-            .gap(px(3.))
-            .w(if w.viewport_size().width < px(620.) {
-                px(114.)
-            } else {
-                px(166.)
-            })
+            px(166.)
+        })
+        .flex_shrink_0()
+        .border_r_1()
+        .border_color(rgb(p.edge))
+        .p(px(8.));
+    for (i, &name) in names.iter().enumerate() {
+        let selected = current == i;
+        side = side.child(
+            control(
+                name,
+                if selected {
+                    Button::Tab
+                } else {
+                    Button::IdleTab
+                },
+                None,
+                false,
+                cx,
+            )
+            .id(("settings-category", i))
+            .when(selected, |d| d.bg(rgb(p.selected)))
             .flex_shrink_0()
-            .border_r_1()
-            .border_color(rgb(p.edge))
-            .p(px(8.));
-        for (i, &name) in names.iter().enumerate() {
-            let shift = self.shift(i, current, t);
-            side = side.child(
-                div()
-                    .relative()
-                    .overflow_hidden()
-                    .rounded(px(11.))
-                    .flex_shrink_0()
-                    .when(shift.abs() < 1., |d| {
-                        d.child(
-                            div()
-                                .absolute()
-                                .top_0()
-                                .bottom_0()
-                                .left(relative(shift))
-                                .w_full()
-                                .rounded(px(11.))
-                                .bg(rgb(p.selected)),
-                        )
-                    })
-                    .child(
-                        control(
-                            name,
-                            if i == current {
-                                Button::Tab
-                            } else {
-                                Button::IdleTab
-                            },
-                            None,
-                            false,
-                            cx,
-                        )
-                        .id(("settings-category", i))
-                        .w_full()
-                        .justify_start()
-                        .px_2()
-                        .py(px(6.))
-                        .min_h(px(32.))
-                        .on_click(cx.listener(move |s, _, _, cx| {
-                            select(s, i);
-                            cx.notify();
-                        })),
-                    ),
-            );
-        }
-        side
+            .w_full()
+            .justify_start()
+            .px_2()
+            .py(px(6.))
+            .min_h(px(32.))
+            .on_click(cx.listener(move |s, _, _, cx| {
+                select(s, i);
+                cx.notify();
+            })),
+        );
     }
+    side
 }
+
 pub(super) fn visibility(open: bool, w: &mut Window, cx: &mut App) -> f32 {
     let goal = if open { 1. } else { 0. };
     let transition = w.use_keyed_transition("drawer-visibility", cx, motion(290), |_, _| 0_f32);

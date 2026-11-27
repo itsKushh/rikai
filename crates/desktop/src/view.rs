@@ -5,12 +5,14 @@ use gpui::Div;
 pub(in crate::ui) mod preferences_panel;
 #[path = "scroller.rs"]
 pub(in crate::ui) mod scroller;
-use preferences_panel::{Sidebar, SourceMenu};
+use preferences_panel::SourceMenu;
 use scroller::ScrollArea;
 #[path = "budgets.rs"]
 pub(super) mod budgets;
 #[path = "dialogue.rs"]
 mod dialogue;
+#[path = "modules.rs"]
+mod modules;
 #[path = "record.rs"]
 mod record;
 
@@ -312,7 +314,15 @@ impl Desk {
                     .child(tr("Aucun enregistrement trouvé.")),
             );
         }
-        for m in self.library.iter().take(limit) {
+        for m in self
+            .library
+            .iter()
+            .filter(|m| self.page != Page::Project || self.folder_items.contains(&m.id))
+            .filter(|m| {
+                !matches!(self.page, Page::Project | Page::Library) || self.search_matches(m.id)
+            })
+            .take(limit)
+        {
             let id = m.id;
             let mut caption = m.date.clone();
             if !m.project.is_empty() {
@@ -368,13 +378,14 @@ impl Desk {
                     "title",
                     "Titre de l’enregistrement",
                 )))
-                .child(col().flex_1().child(label("Projet")).child(input(
-                    cx,
-                    &self.project,
-                    "project",
-                    "Facultatif",
-                ))),
+                .child(self.project_picker(cx).flex_1()),
         );
+        body = body.child(label("Contexte facultatif")).child(input(
+            cx,
+            &self.record_context,
+            "record-context",
+            "Noms, vocabulaire et contexte de l’échange",
+        ));
         for kind in [SourceMenu::Apps, SourceMenu::Mic] {
             body = body.child(preferences_panel::source_field(
                 kind,
@@ -505,35 +516,36 @@ impl Desk {
             usize::from(self.tab),
             &self.tab_geometry[2],
         )
-        .children(
-            ["Résumé", "Transcription", "Intervenants"]
-                .into_iter()
-                .enumerate()
-                .map(|(i, t)| {
-                    button(
-                        t,
-                        if self.tab == i as u8 {
-                            Button::Tab
-                        } else {
-                            Button::IdleTab
-                        },
-                        None,
-                        false,
-                        cx,
-                        move |s, _| {
-                            s.stop_segment();
-                            s.record_menu = None;
-                            s.metadata = false;
-                            s.language_picker = None;
-                            s.scroll_grab.set(None);
-                            s.tab = i as u8;
-                            s.edit_id = None;
-                            Ok(())
-                        },
-                    )
-                    .flex_1()
-                }),
-        )
+        .children(RECORD_TABS.into_iter().enumerate().map(|(i, t)| {
+            button(
+                t,
+                if self.tab == i as u8 {
+                    Button::Tab
+                } else {
+                    Button::IdleTab
+                },
+                None,
+                false,
+                cx,
+                move |s, _| {
+                    s.stop_segment();
+                    s.record_menu = None;
+                    s.metadata = false;
+                    s.language_picker = None;
+                    s.scroll_grab.set(None);
+                    for wheel in &s.wheel {
+                        wheel.stop();
+                    }
+                    if s.tab == 4 || i == 4 {
+                        s.dialogues.reset(s.segments.len());
+                    }
+                    s.tab = i as u8;
+                    s.edit_id = None;
+                    Ok(())
+                },
+            )
+            .flex_1()
+        }))
     }
 
     fn detail_view(&self, cx: &Context<Self>) -> Div {
@@ -570,6 +582,9 @@ impl Desk {
         match self.tab {
             0 => return self.summary_reader(cx),
             1 => return self.transcript_reader(cx),
+            4 => return self.subtitle_rows(cx),
+            5 => return self.bookmarks_view(cx),
+            REVIEW_TAB => return self.review_reader(cx),
             _ => {
                 let mut people = std::collections::BTreeMap::new();
                 for seg in &self.segments {
@@ -816,6 +831,10 @@ impl Desk {
                 .child(self.preference(Preference::Theme, cx))
                 .child(self.graphics_toggle(cx)),
             3 => self.compute_settings(cx),
+            6..=8 if self.settings_origin == Page::Live => col()
+                .when(self.section == 7, |d| d.child(self.project_picker(cx)))
+                .children(self.live_view.clone()),
+            4 => self.shortcuts_view(cx),
             _ => self.update_settings(cx),
         }
     }
@@ -1208,6 +1227,12 @@ impl Desk {
                 info = info.child(crate::i18n::message(&notice));
             }
             if !self.stopping {
+                info = info.child(action(
+                    "Garder les dernières secondes",
+                    false,
+                    cx,
+                    |s, _| s.mark_excerpt(),
+                ));
                 info = info.child(action("Annuler l’enregistrement", false, cx, |s, _| {
                     s.ask(
                         "Abandonner l’enregistrement ?",
@@ -1323,37 +1348,12 @@ impl Desk {
             match page {
                 Page::Home => ("Espace de travail".into(), self.preview(cx)),
                 Page::New => ("Enregistrer".into(), self.setup_view(cx)),
-                Page::Library => {
-                    let mut d = col()
-                        .child(input(cx,
-                            &self.search,
-                            "search",
-                            "Titre, paroles ou intervenant",
-                        ))
-                        .child(input(cx, &self.filter, "filter", "Projet ou tag"))
-                        .child(input(cx, &self.day, "day", "Date · AAAA-MM ou AAAA-MM-JJ"))
-                        .child(action("Rechercher", false, cx, |s, cx| s.search_db(cx)));
-                    for h in &self.hits {
-                        let (id, seg) = (h.meeting, h.segment);
-                        d = d.child(action(
-                            format!("{} · §{} · {}", time(h.start_ms as u64), seg, h.text),
-                            false,
-                            cx,
-                            move |s, _| {
-                                s.detail(id)?;
-                                s.tab = 1;
-                                if let Some(index) = s.segments.iter().position(|p| p.id == seg) {
-                                    s.dialogues.scroll_to_reveal_item(index);
-                                }
-                                Ok(())
-                            },
-                        ));
-                    }
-                    (
-                        "Mes enregistrements".into(),
-                        d.child(self.meetings_view(cx, usize::MAX, true)),
-                    )
-                }
+                Page::Modules=>("Modules".into(),self.module_cards(cx)),
+                Page::Media=>("Export audio et vidéo vers texte".into(),self.media_config(cx)),
+                Page::Project=>(self.folder_title(),self.project_page(cx)),
+                Page::Follow=>("Suivi entre échanges".into(),self.follow_page(cx)),
+                Page::Live=>("Traduction en direct".into(),col()),
+                Page::Library => ("Bibliothèque".into(),self.archive_page(cx)),
                 Page::Detail => (
                     self.library
                         .iter()

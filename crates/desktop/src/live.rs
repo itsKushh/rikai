@@ -1,4 +1,5 @@
 use super::*;
+use crate::live_transcript::{FinalTranslations, PhraseKey};
 use unicode_segmentation::UnicodeSegmentation;
 
 enum LiveEvent {
@@ -9,7 +10,7 @@ enum LiveEvent {
 }
 
 struct Phrase {
-    key: (u64, usize, u64),
+    key: PhraseKey,
     confirmed: bool,
     animate_translation: bool,
     speaker: String,
@@ -20,7 +21,7 @@ struct Phrase {
 }
 
 pub(in crate::ui) struct Live {
-    owner: WindowHandle<Desk>,
+    owner: WeakEntity<Desk>,
     inputs: Vec<Input>,
     selected: HashSet<Source>,
     target: String,
@@ -29,10 +30,9 @@ pub(in crate::ui) struct Live {
     search: Field,
     picker: bool,
     settings_open: bool,
-    settings_focus: FocusHandle,
+
     section: usize,
-    sidebar: Sidebar,
-    settings_scroll: ScrollHandle,
+
     source_menu: Option<SourceMenu>,
     scanning: bool,
     status: String,
@@ -41,9 +41,15 @@ pub(in crate::ui) struct Live {
     latency: Option<Duration>,
     cancel: Option<Arc<AtomicBool>>,
     stopping: bool,
-    closing: bool,
+    archive_pending: bool,
+    project: String,
     names: Vec<String>,
     phrases: std::collections::VecDeque<Phrase>,
+    // Caption animation state is bounded; final text stays available for the whole session.
+    final_text: FinalTranslations,
+    captured_target: String,
+    export_message: String,
+    export_open: bool,
     scroll: ScrollHandle,
     tx: mpsc::Sender<LiveEvent>,
     rx: mpsc::Receiver<LiveEvent>,
@@ -75,55 +81,34 @@ fn speaker_label(source: Option<&String>, v: &Value) -> String {
 
 impl Desk {
     pub(super) fn open_live(&mut self, w: &Window, cx: &mut Context<Self>) -> Result<()> {
-        if self
-            .live_window
-            .is_some_and(|handle| handle.update(cx, |_, w, _| w.activate()).is_ok())
-        {
-            return Ok(());
+        let _ = w;
+        if self.live_view.is_none() {
+            let owner = cx.weak_entity();
+            self.live_view = Some(cx.new(|cx| {
+                Live::new(
+                    owner,
+                    self.chosen.clone(),
+                    self.settings["diarization"] == true,
+                    self.settings["recognize"] == true,
+                    cx,
+                )
+            }));
         }
-        let owner = w
-            .window_handle()
-            .downcast::<Desk>()
-            .context("Fenêtre Rikai introuvable")?;
-        let selected = self.chosen.clone();
-        let identify = self.settings["diarization"] == true;
-        let recognize = self.settings["recognize"] == true;
-        let opt = window_frame::options(
-            Live::window_title(),
-            size(px(800.), px(580.)),
-            size(px(480.), px(340.)),
-            cx,
-        );
-        self.live_window = Some(cx.open_window(opt, |w, cx| {
-            let view = cx.new(|cx| Live::new(owner, selected, identify, recognize, cx));
-            let weak = view.downgrade();
-            w.on_window_should_close(cx, move |_, cx| {
-                weak.update(cx, Live::can_close).unwrap_or(true)
-            });
-            view
-        })?);
-        Ok(())
+        self.go(Page::Live)
     }
 }
-
 impl Live {
-    pub(super) fn window_title() -> String {
-        format!("Rikai · {}", tr("Traduction"))
+    fn show_preferences(&self, cx: &mut Context<Self>) {
+        let section = self.section;
+        let _ = self.owner.update(cx, |s, cx| {
+            s.settings_origin = Page::Live;
+            s.page = Page::Settings;
+            s.section = 6 + section;
+            cx.notify();
+        });
     }
-
-    fn can_close(&mut self, cx: &mut Context<Self>) -> bool {
-        let Some(cancel) = self.cancel.clone() else {
-            return true;
-        };
-        self.closing = true;
-        self.stop();
-        cancel.store(true, Ordering::Release);
-        cx.notify();
-        false
-    }
-
     fn new(
-        owner: WindowHandle<Desk>,
+        owner: WeakEntity<Desk>,
         selected: HashSet<Source>,
         identify: bool,
         recognize: bool,
@@ -142,10 +127,9 @@ impl Live {
             search,
             picker: false,
             settings_open: false,
-            settings_focus: cx.focus_handle(),
-            section: 0,
-            sidebar: Default::default(),
-            settings_scroll: Default::default(),
+
+            section: 1,
+
             source_menu: None,
             scanning: false,
             status: String::new(),
@@ -154,9 +138,14 @@ impl Live {
             latency: None,
             cancel: None,
             stopping: false,
-            closing: false,
+            archive_pending: false,
+            project: String::new(),
             names: vec![],
             phrases: Default::default(),
+            final_text: Default::default(),
+            captured_target: String::new(),
+            export_message: String::new(),
+            export_open: false,
             scroll: Default::default(),
             tx,
             rx,
@@ -170,7 +159,7 @@ impl Live {
                     .await;
                 let Ok(active) = this.update(cx, |s, cx| {
                     while let Ok(e) = s.rx.try_recv() {
-                        s.apply(e);
+                        s.apply(e, cx);
                         cx.notify();
                     }
                     s.cancel.is_some()
@@ -193,7 +182,7 @@ impl Live {
             let _ = tx.send(LiveEvent::Sources(discover()));
         });
     }
-    fn start(&mut self, cx: &App) -> Result<()> {
+    fn start(&mut self, cx: &mut Context<Self>) -> Result<()> {
         let inputs: Vec<_> = self
             .inputs
             .iter()
@@ -201,7 +190,9 @@ impl Live {
             .cloned()
             .collect();
         ensure!(!inputs.is_empty(), "Sélectionnez au moins une source");
-        let owner = self.owner.read(cx)?;
+        let handle = self.owner.upgrade().context("Fenêtre Rikai introuvable")?;
+        let owner = handle.read(cx);
+        self.project = owner.project.read(cx).as_str().to_string();
         let mut settings = owner.settings.clone();
         settings["diarization"] = json!(self.identify);
         settings["recognize"] = json!(self.identify && self.recognize);
@@ -246,13 +237,14 @@ impl Live {
         let params = json!({"directory":dir,"settings":settings,"tracks":inputs.len(),"target":self.target,"profiles":profiles});
         let cancel = Arc::new(AtomicBool::new(false));
         self.cancel = Some(cancel.clone());
+        let _ = self.owner.update(cx, |s, cx| {
+            s.live_active = true;
+            cx.notify();
+        });
         self.control = None;
         self.stopping = false;
         self.picker = false;
         self.settings_open = false;
-        self.phrases.clear();
-        self.latency = None;
-        self.capture_start = None;
         self.names = inputs.iter().map(|i| i.name.clone()).collect();
         self.status = "Chargement du modèle de transcription".into();
         let tx = self.tx.clone();
@@ -309,7 +301,7 @@ impl Live {
         }
         self.status = "Finalisation".into();
     }
-    fn apply(&mut self, e: LiveEvent) {
+    fn apply(&mut self, e: LiveEvent, cx: &mut Context<Self>) {
         match e {
             LiveEvent::Sources(r) => {
                 self.scanning = false;
@@ -323,6 +315,13 @@ impl Live {
                 }
             }
             LiveEvent::Capture(c, started) => {
+                self.phrases.clear();
+                self.final_text = FinalTranslations::default();
+                self.archive_pending = true;
+                self.captured_target.clone_from(&self.target);
+                self.export_message.clear();
+                self.export_open = false;
+                self.latency = None;
                 self.capture_start = Some(started);
                 if self.stopping {
                     c.stop();
@@ -330,6 +329,7 @@ impl Live {
                 self.control = Some(c);
             }
             LiveEvent::Finished(r) => {
+                self.phrases.retain(|p| p.confirmed);
                 self.control = None;
                 self.status = match r {
                     Ok(()) => "Terminé".into(),
@@ -349,6 +349,29 @@ impl Live {
                 };
                 self.cancel = None;
                 self.stopping = false;
+                let result = self.owner.update(cx, |desk, cx| -> Result<()> {
+                    desk.live_active = false;
+                    cx.notify();
+                    if self.archive_pending && !self.final_text.is_empty() {
+                        desk.db.archive_translation(
+                            &format!(
+                                "{} · {}",
+                                tr("Traduction"),
+                                crate::i18n::language_name(&self.captured_target)
+                            ),
+                            &self.project,
+                            &self.captured_target,
+                            &self.final_text.passages(audio_capture::RATE),
+                        )?;
+                        desk.refresh("")?;
+                    }
+                    Ok(())
+                });
+                self.archive_pending = false;
+                if let Err(e) = result.and_then(|r| r) {
+                    self.status = e.to_string();
+                    self.export_message = e.to_string();
+                }
             }
             LiveEvent::Progress(update) => {
                 if !self.stopping {
@@ -360,12 +383,17 @@ impl Live {
                         edit["start"].as_u64(),
                         edit["track"].as_u64(),
                         edit["part"].as_u64(),
-                    ) && let Some(row) = self
-                        .phrases
-                        .iter_mut()
-                        .find(|p| p.confirmed && p.key == (start, track as usize, part))
-                    {
-                        row.speaker = speaker_label(self.names.get(track as usize), edit);
+                    ) {
+                        let key = (start, track as usize, part);
+                        let speaker = speaker_label(self.names.get(track as usize), edit);
+                        self.final_text.relabel(key, &speaker);
+                        if let Some(row) = self
+                            .phrases
+                            .iter_mut()
+                            .find(|p| p.confirmed && p.key == key)
+                        {
+                            row.speaker = speaker;
+                        }
                     }
                     return;
                 }
@@ -376,6 +404,8 @@ impl Live {
                 };
                 let track = track as usize;
                 let key = (start, track, v["part"].as_u64().unwrap_or(0));
+                let speaker = speaker_label(self.names.get(track), &v);
+                self.final_text.observe(key, text, &speaker, &v);
                 let index = self.phrases.iter().rposition(|p| p.key == key);
                 if text.is_empty() {
                     if let Some(i) = index {
@@ -402,7 +432,7 @@ impl Live {
                     pos
                 });
                 let phrase = &mut self.phrases[i];
-                phrase.speaker = speaker_label(self.names.get(track), &v);
+                phrase.speaker = speaker;
                 phrase.confirmed = v["final"] == true;
                 if phrase.confirmed
                     && let (Some(start), Some(frame)) =
@@ -526,13 +556,115 @@ fn phrase_text(phrase: &Phrase, p: Palette, w: &Window, cx: &App) -> AnyElement 
 }
 
 impl Live {
-    fn dismiss_preferences(&mut self) {
-        self.settings_open = false;
-        self.source_menu = None;
-        self.picker = false;
+    fn export_translation(&mut self, fmt: &str, ext: &str, w: &Window, cx: &mut Context<Self>) {
+        self.export_open = false;
+        let segments = self
+            .final_text
+            .passages(audio_capture::RATE)
+            .into_iter()
+            .map(|(start_ms, end_ms, speaker, _, text)| Segment {
+                id: 0,
+                start_ms,
+                end_ms,
+                speaker,
+                text,
+                track: String::new(),
+                acoustic_label: String::new(),
+                reviewed: false,
+                echo_candidate: None,
+                words: vec![],
+                confidence: None,
+            })
+            .collect::<Vec<_>>();
+        let Ok(text) =
+            meeting_storage::export::transcript(tr("Traduction en direct"), &segments, fmt)
+        else {
+            return;
+        };
+
+        let session = self.capture_start;
+        let dialog = rfd::AsyncFileDialog::new()
+            .set_parent(w)
+            .add_filter(ext, &[ext])
+            .set_file_name(format!("Rikai-{}.{ext}", self.captured_target));
+        cx.spawn(async move |this, cx| {
+            let Some(file) = dialog.save_file().await else {
+                return;
+            };
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    use std::io::Write;
+                    let dest = file.path();
+                    let mut tmp = tempfile::NamedTempFile::new_in(
+                        dest.parent().context("Dossier de destination absent")?,
+                    )?;
+                    tmp.write_all(text.as_bytes())?;
+                    tmp.persist(dest)?;
+                    Ok::<_, anyhow::Error>(())
+                })
+                .await;
+            let _ = this.update(cx, |s, cx| {
+                if s.capture_start == session {
+                    s.export_message = match result {
+                        Ok(()) => tr("Export enregistré.").to_owned(),
+                        Err(e) => format!("{} · {e}", tr("Échec de l’export")),
+                    };
+                    cx.notify();
+                }
+            });
+        })
+        .detach();
     }
-    fn preferences(&self, visibility: f32, w: &Window, cx: &Context<Self>) -> Div {
-        const TABS: &[&str] = &["Audio", "Traduction", "Voix"];
+
+    fn export_bar(&self, cx: &Context<Self>) -> Div {
+        let p = *cx.global::<Palette>();
+        let status = if self.export_message.is_empty() {
+            crate::i18n::language_name(&self.captured_target)
+        } else {
+            &self.export_message
+        };
+        div()
+            .flex()
+            .items_center()
+            .flex_shrink_0()
+            .gap(px(6.))
+            .pt(px(8.))
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .text_size(px(12.))
+                    .text_color(rgb(p.muted))
+                    .child(status.to_owned()),
+            )
+            .child(
+                control("Copier la traduction", Button::Quiet, Some(COPY), true, cx).on_click(
+                    cx.listener(|s, _, _, cx| {
+                        cx.write_to_clipboard(ClipboardItem::new_string(
+                            s.final_text.text(audio_capture::RATE),
+                        ));
+                        s.export_message = tr("Traduction copiée.").to_owned();
+                        cx.notify();
+                    }),
+                ),
+            )
+            .child(
+                control(
+                    "Exporter la traduction",
+                    Button::Secondary,
+                    Some(SAVE),
+                    false,
+                    cx,
+                )
+                .on_click(cx.listener(|s, _, _, cx| {
+                    s.export_open = !s.export_open;
+                    cx.notify()
+                })),
+            )
+    }
+
+    fn direct_panel(&self, cx: &Context<Self>) -> Div {
         let p = *cx.global::<Palette>();
         let busy = self.cancel.is_some();
         let action = |title: &str, style, icon| control(title, style, icon, false, cx);
@@ -658,7 +790,8 @@ impl Live {
                 );
             }
         }
-        if !busy && let Ok(owner) = self.owner.read(cx) {
+        if !busy && let Some(handle) = self.owner.upgrade() {
+            let owner = handle.read(cx);
             let missing_whisper = owner.settings["whisper"]
                 .as_str()
                 .is_none_or(|v| !std::path::Path::new(v).join("model.bin").is_file());
@@ -673,8 +806,7 @@ impl Live {
                 panel = panel.child(
                     action("Configurer les modèles", Button::Secondary, None).on_click(
                         cx.listener(move |s, _, _, cx| {
-                            let _ = s.owner.update(cx, |desk, w, cx| {
-                                w.activate();
+                            let _ = s.owner.update(cx, |desk, cx| {
                                 if !desk.busy() && !desk.release_was_open {
                                     if desk.page != Page::Settings {
                                         let _ = desk.go(Page::Settings);
@@ -711,51 +843,7 @@ impl Live {
                 l.as_millis()
             ));
         }
-        let sidebar = self.sidebar.render(TABS, self.section, w, cx, |s, i| {
-            s.sidebar.select(s.section, i, TABS.len());
-            s.section = i;
-            s.picker = false;
-            s.source_menu = None;
-            s.settings_scroll.set_offset(Point::default());
-        });
-        let close = control("Fermer le panneau", Button::Quiet, Some(CLOSE), true, cx)
-            .size(px(28.))
-            .p_0()
-            .flex_shrink_0()
-            .on_click(cx.listener(|s, _, _, cx| {
-                s.dismiss_preferences();
-                cx.notify();
-            }));
-        let sheet = preferences_panel::sheet(
-            tr("Paramètres").into(),
-            Some(close),
-            Some(sidebar),
-            panel,
-            self.settings_scroll.clone(),
-            p,
-        )
-        .track_focus(&self.settings_focus)
-        .on_key_down(cx.listener(|s, e: &KeyDownEvent, _, cx| {
-            if e.keystroke.key == "escape" {
-                if s.picker {
-                    s.picker = false;
-                } else if s.source_menu.take().is_none() {
-                    s.dismiss_preferences();
-                }
-                cx.stop_propagation();
-                cx.notify();
-            }
-        }));
-        preferences_panel::overlay(
-            visibility,
-            sheet,
-            div()
-                .id("drawer-backdrop")
-                .on_click(cx.listener(|s, _, _, cx| {
-                    s.dismiss_preferences();
-                    cx.notify();
-                })),
-        )
+        panel
     }
 }
 
@@ -763,10 +851,13 @@ impl Render for Live {
     fn render(&mut self, w: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = *cx.global::<Palette>();
         let busy = self.cancel.is_some();
-        if self.closing && !busy {
-            w.defer(cx, |w, _| w.remove_window());
+        if let Some(owner) = self.owner.upgrade() {
+            let owner = owner.read(cx);
+            if owner.page == Page::Settings && owner.section >= 6 {
+                self.section = owner.section - 6;
+                return self.direct_panel(cx);
+            }
         }
-        let showing = preferences_panel::visibility(self.settings_open, w, cx);
         let action = |title: &str, style, icon| control(title, style, icon, false, cx);
         let primary = if busy && self.stopping {
             disabled_button("Finalisation", p)
@@ -777,24 +868,24 @@ impl Render for Live {
             }))
         } else {
             action("Enregistrer", Button::Primary, Some(WAVE)).on_click(cx.listener(
-                |s, _, w, cx| {
+                |s, _, _, cx| {
                     if !s.inputs.iter().any(|i| s.selected.contains(&i.source)) {
                         s.section = 0;
                         s.settings_open = true;
-                        s.settings_focus.focus(w, cx);
+                        s.show_preferences(cx);
                     } else if let Err(e) = s.start(cx) {
                         s.status = e.to_string();
                         s.section = if s.identify
                             && s.owner
-                                .read(cx)
-                                .is_ok_and(|owner| !voice_models_ready(&owner.settings))
+                                .upgrade()
+                                .is_some_and(|owner| !voice_models_ready(&owner.read(cx).settings))
                         {
                             2
                         } else {
                             1
                         };
                         s.settings_open = true;
-                        s.settings_focus.focus(w, cx);
+                        s.show_preferences(cx);
                     }
                     cx.notify();
                 },
@@ -817,36 +908,6 @@ impl Render for Live {
                     .child(phrase_text(phrase, p, w, cx)),
             );
         }
-        let title = div()
-            .flex()
-            .h_full()
-            .min_w_0()
-            .items_center()
-            .gap(px(6.))
-            .window_control_area(WindowControlArea::Drag)
-            .child(glyph(TRANSLATE, 15., p.muted))
-            .child(label("Traduction en direct").truncate());
-        let header = window_frame::header(p, title, !self.settings_open)
-            .child(
-                control("Paramètres", Button::Secondary, Some(SLIDERS), true, cx).on_click(
-                    cx.listener(|s, _, w, cx| {
-                        s.settings_open = true;
-                        s.settings_focus.focus(w, cx);
-                        cx.notify();
-                    }),
-                ),
-            )
-            .child(primary)
-            .child(window_frame::controls(
-                w,
-                p,
-                true,
-                cx.listener(|s, _, w, cx| {
-                    if s.can_close(cx) {
-                        w.remove_window();
-                    }
-                }),
-            ));
         let mut stream = ScrollArea::new("live-captions", captions);
         stream.handle = Some(self.scroll.clone());
         let content = col()
@@ -855,36 +916,34 @@ impl Render for Live {
             .px(px(13.))
             .pt(px(8.))
             .pb(px(12.))
-            .child(p.panel().flex_1().min_h_0().child(stream));
-        let overlay =
-            (self.settings_open || showing > 0.001).then(|| self.preferences(showing, w, cx));
-        window_frame::surface(p)
-            .capture_key_down(cx.listener(|s, ev: &KeyDownEvent, w, cx| {
-                if ev.keystroke.key == "tab"
-                    && !ev.keystroke.modifiers.control
-                    && !ev.keystroke.modifiers.alt
-                {
-                    let step = if ev.keystroke.modifiers.shift {
-                        Window::focus_prev
-                    } else {
-                        Window::focus_next
-                    };
-                    step(w, cx);
-                    if s.settings_open {
-                        let first = w.focused(cx);
-                        while !s.settings_focus.contains_focused(w, cx) {
-                            step(w, cx);
-                            if w.focused(cx) == first {
-                                s.settings_focus.focus(w, cx);
-                                break;
-                            }
-                        }
-                    }
-                    cx.stop_propagation();
-                }
-            }))
-            .child(header)
+            .child(p.panel().flex_1().min_h_0().child(stream))
+            .when(!busy && !self.final_text.is_empty(), |d| {
+                d.child(self.export_bar(cx)).when(self.export_open, |d| {
+                    d.child(
+                        ScrollArea::new(
+                            "live-exports",
+                            col().children(meeting_storage::export::FORMATS.map(
+                                |(fmt, title, ext)| {
+                                    control(
+                                        format!("{} · .{ext}", tr(title)),
+                                        Button::Quiet,
+                                        None,
+                                        false,
+                                        cx,
+                                    )
+                                    .on_click(cx.listener(
+                                        move |s, _, w, cx| s.export_translation(fmt, ext, w, cx),
+                                    ))
+                                },
+                            )),
+                        )
+                        .limited(185.),
+                    )
+                })
+            });
+        col()
+            .size_full()
+            .child(row().justify_end().px_3().py_2().child(primary))
             .child(content)
-            .children(overlay)
     }
 }
